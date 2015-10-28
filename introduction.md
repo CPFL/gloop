@@ -84,7 +84,9 @@ ZZZ
     + 特に直接に競合するのは PTask なので, これとの差分をはっきりさせるべき
         + latency sensitive な data center application については PTask は(当時それほど隆盛になかったから) 考えていない
         + latency については考えているが, GPUnet のように polling するというレベルまで latency を severe には考えていない, 評価結果も, latency 9ms など. (GPU kernel invocation の latency は 25us)
-        + これについてはもう少し考える必要がある
+            + これについてはもう少し考える必要がある
+            + 基本的に PTask は channel が queue を持っていて, 中に task がある & GPU が available なら kernele を invoke, なので, GPUnet の kernel での polling のような考え, 及びこれが必要とするような latency 制約までは持っていない
+        + multi user については考えていない
 
 ## Memo
 
