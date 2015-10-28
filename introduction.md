@@ -26,6 +26,11 @@ GPU 側コードのみで完結するようなプログラミングモデルを�
 CPU 側から GPU カーネルの invoke を毎回行わないため,
 より低いレイテンシで GPU で処理を行うことができる.
 
+```
+4つめ5つめを再構成して, ここに具体的な例, 例えば GPUnet ならこう, GPUfs ならこうというふうな文章を入れる.
+For example... という形. 基本的にはパラグラフの末尾に入れる.
+```
+
 しかしながら, このようなアプリケーションは GPU を専有してしまう.
 GPU カーネルは preepmtion を行うことができないので,
 GPU カーネルが persistent に走り続けるアプリケーションは GPU を専有し,
@@ -44,6 +49,9 @@ pass-through を用いた場合 GPU を専有することができるが, GPU �
     scheduling 抽象を持たないからだというふうに言えるのではないか?
     そのような抽象を持たないから, user が自前で polling や RPC をするはめになっているのでは?
     (half-baked idea)
+    GPU がプリエンプションできないデバイスであるから,
+    イベントポンプのような抽象を resource manager が提供すべきなのに, 提供できていない.
+    poor resource management.
 )
 
 本提案では, GPU のプログラミング interface に新たな抽象を導入する.
@@ -75,3 +83,12 @@ ZZZ
 
 + p2 くらいに PTask の話をうまく入れる
 + 低レイテンシ, 高スループットを志向するところまで持っていくことができれば, datacenter application の話の流れにのせることができる (IX とか)
++ resource management のレイヤでやらずとも, CPU 側のコードで dispatch などの polling loop をすればよいのでは.
+    + ただし, CPU 側でやる場合は, ローカルな情報しかないので, 全体でスケジューリングするというようなことはできない
++ GPU のイベントループサービス
++ persistent threads とかの場合は, thread 抽象を肩代わりする & GPU task の実行時間を短くできる
+    + shared GPU のようにすると長時間 task を動かすと殺される
++ GPUnet を複数動かすことができる
+    + GPUnet のアプリケーションローカルで dispatch を CPU でやると, 常に CPU に戻る必要がある
+    + shared GPU 全体で GPU 利用者が一人しかいなければ, GPU でループを回せば良い
+
