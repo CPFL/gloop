@@ -91,4 +91,6 @@ ZZZ
 + GPUnet を複数動かすことができる
     + GPUnet のアプリケーションローカルで dispatch を CPU でやると, 常に CPU に戻る必要がある
     + shared GPU 全体で GPU 利用者が一人しかいなければ, GPU でループを回せば良い
++ 今回は NVIDIA driver / NVIDIA runtime をそのままつかう
+    + これも利点の一つ
 
