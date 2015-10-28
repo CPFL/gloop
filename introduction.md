@@ -37,7 +37,7 @@ GPU カーネルが persistent に走り続けるアプリケーションは GPU
 アプリケーションが動作している間は他のアプリケーションが GPU を利用することはできない.
 
 GPU を専有してしまうアプリケーションは, GPU を共有するクラウド環境上で動作させることができない.
-クラウド環境が GPU を利用率向上のために他の user と共有した場合, user が専有することはできない.
+クラウド環境が GPU を利用率向上のために他の user と共有した場合, user が GPU を専有することはできない.
 pass-through を用いた場合 GPU を専有することができるが, GPU の利用率の低下し,
 また GPU を専有するため user にとってのコストが高い.
 既存の手法ではこのような場合, user を kill するといった手法が取られてきた.
@@ -78,6 +78,13 @@ ZZZ
 
 + preemption がでたらどうするか? preemption がすべてを解決するのでは?
     + preemption はコストが高いから, すべて preemption でさせるよりも, user が明示的に「非同期タスク待ちです」と伝えるところで切る方が効率的. preemption ができれば, 不当に長時間 GPU を利用する user への最終手段としての preemption による stop が可能になる. このため, preemption と本提案は直行し, 本提案は preemption を用いてより効率的な管理を行うことができる.
+    + Chimera の tradeoff の話とかをいれる
++ clear にすべきなこと
+    + PTask ではこれができない, GPUnet はこれができない, GPUfs はこれができないみたいな星取表がほしい
+    + 特に直接に競合するのは PTask なので, これとの差分をはっきりさせるべき
+        + latency sensitive な data center application については PTask は(当時それほど隆盛になかったから) 考えていない
+        + latency については考えているが, GPUnet のように polling するというレベルまで latency を severe には考えていない, 評価結果も, latency 9ms など. (GPU kernel invocation の latency は 25us)
+        + これについてはもう少し考える必要がある
 
 ## Memo
 
@@ -93,4 +100,6 @@ ZZZ
     + shared GPU 全体で GPU 利用者が一人しかいなければ, GPU でループを回せば良い
 + 今回は NVIDIA driver / NVIDIA runtime をそのままつかう
     + これも利点の一つ
-
++ scheduling はどうなのか?
+    + user はまったく関係ないので, fairness はきちんと管理できないとダメ
+    + resource reservation みたいのもできないとダメ
