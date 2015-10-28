@@ -105,3 +105,5 @@ ZZZ
 + scheduling はどうなのか?
     + user はまったく関係ないので, fairness はきちんと管理できないとダメ
     + resource reservation みたいのもできないとダメ
+    + scheduling については latency 保証みたいなのはできるのか?
+        + 要検討
