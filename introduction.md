@@ -78,7 +78,7 @@ ZZZ
 
 
 |   | GPUfs | GPUnet | PTask | Rhythm | current |
-|:-:|:-:|:-:|:-:|:-:|
+| | :-: | :-: | :-: | :-: |
 | I/O from GPU         | * | * |   |   | * |
 | Multiple Application |   |   | * | * | * |
 | Low Latency          |   | * |   |   | * |
