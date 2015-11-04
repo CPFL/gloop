@@ -83,7 +83,8 @@ ZZZ
 | Multiple Application |   |   | * | * | * |
 | Low Latency          |   | * |   |   | * |
 | High Throughput      | * | * | * | * | * |
-| Ease of Programming  | * | * | * |   | * |
+| Modularity           |   |   | * |   |   |
+| ちらばらない         | * | * |   |   | * |
 | Shared GPU aware     |   |   | * |   | * |
 
 
