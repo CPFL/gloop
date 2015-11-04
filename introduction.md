@@ -74,6 +74,19 @@ YYY 別のchallengeについて記述.
 (実験について触れる.)
 ZZZ
 
+## Comparison
+
+
+|   | GPUfs | GPUnet | PTask | Rhythm | current |
+|:-:|:-:|:-:|:-:|:-:|
+| I/O from GPU         | * | * |   |   | * |
+| Multiple Application |   |   | * | * | * |
+| Low Latency          |   | * |   |   | * |
+| High Throughput      | * | * | * | * | * |
+| Ease of Programming  | * | * | * |   | * |
+| Shared GPU aware     |   |   | * |   | * |
+
+
 ## Comments
 
 + preemption がでたらどうするか? preemption がすべてを解決するのでは?
@@ -107,3 +120,4 @@ ZZZ
     + resource reservation みたいのもできないとダメ
     + scheduling については latency 保証みたいなのはできるのか?
         + 要検討
+
