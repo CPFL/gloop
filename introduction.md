@@ -79,13 +79,13 @@ ZZZ
 
 |   | GPUfs | GPUnet | PTask | Rhythm | current |
 | :-: | :-: | :-: | :-: | :-: | :-: |
-| I/O from GPU         | * | * |   |   | * |
-| Multiple Application |   |   | * | * | * |
-| Low Latency          |   | * |   |   | * |
-| High Throughput      | * | * | * | * | * |
-| Modularity           |   |   | * |   |   |
-| ちらばらない         | * | * |   |   | * |
-| Shared GPU aware     |   |   | * |   | * |
+| I/O from GPU                 | * | * |   |   | * |
+| Multiple Application         |   |   | * | * | * |
+| Low Latency                  |   | * |   |   | * |
+| High Throughput              | * | * | * | * | * |
+| Modularity                   |   |   | * |   |   |
+| ちらばらない                 | * | * |   |   | * |
+| Shared GPU aware             |   |   | * |   | * |
 
 
 ## Comments
