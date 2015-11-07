@@ -27,4 +27,14 @@
 namespace gnode {
 namespace hooks {
 
+Redirector::Redirector()
+{
+}
+
+Redirector& Redirector::instance()
+{
+    static Redirector redirector;
+    return redirector;
+}
+
 } }  // namespace gnode::hooks

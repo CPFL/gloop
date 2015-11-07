@@ -25,5 +25,18 @@
 #define GNODE_HOOKS_REDIRECTOR_H_
 namespace gnode {
 namespace hooks {
+
+class Redirector {
+private:
+    Redirector(const Redirector&) = delete;
+    operator=(const Redirector&) = delete;
+
+#include "redirector-apis.inc"
+
+public:
+    static Redirector& instance();
+};
+
+
 } }  // namespace gnode::hooks
 #endif  // GNODE_HOOKS_REDIRECTOR_H_

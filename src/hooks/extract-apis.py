@@ -21,6 +21,8 @@
 #  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
+import sys
 from clang.cindex import CursorKind
 import clang.cindex
 
@@ -37,6 +39,47 @@ class API(object):
 
         print "%s %s(%s);" % (result_type.spelling, self.node.spelling, ", ".join(args))
 
+    def generate_redirector_method(self):
+        template = """
+%s %s(%s)
+{
+    return this->m_%s(%s);
+}
+"""
+        result_type = self.node.type.get_result()
+
+        args = []
+        for arg in self.node.get_arguments():
+            args.append("%s %s" % (arg.type.spelling, arg.spelling))
+
+        return template % (
+                result_type.spelling,
+                self.node.spelling,
+                ", ".join(args),
+                self.node.spelling,
+                ", ".join([arg.spelling for arg in self.node.get_arguments()]))
+
+    def generate_redirector_member(self):
+        template = """
+typedef %s (*API%s)(%s);
+API%s m_%s;
+"""
+        result_type = self.node.type.get_result()
+        return template % (
+                result_type.spelling,
+                self.node.spelling,
+                ", ".join([arg.type.spelling for arg in self.node.get_arguments()]),
+                self.node.spelling,
+                self.node.spelling)
+
+    def generate_dlsym(self):
+        template = """    m_%s = reinterpret_cast<API%s>(dlsym(RTLD_NEXT, "%s"));
+"""
+        return template % (
+                self.node.spelling,
+                self.node.spelling,
+                self.node.spelling)
+
 
 class Generator(object):
     def __init__(self):
@@ -52,16 +95,33 @@ class Generator(object):
             return
         self.api.append(API(node))
 
-    def generate(self):
+    def generate_redirector_method(self):
+        header = "public:"
+        sys.stdout.write(header)
         for api in self.api:
-            api.report()
+            sys.stdout.write(api.generate_redirector_method())
+
+        members = "private:"
+        sys.stdout.write(members)
+        for api in self.api:
+            sys.stdout.write(api.generate_redirector_member())
+
+        footer = """
+Redirector()
+{
+"""
+        sys.stdout.write(footer)
+        for api in self.api:
+            sys.stdout.write(api.generate_dlsym())
+        sys.stdout.write("}\n")
 
 def main():
     index = clang.cindex.Index.create()
     translation_unit = index.parse("../../third_party/cuda-5.0/cuda_runtime_api.h")
     gen = Generator()
     gen.visit(translation_unit.cursor, None)
-    gen.generate()
+    if sys.argv[1] == "redirector-method":
+        gen.generate_redirector_method()
 
 if __name__ == '__main__':
     main()
