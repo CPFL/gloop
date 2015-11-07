@@ -22,18 +22,19 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <cstdio>
+#include <cuda_runtime_api.h>
 #include <dlfcn.h>
 
-extern "C" int cudaLaunch(const void *func)
+extern "C" cudaError_t cudaLaunch(const void *func)
 {
     std::printf("cudaLaunch\n");
-    typedef int (*function_type)(const void *func);
+    typedef cudaError_t (*function_type)(const void *func);
     return reinterpret_cast<function_type>(dlsym(RTLD_NEXT, "cudaLaunch"))(func);
 }
 
-extern "C" int cudaMalloc(void **devPtr, size_t size)
+extern "C" cudaError_t cudaMalloc(void **devPtr, size_t size)
 {
     std::printf("cudaMalloc\n");
-    typedef int (*function_type)(void **devPtr, size_t size);
+    typedef cudaError_t (*function_type)(void **devPtr, size_t size);
     return reinterpret_cast<function_type>(dlsym(RTLD_NEXT, "cudaMalloc"))(devPtr, size);
 }

@@ -1,4 +1,4 @@
-add_library(hooks SHARED
+cuda_add_library(hooks SHARED
     library.cc
 )
 link_libraries(hooks dl)
