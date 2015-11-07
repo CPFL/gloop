@@ -21,20 +21,33 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include "main-loop.h"
 #include <cstdio>
 #include <cuda_runtime_api.h>
-#include <dlfcn.h>
+namespace gnode {
+namespace hooks {
 
-extern "C" cudaError_t cudaLaunch(const void *func)
+MainLoop::MainLoop()
+    : Redirector()
+{
+}
+
+MainLoop& MainLoop::instance()
+{
+    static MainLoop mainLoop;
+    return mainLoop;
+}
+
+cudaError_t MainLoop::cudaLaunch(const void *func)
 {
     std::printf("cudaLaunch\n");
-    typedef cudaError_t (*function_type)(const void *func);
-    return reinterpret_cast<function_type>(dlsym(RTLD_NEXT, "cudaLaunch"))(func);
+    return Redirector::cudaLaunch(func);
 }
 
-extern "C" cudaError_t cudaMalloc(void **devPtr, size_t size)
+cudaError_t MainLoop::cudaMalloc(void **devPtr, size_t size)
 {
     std::printf("cudaMalloc\n");
-    typedef cudaError_t (*function_type)(void **devPtr, size_t size);
-    return reinterpret_cast<function_type>(dlsym(RTLD_NEXT, "cudaMalloc"))(devPtr, size);
+    return Redirector::cudaMalloc(devPtr, size);
 }
+
+} }  // namespace gnode::hooks
