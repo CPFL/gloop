@@ -24,9 +24,23 @@
 from clang.cindex import CursorKind
 import clang.cindex
 
-class Visitor(object):
+class API(object):
+    def __init__(self, node):
+        self.node = node
+
+    def report(self):
+        result_type = self.node.type.get_result()
+
+        args = []
+        for arg in self.node.get_arguments():
+            args.append("%s %s" % (arg.type.spelling, arg.spelling))
+
+        print "%s %s(%s);" % (result_type.spelling, self.node.spelling, ", ".join(args))
+
+
+class Generator(object):
     def __init__(self):
-        pass
+        self.api = []
 
     def visit(self, node, parent):
         self.perform(node, parent)
@@ -36,19 +50,18 @@ class Visitor(object):
     def perform(self, node, parent):
         if node.kind != CursorKind.FUNCTION_DECL:
             return
-        result_type = node.type.get_result()
+        self.api.append(API(node))
 
-        args = []
-        for arg in node.get_arguments():
-            args.append("%s %s" % (arg.type.spelling, arg.spelling))
-
-        print "%s %s(%s);" % (result_type.spelling, node.spelling, ", ".join(args))
+    def generate(self):
+        for api in self.api:
+            api.report()
 
 def main():
     index = clang.cindex.Index.create()
-    translation_unit = index.parse("../third_party/cuda/cuda_runtime_api.h")
-    visitor = Visitor()
-    visitor.visit(translation_unit.cursor, None)
+    translation_unit = index.parse("../../third_party/cuda-5.0/cuda_runtime_api.h")
+    gen = Generator()
+    gen.visit(translation_unit.cursor, None)
+    gen.generate()
 
 if __name__ == '__main__':
     main()
