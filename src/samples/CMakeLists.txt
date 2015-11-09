@@ -1,1 +1,2 @@
-cuda_add_executable(hello main.cu)
+add_subdirectory(hello)
+add_subdirectory(matrix)
