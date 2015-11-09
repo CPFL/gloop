@@ -21,26 +21,15 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GNODE_HOOKS_MAIN_LOOP_H_
-#define GNODE_HOOKS_MAIN_LOOP_H_
-#include "redirector.h"
-namespace gnode {
-namespace hooks {
+#ifndef GNODE_HOOKS_GNODE_H_
+#define GNODE_HOOKS_GNODE_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-class MainLoop : public Redirector {
-private:
-    MainLoop();
+void gnodeMainLoopRun(void);
 
-public:
-    // Overridden APIs.
-    cudaError_t cudaLaunch(const void * func);
-    cudaError_t cudaMalloc(void ** devPtr, size_t size);
-
-    void initialize();
-
-public:
-    static MainLoop& instance();
-};
-
-} }  // namespace gnode::hooks
-#endif  // GNODE_HOOKS_MAIN_LOOP_H_
+#ifdef __cplusplus
+}
+#endif
+#endif  // GNODE_HOOKS_GNODE_H_

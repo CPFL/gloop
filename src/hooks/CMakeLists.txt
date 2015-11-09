@@ -1,4 +1,5 @@
 cuda_add_library(hooks SHARED
+    gnode.cc
     main_loop.cc
     redirector.cc
 )

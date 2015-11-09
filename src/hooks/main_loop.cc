@@ -39,6 +39,10 @@ MainLoop& MainLoop::instance()
     return mainLoop;
 }
 
+void MainLoop::initialize()
+{
+}
+
 cudaError_t MainLoop::cudaLaunch(const void *func)
 {
     std::printf("cudaLaunch\n");
