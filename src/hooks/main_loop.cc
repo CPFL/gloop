@@ -24,6 +24,7 @@
 #include "main_loop.h"
 #include <cstdio>
 #include <cuda_runtime_api.h>
+#include <uv.h>
 namespace gnode {
 namespace hooks {
 

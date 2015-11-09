@@ -7,5 +7,5 @@ find_package(CUDA REQUIRED)
 
 # find_package(Threads)
 
-# setup google-test target
+add_subdirectory(third_party)
 add_subdirectory(src)
