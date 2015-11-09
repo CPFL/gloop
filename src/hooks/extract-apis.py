@@ -228,7 +228,7 @@ Redirector();
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "redirector.h"
-#include "main_loop.h"
+#include <main_loop.h>
 #include <cuda_runtime_api.h>
 #include <dlfcn.h>
 namespace gnode {
@@ -258,7 +258,7 @@ Redirector::Redirector()
 
 def main():
     index = clang.cindex.Index.create()
-    translation_unit = index.parse("../../third_party/cuda-5.0/cuda_runtime_api.h")
+    translation_unit = index.parse(sys.argv[2])
     gen = Generator()
     gen.visit(translation_unit.cursor, None)
     if sys.argv[1] == "redirector-header":

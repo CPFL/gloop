@@ -23,7 +23,7 @@
 */
 #ifndef GNODE_HOOKS_MAIN_LOOP_H_
 #define GNODE_HOOKS_MAIN_LOOP_H_
-#include "redirector.h"
+#include <redirector.h>
 namespace gnode {
 namespace hooks {
 
