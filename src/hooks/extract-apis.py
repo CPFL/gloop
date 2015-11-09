@@ -228,7 +228,7 @@ Redirector();
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "redirector.h"
-#include "main-loop.h"
+#include "main_loop.h"
 #include <cuda_runtime_api.h>
 #include <dlfcn.h>
 namespace gnode {
