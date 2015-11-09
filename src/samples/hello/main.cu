@@ -22,6 +22,15 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <cstdio>
+#include <cstdlib>
+#include <uv.h>
+
 int main(int argc, char** argv)
 {
+    uv_loop_t* loop = static_cast<uv_loop_t*>(std::malloc(sizeof(uv_loop_t)));
+    uv_loop_init(loop);
+
+    uv_loop_close(loop);
+    std::free(loop);
 }

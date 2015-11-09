@@ -14,12 +14,10 @@ ExternalProject_Add(${EP_TARGET_NAME}
     BUILD_BYPRODUCTS ${LIBUV_LOCATION}
 )
 
-set(EP_LIBRARY uv)
-add_library(${EP_LIBRARY} STATIC IMPORTED GLOBAL)
-add_dependencies(${EP_LIBRARY} ${EP_TARGET_NAME})
-
+add_library(uv STATIC IMPORTED GLOBAL)
 # Generate a library path and set the imported location for mongoc.
-set_target_properties(${EP_LIBRARY}
+set_target_properties(uv
     PROPERTIES
     IMPORTED_LOCATION ${LIBUV_LOCATION}
 )
+add_dependencies(uv ${EP_TARGET_NAME})
