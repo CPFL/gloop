@@ -39,7 +39,7 @@ add_custom_target(redirector
 )
 
 cuda_add_library(hooks SHARED
-    gnode.cc
+    gloop.cc
     main_loop.cc
     ${CMAKE_CURRENT_BINARY_DIR}/redirector.cc
 )

@@ -25,7 +25,7 @@
 #include <cstdio>
 #include <cuda_runtime_api.h>
 #include <uv.h>
-namespace gnode {
+namespace gloop {
 namespace hooks {
 
 MainLoop::MainLoop()
@@ -55,4 +55,4 @@ cudaError_t MainLoop::cudaMalloc(void **devPtr, size_t size)
     return Redirector::cudaMalloc(devPtr, size);
 }
 
-} }  // namespace gnode::hooks
+} }  // namespace gloop::hooks

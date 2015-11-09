@@ -21,15 +21,13 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GNODE_HOOKS_GNODE_H_
-#define GNODE_HOOKS_GNODE_H_
-#ifdef __cplusplus
+#include "gloop.h"
+#include "main_loop.h"
 extern "C" {
-#endif
 
-void gnodeMainLoopRun(void);
-
-#ifdef __cplusplus
+void gloopMainLoopRun()
+{
+    gloop::hooks::MainLoop::instance().initialize();
 }
-#endif
-#endif  // GNODE_HOOKS_GNODE_H_
+
+}

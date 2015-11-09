@@ -114,7 +114,7 @@ API%s m_%s;
         template = """
 %s %s(%s)
 {
-    return gnode::hooks::MainLoop::instance().%s(%s);
+    return gloop::hooks::MainLoop::instance().%s(%s);
 }
 """
 
@@ -170,10 +170,10 @@ class Generator(object):
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GNODE_HOOKS_REDIRECTOR_H_
-#define GNODE_HOOKS_REDIRECTOR_H_
+#ifndef GLOOP_HOOKS_REDIRECTOR_H_
+#define GLOOP_HOOKS_REDIRECTOR_H_
 #include <cuda_runtime_api.h>
-namespace gnode {
+namespace gloop {
 namespace hooks {
 
 class Redirector {
@@ -192,7 +192,7 @@ protected:
 Redirector();
 """
         print """};
-} }  // namespace gnode::hooks
+} }  // namespace gloop::hooks
 """
 
         print 'extern "C" {'
@@ -200,7 +200,7 @@ Redirector();
             sys.stdout.write(api.generate_redirector_header_api())
 
         print """}
-#endif  // GNODE_HOOKS_REDIRECTOR_H_
+#endif  // GLOOP_HOOKS_REDIRECTOR_H_
 """
 
     def generate_redirector_implementation(self):
@@ -231,7 +231,7 @@ Redirector();
 #include <main_loop.h>
 #include <cuda_runtime_api.h>
 #include <dlfcn.h>
-namespace gnode {
+namespace gloop {
 namespace hooks {
 
 """)
@@ -246,7 +246,7 @@ Redirector::Redirector()
         for api in self.api:
             sys.stdout.write(api.generate_dlsym())
         print """}
-} }  // namespace gnode::hooks
+} }  // namespace gloop::hooks
 """
 
         print 'extern "C" {'

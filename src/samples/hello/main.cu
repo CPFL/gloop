@@ -24,13 +24,36 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <stdint.h>
 #include <uv.h>
+
+int64_t counter = 0;
+
+void waitForAWhile(uv_idle_t* handle)
+{
+    counter++;
+    if (counter >= 10e6) {
+        uv_idle_stop(handle);
+    }
+}
 
 int main(int argc, char** argv)
 {
-    uv_loop_t* loop = static_cast<uv_loop_t*>(std::malloc(sizeof(uv_loop_t)));
-    uv_loop_init(loop);
+    uv_idle_t idler;
 
-    uv_loop_close(loop);
-    std::free(loop);
+    uv_idle_init(uv_default_loop(), &idler);
+    uv_idle_start(&idler, waitForAWhile);
+
+    // uv_loop_t* loop = static_cast<uv_loop_t*>(std::malloc(sizeof(uv_loop_t)));
+    // uv_loop_init(loop);
+    // uv_run(loop, UV_RUN_DEFAULT);
+    // uv_loop_close(loop);
+    // std::free(loop);
+
+    std::printf("Now quitting.\n");
+    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+    uv_loop_close(uv_default_loop());
+
+    return 0;
 }

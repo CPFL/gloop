@@ -21,10 +21,10 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GNODE_HOOKS_MAIN_LOOP_H_
-#define GNODE_HOOKS_MAIN_LOOP_H_
+#ifndef GLOOP_HOOKS_MAIN_LOOP_H_
+#define GLOOP_HOOKS_MAIN_LOOP_H_
 #include <redirector.h>
-namespace gnode {
+namespace gloop {
 namespace hooks {
 
 class MainLoop : public Redirector {
@@ -42,5 +42,5 @@ public:
     static MainLoop& instance();
 };
 
-} }  // namespace gnode::hooks
-#endif  // GNODE_HOOKS_MAIN_LOOP_H_
+} }  // namespace gloop::hooks
+#endif  // GLOOP_HOOKS_MAIN_LOOP_H_
