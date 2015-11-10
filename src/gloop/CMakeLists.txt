@@ -40,6 +40,7 @@ add_custom_target(redirector
 
 cuda_add_library(gloop SHARED
     gloop_host.cc
+    fs.cu
     # gloop_device.cu
     host_loop.cc
     device_loop.cu

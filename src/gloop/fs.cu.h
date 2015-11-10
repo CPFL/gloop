@@ -21,8 +21,16 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_GLOOP_H_
-#define GLOOP_GLOOP_H_
-#include "gloop_host.h"
-#include "gloop.cu.h"
-#endif  // GLOOP_GLOOP_H_
+#ifndef GLOOP_GLOOP_FS_CU_H_
+#define GLOOP_GLOOP_FS_CU_H_
+namespace gloop {
+namespace fs {
+
+template<typename Lambda>
+__device__ void open(const char* fileName, const Lambda& lambda)
+{
+    lambda();
+}
+
+} }  // namespace gloop
+#endif // GLOOP_GLOOP_FS_CU_H_

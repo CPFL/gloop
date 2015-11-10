@@ -21,13 +21,8 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_GLOOP_DEVICE_CU_H_
-#define GLOOP_GLOOP_DEVICE_CU_H_
+#include "fs.cu.h"
 namespace gloop {
+namespace fs {
 
-__global__ void run()
-{
-}
-
-}  // namespace gloop
-#endif  // GLOOP_GLOOP_DEVICE_CU_H_
+} }  // namespace gloop::fs
