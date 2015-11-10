@@ -21,26 +21,38 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HOOKS_MAIN_LOOP_H_
-#define GLOOP_HOOKS_MAIN_LOOP_H_
-#include <redirector.h>
+#include "host_loop.h"
+#include <cstdio>
+#include <cuda_runtime_api.h>
+#include <uv.h>
 namespace gloop {
 namespace hooks {
 
-class MainLoop : public Redirector {
-private:
-    MainLoop();
+HostLoop::HostLoop()
+    : Redirector()
+{
+}
 
-public:
-    // Overridden APIs.
-    cudaError_t cudaLaunch(const void * func);
-    cudaError_t cudaMalloc(void ** devPtr, size_t size);
+HostLoop& HostLoop::instance()
+{
+    static HostLoop mainLoop;
+    return mainLoop;
+}
 
-    void initialize();
+void HostLoop::initialize()
+{
+}
 
-public:
-    static MainLoop& instance();
-};
+cudaError_t HostLoop::cudaLaunch(const void *func)
+{
+    std::printf("cudaLaunch\n");
+    return Redirector::cudaLaunch(func);
+}
+
+cudaError_t HostLoop::cudaMalloc(void **devPtr, size_t size)
+{
+    std::printf("cudaMalloc\n");
+    return Redirector::cudaMalloc(devPtr, size);
+}
 
 } }  // namespace gloop::hooks
-#endif  // GLOOP_HOOKS_MAIN_LOOP_H_

@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-void gloopMainLoopRun(void);
+void gloopHostLoopRun(void);
 
 #ifdef __cplusplus
 }

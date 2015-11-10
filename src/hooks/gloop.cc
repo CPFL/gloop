@@ -22,12 +22,12 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "gloop.h"
-#include "main_loop.h"
+#include "host_loop.h"
 extern "C" {
 
-void gloopMainLoopRun()
+void gloopHostLoopRun()
 {
-    gloop::hooks::MainLoop::instance().initialize();
+    gloop::hooks::HostLoop::instance().initialize();
 }
 
 }

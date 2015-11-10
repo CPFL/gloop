@@ -114,7 +114,7 @@ API%s m_%s;
         template = """
 %s %s(%s)
 {
-    return gloop::hooks::MainLoop::instance().%s(%s);
+    return gloop::hooks::HostLoop::instance().%s(%s);
 }
 """
 
@@ -228,7 +228,7 @@ Redirector();
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "redirector.h"
-#include <main_loop.h>
+#include <host_loop.h>
 #include <cuda_runtime_api.h>
 #include <dlfcn.h>
 namespace gloop {
