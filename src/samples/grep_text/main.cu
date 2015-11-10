@@ -21,26 +21,8 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HOOKS_HOST_LOOP_H_
-#define GLOOP_HOOKS_HOST_LOOP_H_
-#include <redirector.h>
-namespace gloop {
-namespace hooks {
 
-class HostLoop : public Redirector {
-private:
-    HostLoop();
-
-public:
-    // Overridden APIs.
-    cudaError_t cudaLaunch(const void * func);
-    cudaError_t cudaMalloc(void ** devPtr, size_t size);
-
-    void initialize();
-
-public:
-    static HostLoop& instance();
-};
-
-} }  // namespace gloop::hooks
-#endif  // GLOOP_HOOKS_HOST_LOOP_H_
+int main(int argc, char** argv)
+{
+    return 0;
+}

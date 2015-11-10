@@ -38,10 +38,11 @@ add_custom_target(redirector
         "${CMAKE_CURRENT_BINARY_DIR}/redirector.h"
 )
 
-cuda_add_library(hooks SHARED
+cuda_add_library(gloop SHARED
     gloop.cc
     host_loop.cc
+    device_loop.cu
     ${CMAKE_CURRENT_BINARY_DIR}/redirector.cc
 )
-add_dependencies(hooks uv redirector)
-target_link_libraries(hooks dl uv)
+add_dependencies(gloop uv redirector)
+target_link_libraries(gloop dl uv)

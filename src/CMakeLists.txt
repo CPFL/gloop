@@ -1,3 +1,3 @@
 # include subdirectory
-add_subdirectory(hooks)
+add_subdirectory(gloop)
 add_subdirectory(samples)

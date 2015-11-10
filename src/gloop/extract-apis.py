@@ -170,8 +170,8 @@ class Generator(object):
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HOOKS_REDIRECTOR_H_
-#define GLOOP_HOOKS_REDIRECTOR_H_
+#ifndef GLOOP_REDIRECTOR_H_
+#define GLOOP_REDIRECTOR_H_
 #include <cuda_runtime_api.h>
 namespace gloop {
 namespace hooks {
@@ -200,7 +200,7 @@ Redirector();
             sys.stdout.write(api.generate_redirector_header_api())
 
         print """}
-#endif  // GLOOP_HOOKS_REDIRECTOR_H_
+#endif  // GLOOP_REDIRECTOR_H_
 """
 
     def generate_redirector_implementation(self):
