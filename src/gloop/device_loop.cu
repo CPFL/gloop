@@ -21,7 +21,7 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "device_loop.h"
+#include "device_loop.cu.h"
 namespace gloop {
 namespace hooks {
 

@@ -26,6 +26,9 @@
 #include "fs.cu.h"
 namespace gloop {
 
+class DeviceLoop;
+__device__ volatile DeviceLoop* deviceLoop;
+
 __global__ void run()
 {
 }

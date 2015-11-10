@@ -23,13 +23,12 @@
 */
 #ifndef GLOOP_GLOOP_FS_CU_H_
 #define GLOOP_GLOOP_FS_CU_H_
+#include <functional>
 namespace gloop {
 namespace fs {
 
-template<typename Lambda>
-__device__ void open(const char* fileName, const Lambda& lambda)
+__device__ void open(const char* fileName, int id)
 {
-    lambda();
 }
 
 } }  // namespace gloop
