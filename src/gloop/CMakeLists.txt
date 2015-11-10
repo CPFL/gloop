@@ -39,7 +39,8 @@ add_custom_target(redirector
 )
 
 cuda_add_library(gloop SHARED
-    gloop.cc
+    gloop_host.cc
+    # gloop_device.cu
     host_loop.cc
     device_loop.cu
     ${CMAKE_CURRENT_BINARY_DIR}/redirector.cc

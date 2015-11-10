@@ -22,7 +22,15 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <gloop/gloop.h>
+
+__global__ void grepText()
+{
+}
+
 int main(int argc, char** argv)
 {
+    gloop::init();
+    gloop::run<<<16, 16, 16>>>();
     return 0;
 }

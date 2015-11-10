@@ -21,8 +21,13 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_GLOOP_H_
-#define GLOOP_GLOOP_H_
 #include "gloop_host.h"
-#include "gloop_device.cu.h"
-#endif  // GLOOP_GLOOP_H_
+#include "host_loop.h"
+namespace gloop {
+
+void init(void)
+{
+    hooks::HostLoop::instance().initialize();
+}
+
+}  // namespace gloop
