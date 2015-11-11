@@ -24,9 +24,42 @@
 
 #include <gloop/gloop.h>
 
-__global__ void grepText()
+__global__ void onOpen(char** temporary, int fd)
 {
 }
+
+__global__ void grepText()
+{
+    gloop::fs::open("pg100.txt", 0);
+}
+
+#if 0
+// final goal.
+__global__ void grepText(char* buffer)
+{
+    gloop::fs::open("pg100.txt", [=](int srcFd) {
+        return gloop::fs::open("result.txt", [=](int dstFd) {
+            return gloop::fs::fstat(srcFd, [=](std::size_t sourceSize) {
+                std::size_t totalWords = sourceSize / 32;
+                std::size_t wordsPerChunk= totalWords / gridDim.x;
+
+                if (wordsPerChunk == 0) {
+                    wordsPerChunk = 1;
+                    if (blockIdx.x > totalWords) {
+                        wordsPerChunk = 0;
+                    }
+                }
+
+                if (wordsPerChunk == 0) {
+                    return gloop::fs::close(dstFd, [&]() {
+                        return gloop::fs::close(srcFd, [&]() {
+                        });
+                    });
+                }
+            });
+    });
+}
+#endif
 
 int main(int argc, char** argv)
 {
