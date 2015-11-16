@@ -27,3 +27,14 @@ async I/O の種類は多岐にわたる. FileSystem APIs はその代表例だ�
 データ転送も gloop API で発行することによって, データ転送を含めたプログラムがすべて GPU kernel のみで完結し,
 パイプラインを構築するといったことを考慮する必要なく, 自然とデータ転送とコンピュテーションがオーバーラップし,
 コンピュテーションリソースを使い切ることが可能である.
+
+## Memo
+
++ gloop に従わない / 使わない application が GPU を専有するのでは?
+    + 専有する. ため, shared GPU の場合は, platform 側が app を kill することで対応する. 前提として長時間専有する app は kill される.
+    + kill してしまうというのは, preemption がない以上現実的な解決策であり, disengaged scheduling も長時間動き続けるものに対してはそれを想定している. GPUvm でもそう言った.
+    + preemption があれば, それを使うというのが手段となる
++ 同じ context から複数の別の kernel が同時に動かされた場合, 同時に GPU を empty にするのは難しいのでは?
+    + 難しい, ため, host loop と連携して適当なタイミングで全部一旦止めるということをしてあげなければならない. gang scheduling のようなものを想定している.
+    + これを scheduling してあげるというのも, ひとつの challenge.
+    + しかし, Chimera や ISCA '14 の paper を引いて, 「将来的に SM 単位で別の context が動かせるなら, わざわざ全部 empty にする必要はなくって」というように言うこともできる.
