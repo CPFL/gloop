@@ -121,4 +121,10 @@ ZZZ
     + resource reservation みたいのもできないとダメ
     + scheduling については latency 保証みたいなのはできるのか?
         + 要検討
-
++ どの程度アプリケーションを書き換える必要があるのか?
+    + GPUfs / GPUnet のようなアプリケーションの場合, sequential だったものを callback based な async I/O に書き換える必要がある
+    + 他のものについては, host で I/O してというモデルからの書き換えが必要
+        + 最終的には GPU 側コードだけになるので, logic は simplify される
++ interface の使い方を間違えても他の apps は大丈夫?
+    + 影響は受けない. ただし, polling のようなことをすると, 他の GPU Apps は影響を受ける
+    + このケースについては Architecture の方で対処法を語っている, 内容としては, kill すれば解決するというスタンス
