@@ -23,41 +23,42 @@
 */
 #ifndef GLOOP_H_
 #define GLOOP_H_
+#include <type_traits>
 namespace gloop {
 
 template<typename Callback>
-__device__ void open(char* filename, int mode, Callback callback)
+__device__ auto open(char* filename, int mode, Callback callback) -> typename std::result_of<Callback(int)>::type
 {
     int fd = gopen(filename, mode);
-    callback(fd);
+    return callback(fd);
 }
 
 template<typename Callback>
-__device__ void write(int fd, size_t offset, size_t count, unsigned char* buffer, Callback callback)
+__device__ auto write(int fd, size_t offset, size_t count, unsigned char* buffer, Callback callback) -> typename std::result_of<Callback(size_t)>::type
 {
     size_t written_size = gwrite(fd, offset, count, buffer);
-    callback(written_size);
+    return callback(written_size);
 }
 
 template<typename Callback>
-__device__ void fstat(int fd, Callback callback)
+__device__ auto fstat(int fd, Callback callback) -> typename std::result_of<Callback(size_t)>::type
 {
     size_t value = ::fstat(fd);
-    callback(value);
+    return callback(value);
 }
 
 template<typename Callback>
-__device__ void close(int fd, Callback callback)
+__device__ auto close(int fd, Callback callback) -> typename std::result_of<Callback(int)>::type
 {
     int err = gclose(fd);
-    callback(err);
+    return callback(err);
 }
 
 template<typename Callback>
-__device__ void read(int fd, size_t offset, size_t size, unsigned char* buffer, Callback callback)
+__device__ auto read(int fd, size_t offset, size_t size, unsigned char* buffer, Callback callback) -> typename std::result_of<Callback(size_t)>::type
 {
-    int bytes_read = gread(fd, offset, size, buffer);
-    callback(bytes_read);
+    size_t bytes_read = gread(fd, offset, size, buffer);
+    return callback(bytes_read);
 }
 
 }  // namespace gloop

@@ -393,12 +393,12 @@ void __global__ grep_text(char* src, char* out, char* dbs)
                         END_SINGLE_THREAD
 
                         gloop::fstat(zfd_dbs, [=](size_t dbs_size) {
-                            gloop::read(zfd_dbs,0,dbs_size,(uchar*)db_files, [=](int db_bytes_read) {
+                            gloop::read(zfd_dbs,0,dbs_size,(uchar*)db_files, [=](size_t db_bytes_read) {
                                 if(db_bytes_read!=dbs_size) ERROR("Failed to read dbs");
                                 db_files[db_bytes_read]='\0';
 
                                 int to_read=min(data_to_process,(int)src_size);
-                                gloop::read(zfd_src,blockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](int bytes_read) {
+                                gloop::read(zfd_src,blockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](size_t bytes_read) {
                                     if (bytes_read!=to_read) ERROR("FAILED to read input");
                                     auto destroy = [=]() {
                                         //we are done.
