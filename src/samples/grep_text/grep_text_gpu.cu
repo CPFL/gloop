@@ -192,12 +192,7 @@ __device__ int global_output;
 __shared__ int output_count;
 void __global__ grep_text(char* src, char* out, char* dbs)
 {
-    int zfd_src;
-    int zfd_o;
-    int zfd_dbs;
     __shared__ char* db_files;
-    size_t in_size;
-    int words_per_chunk;
     __shared__ int toInit;
     __shared__ char* input_tmp;
     __shared__ int input_tmp_counts;
@@ -218,7 +213,7 @@ void __global__ grep_text(char* src, char* out, char* dbs)
                     if (total_words==0) ERROR("empty input");
 
 
-                    words_per_chunk=total_words/gridDim.x;
+                    int words_per_chunk=total_words/gridDim.x;
 
                     if (words_per_chunk==0) {
                         words_per_chunk=1;
@@ -271,7 +266,6 @@ void __global__ grep_text(char* src, char* out, char* dbs)
                                 db_files[db_bytes_read]='\0';
 
                                 char* current_db;
-                                char* next_db;
 
                                 int db_idx=-1;
 
@@ -279,102 +273,124 @@ void __global__ grep_text(char* src, char* out, char* dbs)
                                 int bytes_read=gread(zfd_src,blockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp);
                                 if (bytes_read!=to_read) ERROR("FAILED to read input");
                                 input_tmp_counts=to_read;
-                                __shared__ int db_strlen;
-                                while(current_db=get_next(db_files,&next_db,&db_strlen)) {
-                                    db_files=next_db;
-                                    db_idx++;
 
-                                    int zfd_db;
-                                    zfd_db=gopen((char*)current_db,O_GRDONLY);
-                                    if (zfd_db<0) ERROR("Failed to open DB file");
-                                    size_t db_size=fstat(zfd_db);
+                                auto destroy = [=]() {
+                                    //we are done.
+                                    //write the output and finish
+                                    return gloop::close(zfd_src, [](int err) {
+                                        return gloop::close(zfd_dbs, [](int err) {
+                                            return gloop::close(zfd_o, [](int err) {
+                                                BEGIN_SINGLE_THREAD
+                                                {
+                                                    free(output_buffer);
+                                                    free(input_tmp);
+                                                }
+                                                END_SINGLE_THREAD
+                                            });
+                                        });
+                                    });
+                                };
 
-
-                                    for (size_t _cursor=0;_cursor< db_size;) {
+                                auto process_one_chunk_in_db = [=](int zfd_db, size_t _cursor, size_t db_size) {
+                                    if (_cursor < db_size) {
                                         bool last_iter=db_size-_cursor<(CORPUS_PREFETCH_SIZE+32);
                                         int db_left=last_iter?db_size-_cursor: CORPUS_PREFETCH_SIZE+32;
 
                                         corpus[db_left]='\0';
-                                        bytes_read=gread(zfd_db,_cursor,db_left,(uchar*)corpus);
-                                        if(bytes_read!=db_left) ERROR("Failed to read DB file");
+                                        gloop::read(zfd_db,_cursor,db_left,(uchar*)corpus, [=](size_t bytes_read) {
+                                            if(bytes_read!=db_left) ERROR("Failed to read DB file");
 
 
-                                        // take care of the stitches
-                                        int overlap=0;
+                                            // take care of the stitches
+                                            int overlap=0;
 
-
-                                        if(!last_iter){
-                                            overlap=find_overlap(corpus+CORPUS_PREFETCH_SIZE);
-                                            _cursor+=overlap;
-                                        }
-                                        _cursor+=CORPUS_PREFETCH_SIZE;
-                                        ///////////////////// NOW WE ARE DEALING WITH THE INPUT
-                                        //
-                                        // indexing is in chars, not in row size
-                                        for(int input_block=0;input_block<input_tmp_counts;input_block+=INPUT_PREFETCH_SIZE){
-                                            int data_left=input_tmp_counts-input_block;
-
-                                            prefetch_banks(input,input_tmp + input_block,min(data_left,INPUT_PREFETCH_SIZE),INPUT_PREFETCH_SIZE);
-
-                                            char word_size=0;
-                                            int res= match_string(input+threadIdx.x*33,corpus,last_iter?db_left+1:CORPUS_PREFETCH_SIZE+overlap+1,&word_size);
-
-                                            if (!__syncthreads_or(res!=LEN_ZERO && res )) continue;
-
-                                            if(res!=LEN_ZERO && res ){
-                                                char numstr[4]; int numlen;
-                                                print_uint(numstr,res,&numlen);
-
-                                                int offset=atomicAdd(&output_count,(numlen+1+word_size+1+db_strlen+1));
-
-                                                char* outptr=output_buffer+offset;
-                                                memcpy_thread(outptr,
-                                                input+threadIdx.x*33,word_size);
-                                                outptr[word_size]=' ';
-
-                                                memcpy_thread(outptr+word_size+1,numstr,numlen);
-                                                outptr[word_size+numlen+1]=' ';
-
-                                                memcpy_thread(outptr+word_size+numlen+2,current_db,db_strlen);
-                                                outptr[word_size+numlen+db_strlen+2]='\n';
-                                            }
-                                            __syncthreads();
-                                            if (output_count){
-                                                __shared__ int old_offset;
-                                                if (threadIdx.x==0) old_offset=atomicAdd(&global_output,output_count);
+                                            auto next = [=](size_t _cursor) {
                                                 __syncthreads();
-                                                if(gwrite(zfd_o, old_offset, output_count,(uchar*) output_buffer)!=output_count) {
-                                                    ERROR("Write to output failed");
+
+                                                /// how many did we find
+                                                if(threadIdx.x==0){
+                                                    output_count=0;
                                                 }
-                                            }
-                                            __syncthreads();
+                                                __syncthreads();
+                                                process_one_chunk_in_db(zfd_db, _cursor, db_size);
+                                            };
 
-                                            /// how many did we find
-                                            if(threadIdx.x==0){
-                                                output_count=0;
+                                            if(!last_iter){
+                                                overlap=find_overlap(corpus+CORPUS_PREFETCH_SIZE);
+                                                _cursor+=overlap;
                                             }
-                                            __syncthreads();
-                                        }
+                                            _cursor+=CORPUS_PREFETCH_SIZE;
+                                            ///////////////////// NOW WE ARE DEALING WITH THE INPUT
+                                            //
+                                            // indexing is in chars, not in row size
+                                            for(int input_block=0;input_block<input_tmp_counts;input_block+=INPUT_PREFETCH_SIZE){
+                                                int data_left=input_tmp_counts-input_block;
+
+                                                prefetch_banks(input,input_tmp + input_block,min(data_left,INPUT_PREFETCH_SIZE),INPUT_PREFETCH_SIZE);
+
+                                                char word_size=0;
+                                                int res= match_string(input+threadIdx.x*33,corpus,last_iter?db_left+1:CORPUS_PREFETCH_SIZE+overlap+1,&word_size);
+
+                                                if (!__syncthreads_or(res!=LEN_ZERO && res )) continue;
+
+                                                if(res!=LEN_ZERO && res ){
+                                                    char numstr[4]; int numlen;
+                                                    print_uint(numstr,res,&numlen);
+
+                                                    int offset=atomicAdd(&output_count,(numlen+1+word_size+1+db_strlen+1));
+
+                                                    char* outptr=output_buffer+offset;
+                                                    memcpy_thread(outptr, input+threadIdx.x*33,word_size);
+                                                    outptr[word_size]=' ';
+
+                                                    memcpy_thread(outptr+word_size+1,numstr,numlen);
+                                                    outptr[word_size+numlen+1]=' ';
+
+                                                    memcpy_thread(outptr+word_size+numlen+2,current_db,db_strlen);
+                                                    outptr[word_size+numlen+db_strlen+2]='\n';
+                                                }
+                                                __syncthreads();
+                                                if (output_count){
+                                                    __shared__ int old_offset;
+                                                    if (threadIdx.x==0) old_offset=atomicAdd(&global_output,output_count);
+                                                    __syncthreads();
+
+                                                    gloop::write(zfd_o, old_offset, output_count,(uchar*) output_buffer, [=](size_t written_size) {
+                                                        if (written_size != output_count) ERROR("Write to output failed");
+                                                        next(_cursor);
+                                                    });
+                                                    return;
+                                                }
+                                                next(_cursor);
+                                            }
+                                        });
+                                        return;
                                     }
+                                    gloop::close(zfd_db, [=](int err) {
+                                        BEGIN_SINGLE_THREAD
+                                        output_count=0;
+                                        END_SINGLE_THREAD
+                                        process_one_db();
+                                    });
+                                };
 
-                                    gclose(zfd_db);
-                                    BEGIN_SINGLE_THREAD
-                                    output_count=0;
-                                    END_SINGLE_THREAD
-                                }
-                                //we are done.
-                                //write the output and finish
-
-                                gclose(zfd_src);
-                                gclose(zfd_dbs);
-                                gclose(zfd_o);
-
-                                BEGIN_SINGLE_THREAD
-                                {
-                                    free(output_buffer);
-                                    free(input_tmp);
-                                }
-                                END_SINGLE_THREAD
+                                auto process_one_db = [=]() {
+                                    char* next_db;
+                                    __shared__ int db_strlen;
+                                    if (current_db = get_next(db_files,&next_db,&db_strlen)) {
+                                        db_files=next_db;
+                                        db_idx++;
+                                        gloop::open(current_db,O_GRDONLY, [=](int zfd_db) {
+                                            if (zfd_db<0) ERROR("Failed to open DB file");
+                                            gloop::fstat(zfd_db, [=](size_t db_size) {
+                                                process_one_chunk_in_db(zfd_db, 0, db_size);
+                                            });
+                                        });
+                                        return;
+                                    }
+                                    finalize();
+                                };
+                                process_one_db();
                             });
                         });
                     });
