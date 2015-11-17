@@ -291,24 +291,6 @@ __device__ void process_one_chunk_in_db(struct context ctx, char* current_db, ch
 
 __device__ void process_one_db(struct context ctx, char* previous_db)
 {
-    auto destroy = [=]() {
-        //we are done.
-        //write the output and finish
-        gloop::close(ctx.zfd_src, [=](int err) {
-            gloop::close(ctx.zfd_dbs, [=](int err) {
-                gloop::close(ctx.zfd_o, [=](int err) {
-                    BEGIN_SINGLE_THREAD
-                    {
-                        free(ctx.output_buffer);
-                        free(ctx.input_tmp);
-                        free(ctx.db_files);
-                    }
-                    END_SINGLE_THREAD
-                });
-            });
-        });
-    };
-
     char* next_db;
     __shared__ int db_strlen;
 
@@ -321,7 +303,22 @@ __device__ void process_one_db(struct context ctx, char* previous_db)
         });
         return;
     }
-    destroy();
+
+    //we are done.
+    //write the output and finish
+    gloop::close(ctx.zfd_src, [=](int err) {
+        gloop::close(ctx.zfd_dbs, [=](int err) {
+            gloop::close(ctx.zfd_o, [=](int err) {
+                BEGIN_SINGLE_THREAD
+                {
+                    free(ctx.output_buffer);
+                    free(ctx.input_tmp);
+                    free(ctx.db_files);
+                }
+                END_SINGLE_THREAD
+            });
+        });
+    });
 }
 
 void __global__ grep_text(char* src, char* out, char* dbs)
@@ -400,24 +397,6 @@ void __global__ grep_text(char* src, char* out, char* dbs)
                                 int to_read=min(data_to_process,(int)src_size);
                                 gloop::read(zfd_src,blockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](size_t bytes_read) {
                                     if (bytes_read!=to_read) ERROR("FAILED to read input");
-                                    auto destroy = [=]() {
-                                        //we are done.
-                                        //write the output and finish
-                                        gloop::close(zfd_src, [=](int err) {
-                                            gloop::close(zfd_dbs, [=](int err) {
-                                                gloop::close(zfd_o, [=](int err) {
-                                                    BEGIN_SINGLE_THREAD
-                                                    {
-                                                        free(output_buffer);
-                                                        free(input_tmp);
-                                                        free(db_files);
-                                                    }
-                                                    END_SINGLE_THREAD
-                                                });
-                                            });
-                                        });
-                                    };
-
                                     struct context ctx {
                                         zfd_src,
                                         zfd_dbs,
