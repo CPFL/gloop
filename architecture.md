@@ -2,7 +2,7 @@
 
 ## Draft
 
-![Architecture Figure](fig/multiple.png?raw=true)
+![gloop](fig/multiple.png?raw=true)
 *Architecture of gloop*
 
 _gloop_ は device / host の両側にまたがる runtime を提供する.
@@ -28,6 +28,9 @@ async I/O の種類は多岐にわたる. FileSystem APIs はその代表例だ�
 データ転送も gloop API で発行することによって, データ転送を含めたプログラムがすべて GPU kernel のみで完結し,
 パイプラインを構築するといったことを考慮する必要なく, 自然とデータ転送とコンピュテーションがオーバーラップし,
 コンピュテーションリソースを使い切ることが可能である.
+
+![GPUfs](fig/gpufs.png?raw=true)
+*Architecture of gpufs*
 
 ## Memo
 
