@@ -2,7 +2,7 @@
 
 ## Draft
 
-![Architecture Figure](fig/architecture.png?raw=true)
+![Architecture Figure](fig/multiple.png?raw=true)
 
 _gloop_ は device / host の両側にまたがる runtime を提供する.
 GPU kernel が実行されると, なかで async I/O API, `gloop::API` を呼び出し, その引数に lambda や関数ポインタを与える.
