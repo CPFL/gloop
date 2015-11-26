@@ -17,7 +17,7 @@ LIBGPUFSDIR?=.
 
 GPUFSLIB=$(LIBGPUFSDIR)/../gpufs_con_lib.user/
 LIBS=
-CUDA_ROOT:=/usr/local/cuda-5.0/
+CUDA_ROOT:=/usr/local/cuda-7.5/
 CUDA_LIBS=$(GPUFSLIB)/gpufs_con_lib.o -L$(CUDA_ROOT)/lib64 -lcudart 
 CUDA_INCLUDE=-I$(CUDA_ROOT)/include -I$(CUDA_SDK_ROOT)/C/common/inc -I$(GPUFSLIB) -I$(LIBGPUFSDIR)
 
@@ -25,11 +25,11 @@ CUDA_INCLUDE=-I$(CUDA_ROOT)/include -I$(CUDA_SDK_ROOT)/C/common/inc -I$(GPUFSLIB
 ifneq ($(dbg),1)
 	MACROS=-DDEBUG_NOINLINE="" -DRELEASE=1 -O2 -DMALLOC_STATS
 #	NVCC=$(CUDA_ROOT)/bin/nvcc  --gpu-architecture=sm_35 $(CUDA_INCLUDE) -Xptxas -v  $(MACROS)  -maxrregcount 32 
-	NVCC=$(CUDA_ROOT)/bin/nvcc   --generate-code code=sm_21,arch=compute_20 --generate-code code=sm_35,arch=compute_35 $(CUDA_INCLUDE) -Xptxas -v  $(MACROS)  -maxrregcount 32 
+	NVCC=$(CUDA_ROOT)/bin/nvcc   --generate-code code=sm_21,arch=compute_20 --generate-code code=sm_35,arch=compute_35 $(CUDA_INCLUDE) -Xptxas -v  $(MACROS)  -maxrregcount 32 -std=c++11 
 	OUTPUTDIR=release
 else
 	MACROS=-DDEBUG_NOINLINE="__noinline__"   -DMALLOC_STATS --debug -O0 -g 
-	NVCC=$(CUDA_ROOT)/bin/nvcc   --generate-code code=sm_21,arch=compute_20 --generate-code code=sm_35,arch=compute_35 $(CUDA_INCLUDE) -Xptxas -v  $(MACROS)  --device-debug
+	NVCC=$(CUDA_ROOT)/bin/nvcc   --generate-code code=sm_21,arch=compute_20 --generate-code code=sm_35,arch=compute_35 $(CUDA_INCLUDE) -Xptxas -v  $(MACROS)  --device-debug -std=c++11 
 	OUTPUTDIR=debug
 endif
 
