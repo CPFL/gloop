@@ -5,7 +5,7 @@ __device__ int OK;
 __shared__ int zfd,zfd1, zfd2, close_ret;
 
 template<typename Callback>
-__device__ void perform_copy(uchar* scratch, size_t me, size_t filesize, const Callback& callback)
+__device__ void perform_copy(uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize, const Callback& callback)
 {
     if (me < filesize) {
         int toRead=min((unsigned int)FS_BLOCKSIZE,(unsigned int)(filesize-me));
@@ -14,12 +14,12 @@ __device__ void perform_copy(uchar* scratch, size_t me, size_t filesize, const C
                 assert(NULL);
             }
 
-            gloop::write(zfd1,me,toRead,scratch, [=](size_t written) {
-                if (toRead!=written) {
-                    assert(NULL);
-                }
-                perform_copy(scratch, me + FS_BLOCKSIZE*gridDim.x, filesize, callback);
-            });
+            // gloop::write(zfd1,me,toRead,scratch, [=](size_t written) {
+            //     if (toRead!=written) {
+            //         assert(NULL);
+            //     }
+            //     perform_copy(scratch, zfd, zfd1, me + FS_BLOCKSIZE*gridDim.x, filesize, callback);
+            // });
         });
         return;
     }
@@ -39,7 +39,7 @@ __global__ void test_cpy(char* src, char* dst)
         gloop::open(dst,O_GWRONCE, [=](int zfd1) {
             gloop::fstat(zfd, [=](size_t filesize) {
                 size_t me=blockIdx.x*FS_BLOCKSIZE;
-                perform_copy(scratch, me, filesize, [=] () {
+                perform_copy(scratch, zfd, zfd1, me, filesize, [=] () {
                     gloop::close(zfd, [=](int err) {
                         gloop::close(zfd1, [=](int err) {
                         });
