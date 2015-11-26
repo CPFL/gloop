@@ -16,7 +16,7 @@
 * M Silberstein,B Ford,I Keidar,E Witchel
 * ASPLOS13, March 2013, Houston,USA
 */
-/*** 
+/***
 * Matrix product from files. This GPUfs example uses the original matmul from CUDA SDK
 * but instead of reading data from memory it reads/writes it from/to files
 */
@@ -36,36 +36,50 @@
  * See also:
  * V. Volkov and J. Demmel, "Benchmarking GPUs to tune dense linear algebra,"
  * in Proc. 2008 ACM/IEEE Conf. on Superconducting (SC '08),
- * Piscataway, NJ: IEEE Press, 2008, pp. Art. 31:1-11. 
+ * Piscataway, NJ: IEEE Press, 2008, pp. Art. 31:1-11.
  *
  */
 
 // Utilities and system includes
 #include <errno.h>
 #include <cublas_v2.h>
+
+#if 0
 #include <sdkHelper.h>  // helper for shared functions common to CUDA SDK samples
 #include <shrQATest.h>
 #include <shrUtils.h>
+#else
+// CUDA 7.5 helper functions.
+#include <helper_functions.h>
+#include <helper_cuda.h>
+#include "shrQATest.h"
+#endif
+
 
 #include <cuda_runtime.h>
 
 #include "fs_debug.cu.h"
 #include "fs_initializer.cu.h"
-
-#include "matrixMul.h"
-
-
 #include "host_loop.h"
+
+#define shrLog printf
+static char *sSDKsample = "matrixMul";
+
 void init_device_app(){
 //      CUDA_SAFE_CALL(cudaSetDevice(global_devicenum));
       CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,1<<25));
 }
 
 
+#include "matrixMul.h"
+
+
+
 // includes, kernels
 #include "matrixMul_kernel.cu"
 
-static char *sSDKsample = "matrixMul";
+
+#if 0
 
 ////////////////////////////////////////////////////////////////////////////////
 // These are CUDA Helper functions
@@ -104,7 +118,7 @@ static char *sSDKsample = "matrixMul";
             fprintf(stderr, "gpuDeviceInit() CUDA error: no devices supporting CUDA.\n");
             exit(-1);
         }
-        if (devID < 0) 
+        if (devID < 0)
             devID = 0;
         if (devID > deviceCount-1) {
             fprintf(stderr, "\n");
@@ -159,7 +173,7 @@ static char *sSDKsample = "matrixMul";
                // If we find GPU with SM major > 2, search only these
                if ( best_SM_arch > 2 ) {
                    // If our device==dest_SM_arch, choose this, or else pass
-                   if (deviceProp.major == best_SM_arch) {	
+                   if (deviceProp.major == best_SM_arch) {
                        max_compute_perf  = compute_perf;
                        max_perf_device   = current_device;
                    }
@@ -202,6 +216,7 @@ static char *sSDKsample = "matrixMul";
         return devID;
     }
 // end of CUDA Helper Functions
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // declaration, forward
@@ -245,7 +260,7 @@ int  write_mtx(const char* name, void* data, size_t size,size_t offset=0, int do
 	if (fd<0) { perror("cant open mtx\n"); exit(-1);}
 	if(pwrite(fd, data,size,offset)!=size) {perror("cant write\n"); exit(-1);}
 	//fsync(fd);
-	
+
 	if (doclose)	{ close(fd);fd=0;}
 	return fd;
 }
@@ -256,13 +271,12 @@ int  write_mtx(const char* name, void* data, size_t size,size_t offset=0, int do
 bool runCUDA=true;
 void runTest(int argc, char** argv)
 {
-	
     // use a larger block size for Fermi and above
     int block_size = 32;
     // Optional Command-line multiplier for matrix sizes
     unsigned int uiWA, uiHA, uiWB, uiHB, uiWC, uiHC;
 
-	
+
 
 		uiWA = WA;
 		uiHA = HA;
@@ -278,7 +292,7 @@ void runTest(int argc, char** argv)
 		uiHB = uiWA;
 		uiWC = uiWB;
 		uiHC = uiHA;
-    shrLog("\nUsing Matrix Sizes: A(%u x %u), B(%u x %u), C(%u x %u)\n\n", 
+    shrLog("\nUsing Matrix Sizes: A(%u x %u), B(%u x %u), C(%u x %u)\n\n",
             uiHA, uiWA, uiHB, uiWB, uiHC, uiWC);
 
 
@@ -312,8 +326,8 @@ void runTest(int argc, char** argv)
     checkCudaErrors(cudaGetDevice(&devID));
     checkCudaErrors(cudaGetDeviceProperties(&props, devID));
 
-
     cudaSetDevice(0);
+    printf("OK?\n");
     volatile GPUGlobals* gpuGlobals;
     initializer(&gpuGlobals);
     init_device_app();
@@ -337,25 +351,25 @@ void runTest(int argc, char** argv)
 
     // initialize host memory
     randomInit(h_A, size_A); write_mtx("mtx_a",h_A,mem_size_A);
-    randomInit(h_B, size_B); 
+    randomInit(h_B, size_B);
     write_mtx("mtx_b_orig",h_B,mem_size_B);
 	fprintf(stderr,"1\n");
     float* h_B_t = (float*)malloc(mem_size_B);
     transpose(h_B,h_B_t,uiHB,uiWB);
     write_mtx("mtx_b",h_B_t,mem_size_B);
-	
+
     // allocate device memory
     float* d_A, *d_B, *d_C;
-    unsigned int size_C = uiWC * uiHC; 
+    unsigned int size_C = uiWC * uiHC;
     unsigned int mem_size_C = sizeof(float) * size_C;
-	
+
 	printf("memsize_C=%d\n",mem_size_C);
 
     // allocate host memory for the result
     float* h_C      = NULL;//(float*) malloc(mem_size_C);
 	cudaMallocHost(&h_C,mem_size_C);
     float* h_CUBLAS = (float*) malloc(mem_size_C);
-	
+
 
 
    unlink("mtx_c");
@@ -383,7 +397,7 @@ void runTest(int argc, char** argv)
     checkCudaErrors(cudaMalloc((void**) &d_A, mem_size_A));
     checkCudaErrors(cudaMalloc((void**) &d_B, mem_size_B));
     checkCudaErrors(cudaMalloc((void**) &d_C, mem_size_C));
-        
+
    char* num_iter= getenv("NUM_ITER");
     int NUM_ITERATIONS= (num_iter==NULL)?1: atoi(num_iter);
 
@@ -404,25 +418,27 @@ for(int zzz=0;zzz<NUM_ITERATIONS;zzz++){
     // copy host memory to device
     checkCudaErrors(cudaMemcpy(d_A, h_A, mem_size_A, cudaMemcpyHostToDevice) );
     checkCudaErrors(cudaMemcpy(d_B, h_B, mem_size_B, cudaMemcpyHostToDevice) );
-   
+
 	total_time_cuda+=(_timestamp()-time_before_cuda);
-	
+
 	fprintf(stderr,"CUDAMemory copy and file read: %.0f\n",(_timestamp()-time_before_cuda)/1000);
 	res_cuda_data+=(_timestamp()-time_before_cuda);
-	
+
 	cudaEvent_t e_b; cudaEventCreate(&e_b);
 	cudaEvent_t e_e; cudaEventCreate(&e_e);
 	cudaEvent_t e_m; cudaEventCreate(&e_m);
 
     // execute the warmup kernel
 
-	//matrixMulCUDA<32><<<gridCUDA,threads,0,0>>>(d_C,d_A,d_B,uiWA,uiWB);	
+	//matrixMulCUDA<32><<<gridCUDA,threads,0,0>>>(d_C,d_A,d_B,uiWA,uiWB);
 	//cudaDeviceSynchronize();
 
 	time_before_cuda=_timestamp();
 //	for(int i=0;i<5;i++){
 	cudaEventRecord(e_b);
-	matrixMulCUDA<32><<<gridCUDA,threads,0,0>>>(d_C,d_A,d_B,uiWA,uiWB);	
+    printf("MATRIX\n");
+	matrixMulCUDA<32><<<gridCUDA,threads,0,0>>>(d_C,d_A,d_B,uiWA,uiWB);
+    printf("MATRIX DONE\n");
 
 	cudaDeviceSynchronize();
 	double time_kernel_only=_timestamp()-time_before_cuda;
@@ -436,7 +452,7 @@ for(int zzz=0;zzz<NUM_ITERATIONS;zzz++){
 	cudaEventElapsedTime(&only_kernel,e_b,e_e);
 	float only_memcpy=0;
 	cudaEventElapsedTime(&only_memcpy,e_e,e_m);
-	
+
 	total_time_cuda+=time_kernel_copyback;
 	fprintf(stderr,"CUDAtime=%0.f kernel=%.0f memcpy=%.0f filecopy=%.0f gflop %0.3f\n",total_time_cuda/1000, only_kernel,only_memcpy, time_kernel_copyback/1000-only_memcpy-only_kernel, ((double)uiHA*uiWA*uiWB*2)/(1<<30)/(total_time_cuda/1e6) );
 
@@ -454,7 +470,7 @@ for(int zzz=0;zzz<NUM_ITERATIONS;zzz++){
 	cudaEvent_t e_b; cudaEventCreate(&e_b);
 	cudaEvent_t e_e; cudaEventCreate(&e_e);
 	cudaEvent_t e_m; cudaEventCreate(&e_m);
-	
+
 	gridCUDA.y=gridCUDA.y/2;
 
 	total_time_cuda=0;
@@ -466,29 +482,29 @@ for(int zzz=0;zzz<NUM_ITERATIONS;zzz++){
 
 	int fd1=open("mtx_b_orig",O_RDONLY);
 	if (fd1<0) { perror("cant open mtx_b_orig\n"); exit(-1);}
-	
+
 #define OVERLAPS 2
 	//for(int x=0;x<OVERLAPS;++)
 	if(read(fd1, h_B ,mem_size_B)!=mem_size_B) {perror("cant read\n"); exit(-1);}
 	 checkCudaErrors(cudaMemcpyAsync(d_B, h_B, mem_size_B, cudaMemcpyHostToDevice,s[0]) );
-	
+
 	int tileA=mem_size_A/OVERLAPS;
 	int tileC=mem_size_C/OVERLAPS;
 	int f=0;
 	for(int y=0;y<OVERLAPS;y++){
 		int offset=mem_size_A/OVERLAPS*y;
-		
-		if(pread(fd, ((char*)h_A)+offset, 
+
+		if(pread(fd, ((char*)h_A)+offset,
 				tileA,offset)!=tileA) {perror("cant read\n"); exit(-1);}
-		
+
 		checkCudaErrors(cudaMemcpyAsync(((char*)d_A)+offset,  ((char*)h_A)+offset, tileA, cudaMemcpyHostToDevice,s[y]) );
 
 		cudaEventRecord(e_b,s[y]);
-		matrixMulCUDA<32><<<gridCUDA,threads,0,s[y]>>>(d_C+tileC*y/4,d_A+tileA*y/4,d_B,uiWA,uiWB);	
+		matrixMulCUDA<32><<<gridCUDA,threads,0,s[y]>>>(d_C+tileC*y/4,d_A+tileA*y/4,d_B,uiWA,uiWB);
 		cudaEventRecord(e_e,s[y]);
 		checkCudaErrors(cudaMemcpyAsync(h_C+tileC*y/4, d_C+tileC*y/4, tileC, cudaMemcpyDeviceToHost,s[y]) );
 		cudaEventRecord(e_m,s[y]);
-	
+
 		if(y!=0){
 				checkCudaErrors(cudaStreamSynchronize(s[y-1]));
 			    	f=write_mtx("mtx_c_orig_tiled",h_C+tileC/4*(y-1),tileC,tileC*(y-1),0,f);
@@ -496,14 +512,14 @@ for(int zzz=0;zzz<NUM_ITERATIONS;zzz++){
 	}
 	checkCudaErrors(cudaStreamSynchronize(s[OVERLAPS-1]));
     	write_mtx("mtx_c_orig_tiled",h_C+(OVERLAPS-1)*tileC/4,tileC,(OVERLAPS-1)*tileC,1,f);
-	
+
 
 	double time_kernel_copyback= _timestamp()-time_before_cuda;
 	float only_kernel=0;
 	cudaEventElapsedTime(&only_kernel,e_b,e_e);
 	float only_memcpy=0;
 	cudaEventElapsedTime(&only_memcpy,e_e,e_m);
-	
+
 	total_time_cuda+=time_kernel_copyback;
 
 	fprintf(stderr,"CUDAtime=%0.f kernel=%.0f memcpy=%.0f gflop %0.3f\n",total_time_cuda/1000, only_kernel,only_memcpy,  ((double)uiHA*uiWA*uiWB*2)/(1<<30)/(total_time_cuda/1e6) );
@@ -517,7 +533,7 @@ for(int zzz=0;zzz<NUM_ITERATIONS;zzz++){
 	double c_open, c_rw, c_close;
         c_open=c_rw=c_close=0;
 
-	
+
 	double total_time=0;
 for(int zzz=0;zzz<NUM_ITERATIONS;zzz++){
 	char fn[]="mtx_c";
@@ -582,17 +598,17 @@ for(int zzz=0;zzz<NUM_ITERATIONS;zzz++){
 
 
 
-	
+
 	printf("Comparing CUBLAS & Host results\n");
     bool resCUBLAS = sdkCompareL2fe(h_C, h_CUBLAS, size_C, 1.0e-6f);
-    if (resCUBLAS != true) 
+    if (resCUBLAS != true)
     {
         printDiff(h_C, h_CUBLAS, uiWC, uiHC, 10000, 1.0e-5f);
     }
     fprintf(stderr,"CUBLAS compares %s\n\n", (true == resCUBLAS) ? "OK" : "FAIL");
 
 #define FLOP(t) ((double)uiHA*uiWA*uiWB*2)/(1<<30)/(t/1e6)
-	
+
 	fprintf(stderr,"RESULTS: %d %d %d %d %d %d  %.0f %.0f %.0f %.3f %.3f %.3f %.0f %.0f %.3f \n",uiHA,uiWA,uiWB,uiHA*uiWA,uiWA*uiWB,uiHA*uiWB, res_cuda,res_tuned,total_time,FLOP(res_cuda),FLOP(res_tuned),FLOP(total_time), res_cuda_data, res_cuda_kernel, res_cuda_data/res_cuda_kernel);
 
    // clean up memory
@@ -614,7 +630,7 @@ void randomInit(float* data, int size)
     for (int i = 0; i < size; ++i)
         data[i] = rand() / (float)RAND_MAX;
 	//data[i]=1;
-	
+
 }
 void transpose(float*data, float* newData, int hight, int width){
 	for(int i=0;i<hight;i++){
@@ -639,18 +655,18 @@ void printDiff(float *data1, float *data2, int width, int height, int iListLengt
     shrLog("Listing first %d Differences > %.6f...\n", iListLength, fListTol);
     int i,j,k;
     int error_count=0;
-    for (j = 0; j < height; j++) 
+    for (j = 0; j < height; j++)
     {
         if (error_count < iListLength)
         {
             shrLog("\n  Row %d:\n", j);
         }
-        for (i = 0; i < width; i++) 
+        for (i = 0; i < width; i++)
         {
             k = j * width + i;
             float fDiff = fabs(data1[k] - data2[k]);
-            if (fDiff > fListTol) 
-            {                
+            if (fDiff > fListTol)
+            {
                 if (error_count < iListLength)
                 {
                     shrLog("    Loc(%d,%d)\tCPU=%.5f\tGPU=%.5f\tDiff=%.6f\n", i, j, data1[k], data2[k], fDiff);
