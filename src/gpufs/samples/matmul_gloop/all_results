@@ -1,0 +1,972 @@
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 2048), B(2048 x 2048), C(3328 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 2048), B(2048 x 2048), C(3328 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 2048), B(2048 x 2048), C(3328 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 2048), B(2048 x 4096), C(3328 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 2048), B(2048 x 4096), C(3328 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 2048), B(2048 x 4096), C(3328 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 2048), B(2048 x 8192), C(3328 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 2048), B(2048 x 8192), C(3328 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 2048), B(2048 x 8192), C(3328 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 4096), B(4096 x 2048), C(3328 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 4096), B(4096 x 2048), C(3328 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 4096), B(4096 x 2048), C(3328 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 4096), B(4096 x 4096), C(3328 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 4096), B(4096 x 4096), C(3328 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 4096), B(4096 x 4096), C(3328 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 4096), B(4096 x 8192), C(3328 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 4096), B(4096 x 8192), C(3328 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(3328 x 4096), B(4096 x 8192), C(3328 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 2048), B(2048 x 2048), C(6656 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 2048), B(2048 x 2048), C(6656 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 2048), B(2048 x 2048), C(6656 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 2048), B(2048 x 4096), C(6656 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 2048), B(2048 x 4096), C(6656 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 2048), B(2048 x 4096), C(6656 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 2048), B(2048 x 8192), C(6656 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 2048), B(2048 x 8192), C(6656 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 2048), B(2048 x 8192), C(6656 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 4096), B(4096 x 2048), C(6656 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 4096), B(4096 x 2048), C(6656 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 4096), B(4096 x 2048), C(6656 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 4096), B(4096 x 4096), C(6656 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 4096), B(4096 x 4096), C(6656 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 4096), B(4096 x 4096), C(6656 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 4096), B(4096 x 8192), C(6656 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 4096), B(4096 x 8192), C(6656 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(6656 x 4096), B(4096 x 8192), C(6656 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 2048), B(2048 x 2048), C(13312 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 2048), B(2048 x 2048), C(13312 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 2048), B(2048 x 2048), C(13312 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 2048), B(2048 x 4096), C(13312 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 2048), B(2048 x 4096), C(13312 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 2048), B(2048 x 4096), C(13312 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 2048), B(2048 x 8192), C(13312 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 2048), B(2048 x 8192), C(13312 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 2048), B(2048 x 8192), C(13312 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 4096), B(4096 x 2048), C(13312 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 4096), B(4096 x 2048), C(13312 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 4096), B(4096 x 2048), C(13312 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 4096), B(4096 x 4096), C(13312 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 4096), B(4096 x 4096), C(13312 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 4096), B(4096 x 4096), C(13312 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 4096), B(4096 x 8192), C(13312 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 4096), B(4096 x 8192), C(13312 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(13312 x 4096), B(4096 x 8192), C(13312 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 2048), B(2048 x 2048), C(26624 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 2048), B(2048 x 2048), C(26624 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 2048), B(2048 x 2048), C(26624 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 2048), B(2048 x 4096), C(26624 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 2048), B(2048 x 4096), C(26624 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 2048), B(2048 x 4096), C(26624 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 2048), B(2048 x 8192), C(26624 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 2048), B(2048 x 8192), C(26624 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 2048), B(2048 x 8192), C(26624 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 4096), B(4096 x 2048), C(26624 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 4096), B(4096 x 2048), C(26624 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 4096), B(4096 x 2048), C(26624 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 4096), B(4096 x 4096), C(26624 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 4096), B(4096 x 4096), C(26624 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 4096), B(4096 x 4096), C(26624 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 4096), B(4096 x 8192), C(26624 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 4096), B(4096 x 8192), C(26624 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(26624 x 4096), B(4096 x 8192), C(26624 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 2048), B(2048 x 2048), C(53248 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 2048), B(2048 x 2048), C(53248 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 2048), B(2048 x 2048), C(53248 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 2048), B(2048 x 4096), C(53248 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 2048), B(2048 x 4096), C(53248 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 2048), B(2048 x 4096), C(53248 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 2048), B(2048 x 8192), C(53248 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 2048), B(2048 x 8192), C(53248 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 2048), B(2048 x 8192), C(53248 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 4096), B(4096 x 2048), C(53248 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 4096), B(4096 x 2048), C(53248 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 4096), B(4096 x 2048), C(53248 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 4096), B(4096 x 4096), C(53248 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 4096), B(4096 x 4096), C(53248 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 4096), B(4096 x 4096), C(53248 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 4096), B(4096 x 8192), C(53248 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 4096), B(4096 x 8192), C(53248 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(53248 x 4096), B(4096 x 8192), C(53248 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 2048), B(2048 x 2048), C(106496 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 2048), B(2048 x 2048), C(106496 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 2048), B(2048 x 2048), C(106496 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 2048), B(2048 x 4096), C(106496 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 2048), B(2048 x 4096), C(106496 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 2048), B(2048 x 4096), C(106496 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 2048), B(2048 x 8192), C(106496 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 2048), B(2048 x 8192), C(106496 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 2048), B(2048 x 8192), C(106496 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 4096), B(4096 x 2048), C(106496 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 4096), B(4096 x 2048), C(106496 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 4096), B(4096 x 2048), C(106496 x 2048)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 4096), B(4096 x 4096), C(106496 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 4096), B(4096 x 4096), C(106496 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 4096), B(4096 x 4096), C(106496 x 4096)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 4096), B(4096 x 8192), C(106496 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 4096), B(4096 x 8192), C(106496 x 8192)
+
+CUDA ERROR fs_initializer.cu.h: 164 an illegal memory access was encountered
+[mm] starting...
+[ matrixMul ]
+./mm
+	Starting (CUDA and CUBLAS tests)...
+
+
+Using Matrix Sizes: A(106496 x 4096), B(4096 x 8192), C(106496 x 8192)
+
