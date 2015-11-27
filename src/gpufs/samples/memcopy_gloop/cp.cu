@@ -14,12 +14,12 @@ __device__ void perform_copy(uchar* scratch, int zfd, int zfd1, size_t me, size_
                 assert(NULL);
             }
 
-            // gloop::write(zfd1,me,toRead,scratch, [=](size_t written) {
-            //     if (toRead!=written) {
-            //         assert(NULL);
-            //     }
-            //     perform_copy(scratch, zfd, zfd1, me + FS_BLOCKSIZE*gridDim.x, filesize, callback);
-            // });
+            gloop::write(zfd1,me,toRead,scratch, [=](size_t written) {
+                if (toRead!=written) {
+                    assert(NULL);
+                }
+                perform_copy(scratch, zfd, zfd1, me + FS_BLOCKSIZE*gridDim.x, filesize, callback);
+            });
         });
         return;
     }
