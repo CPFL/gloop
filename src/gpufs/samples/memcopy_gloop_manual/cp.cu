@@ -1,5 +1,6 @@
+#include "fs_debug.cu.h"
+#include "fs_initializer.cu.h"
 
-#include "fs_calls.cu.h"
 #include "gloop.h"
 __device__ int OK;
 __shared__ int zfd,zfd1, zfd2, close_ret;

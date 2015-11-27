@@ -4,7 +4,7 @@ include_directories(
 )
 
 cuda_add_executable_dc(memcopy_gloop_manual
-    fs.cu
+    "fs.cu;cp.cu"
     "gpufs;gpufs_con"
     ""
     ""

@@ -24,6 +24,7 @@
 #ifndef GLOOP_H_
 #define GLOOP_H_
 #include <type_traits>
+#include "fs_calls.cu.h"
 namespace gloop {
 
 template<typename Callback>

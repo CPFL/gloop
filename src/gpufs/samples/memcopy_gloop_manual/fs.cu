@@ -13,6 +13,7 @@
 
 // INCLUDING CODE INLINE - change later
 #include "host_loop.h"
+#include "gloop.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -24,9 +25,13 @@
 #include <unistd.h>
 #include <math.h>
 
+__device__ void test_cpy(char* src, char* dst);
+void init_device_app();
+void init_app();
+double post_app(double time, int trials);
+
 
 #define MAIN_FS_FILE
-#include "cp.cu"
 
 void stdavg(double *avg_time, double *avg_thpt, double* std_time, double *std_thpt, const double* times, const double total_data, int arr_len)
 {
