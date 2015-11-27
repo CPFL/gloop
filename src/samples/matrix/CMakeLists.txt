@@ -1,1 +1,1 @@
-cuda_add_executable(matrix main.cu)
+cuda_add_executable_dc(matrix main.cu "" "" "")
