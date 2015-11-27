@@ -27,7 +27,7 @@ __device__ void perform_copy(uchar* scratch, int zfd, int zfd1, size_t me, size_
 }
 
 __device__ LAST_SEMAPHORE sync_sem;
-__global__ void test_cpy(char* src, char* dst)
+__device__ void test_cpy(char* src, char* dst)
 {
     __shared__ uchar* scratch;
     BEGIN_SINGLE_THREAD

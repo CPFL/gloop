@@ -61,5 +61,14 @@ __device__ auto read(int fd, size_t offset, size_t size, unsigned char* buffer, 
     return callback(bytes_read);
 }
 
+template<typename Callback>
+__global__ void launch(const Callback& callback)
+{
+    int status = 0;
+    do {
+        callback();
+    } while (status != 0);
+}
+
 }  // namespace gloop
 #endif  // GLOOP_H_
