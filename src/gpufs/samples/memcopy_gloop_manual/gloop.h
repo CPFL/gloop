@@ -27,6 +27,17 @@
 #include "fs_calls.cu.h"
 namespace gloop {
 
+#define GLOOP_CONCAT1(x, y) x##y
+#define GLOOP_CONCAT(x, y) GLOOP_CONCAT1(x, y)
+
+#define SINGLE_THREAD() \
+    __syncthreads();\
+    for (\
+        bool GLOOP_CONCAT(context, __LINE__) { false };\
+        threadIdx.x+threadIdx.y+threadIdx.z ==0 && (GLOOP_CONCAT(context, __LINE__) = !GLOOP_CONCAT(context, __LINE__));\
+        __syncthreads()\
+    )
+
 template<typename Callback>
 __device__ auto open(char* filename, int mode, Callback callback) -> typename std::result_of<Callback(int)>::type
 {

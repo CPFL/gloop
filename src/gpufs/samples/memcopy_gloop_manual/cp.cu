@@ -31,10 +31,10 @@ __device__ LAST_SEMAPHORE sync_sem;
 __device__ void test_cpy(char* src, char* dst)
 {
     __shared__ uchar* scratch;
-    BEGIN_SINGLE_THREAD
+    SINGLE_THREAD() {
         scratch=(uchar*)malloc(FS_BLOCKSIZE);
         GPU_ASSERT(scratch!=NULL);
-    END_SINGLE_THREAD
+    }
 
     gloop::open(src,O_GRDONLY, [=](int zfd) {
         gloop::open(dst,O_GWRONCE, [=](int zfd1) {
