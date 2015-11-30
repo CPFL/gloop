@@ -23,30 +23,43 @@
 */
 #ifndef GLOOP_DEVICE_LOOP_H_
 #define GLOOP_DEVICE_LOOP_H_
+#include "utility.h"
 #include <cstdint>
 namespace gloop {
 
 class DeviceLoop {
 public:
-    __device__ DeviceLoop(uint8_t* buffer, size_t size);
+    __device__ DeviceLoop(uint64_t* buffer, size_t size);
 
     template<typename Callback>
-    __device__ void save(Callback callback);
+    __device__ void enqueue(Callback callback);
+
+    __device__ void* dequeue();
+
+    __device__ bool done();
 
 private:
-    uint8_t* m_buffer;
+    uint64_t* m_buffer;
+    uint64_t* m_put;
+    uint64_t* m_get;
     size_t m_size;
     size_t m_index;
 };
 
 template<typename Callback>
-__device__ void DeviceLoop::save(Callback callback)
+inline __device__ void DeviceLoop::enqueue(Callback callback)
 {
-    uint8_t* pointer = (uint8_t*)(&callback);
-    for (size_t i = 0; i < sizeof(Callback); ++i) {
-        m_buffer[i] = pointer[i];
+    uint64_t* pointer = (uint64_t*)(&callback);
+    *m_put++ = (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8);
+    for (size_t i = 0; i < (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8); ++i, ++m_put) {
+        *m_put++ = *pointer++;
     }
-    m_index++;
+    ++m_index;
+}
+
+inline __device__ bool DeviceLoop::done()
+{
+    return m_index == 0;
 }
 
 }  // namespace gloop

@@ -21,25 +21,28 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "device_loop.cuh"
-namespace gloop {
+#ifndef GLOOP_UTILITY_H_
+#define GLOOP_UTILITY_H_
 
-__device__ DeviceLoop::DeviceLoop(uint64_t* buffer, size_t size)
-    : m_buffer(buffer)
-    , m_put(m_buffer)
-    , m_get(m_buffer)
-    , m_size(size)
-    , m_index(0)
-{
-}
+#define GLOOP_CONCAT1(x, y) x##y
+#define GLOOP_CONCAT(x, y) GLOOP_CONCAT1(x, y)
 
-__device__ void* DeviceLoop::dequeue()
-{
-    size_t size = *m_get++;
-    void* result = m_get;
-    m_get += size;
-    --m_index;
-    return result;
-}
+#define GLOOP_SINGLE_THREAD() \
+    __syncthreads();\
+    for (\
+        bool GLOOP_CONCAT(context, __LINE__) { false };\
+        threadIdx.x+threadIdx.y+threadIdx.z ==0 && (GLOOP_CONCAT(context, __LINE__) = !GLOOP_CONCAT(context, __LINE__));\
+        __syncthreads()\
+    )
 
-}  // namespace gloop
+// see http://www5d.biglobe.ne.jp/~noocyte/Programming/BigAlignmentBlock.html
+#define GLOOP_ALIGNED_SIZE(size, alignment) ((size) + (alignment) - 1)
+#define GLOOP_ALIGNED_ADDRESS(address, alignment) ((address + (alignment - 1)) & ~(alignment - 1))
+
+// only 2^n and unsigned
+#define GLOOP_ROUNDUP(x, y) (((x) + (y - 1)) & ~(y - 1))
+
+// only 2^n and unsinged
+#define GLOOP_ROUNDDOWN(x, y) ((x) & (-(y)))
+
+#endif  // GLOOP_UTILITY_H_
