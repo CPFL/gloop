@@ -41,36 +41,41 @@ namespace gloop {
     )
 
 template<typename Callback>
-__device__ auto open(char* filename, int mode, const Callback& callback) -> typename std::result_of<Callback(int)>::type
+__device__ auto open(DeviceLoop* loop, char* filename, int mode, const Callback& callback) -> typename std::result_of<Callback(int)>::type
 {
+    loop->save(callback);
     int fd = gopen(filename, mode);
     return callback(fd);
 }
 
 template<typename Callback>
-__device__ auto write(int fd, size_t offset, size_t count, unsigned char* buffer, const Callback& callback) -> typename std::result_of<Callback(size_t)>::type
+__device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, const Callback& callback) -> typename std::result_of<Callback(size_t)>::type
 {
+    loop->save(callback);
     size_t written_size = gwrite(fd, offset, count, buffer);
     return callback(written_size);
 }
 
 template<typename Callback>
-__device__ auto fstat(int fd, const Callback& callback) -> typename std::result_of<Callback(size_t)>::type
+__device__ auto fstat(DeviceLoop* loop, int fd, const Callback& callback) -> typename std::result_of<Callback(size_t)>::type
 {
+    loop->save(callback);
     size_t value = ::fstat(fd);
     return callback(value);
 }
 
 template<typename Callback>
-__device__ auto close(int fd, const Callback& callback) -> typename std::result_of<Callback(int)>::type
+__device__ auto close(DeviceLoop* loop, int fd, const Callback& callback) -> typename std::result_of<Callback(int)>::type
 {
+    loop->save(callback);
     int err = gclose(fd);
     return callback(err);
 }
 
 template<typename Callback>
-__device__ auto read(int fd, size_t offset, size_t size, unsigned char* buffer, const Callback& callback) -> typename std::result_of<Callback(size_t)>::type
+__device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t size, unsigned char* buffer, const Callback& callback) -> typename std::result_of<Callback(size_t)>::type
 {
+    loop->save(callback);
     size_t bytes_read = gread(fd, offset, size, buffer);
     return callback(bytes_read);
 }
@@ -78,11 +83,11 @@ __device__ auto read(int fd, size_t offset, size_t size, unsigned char* buffer, 
 template<typename Callback, class... Args>
 __global__ void launch(const Callback& callback, Args... args)
 {
-    char buffer[1024];
-    initialize(buffer, 1024);
+    uint8_t buffer[1024];
+    DeviceLoop deviceLoop(buffer, 1024);
     int status = 0;
     do {
-        callback(std::forward<Args>(args)...);
+        callback(&deviceLoop, std::forward<Args>(args)...);
     } while (status != 0);
 }
 

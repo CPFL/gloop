@@ -77,6 +77,7 @@ MACRO(CUDA_ADD_EXECUTABLE_DC cuda_target)
 
     # Get the list of definitions from the directory property
     GET_DIRECTORY_PROPERTY(CUDA_NVCC_DEFINITIONS COMPILE_DEFINITIONS)
+    set(nvcc_flags)
     IF(CUDA_NVCC_DEFINITIONS)
         FOREACH(_definition ${CUDA_NVCC_DEFINITIONS})
             LIST(APPEND nvcc_flags "-D${_definition}")
@@ -87,7 +88,7 @@ MACRO(CUDA_ADD_EXECUTABLE_DC cuda_target)
     ADD_CUSTOM_COMMAND(
         TARGET ${cuda_target}
         PRE_BUILD
-        COMMAND ${CMAKE_COMMAND} -E echo "Linking static device library to executable."
+        # COMMAND ${CMAKE_COMMAND} -E echo "Linking static device library to executable."
         COMMAND ${CUDA_NVCC_EXECUTABLE} ${CUDA_NVCC_INCLUDE_ARGS} ${CUDA_NVCC_FLAGS} ${_options} ${nvcc_flags} -dlink ${dep_paths} ${_generated_files}
         COMMAND ${CUDA_NVCC_EXECUTABLE} ${CUDA_NVCC_INCLUDE_ARGS} ${CUDA_NVCC_FLAGS} ${_options} ${dep_paths} ${_generated_files} ${_linker_options} -o "${cuda_target}"
         )

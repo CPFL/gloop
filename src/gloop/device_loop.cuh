@@ -23,9 +23,31 @@
 */
 #ifndef GLOOP_DEVICE_LOOP_H_
 #define GLOOP_DEVICE_LOOP_H_
+#include <cstdint>
 namespace gloop {
 
-__device__ void initialize(char* buffer, size_t size);
+class DeviceLoop {
+public:
+    __device__ DeviceLoop(uint8_t* buffer, size_t size);
+
+    template<typename Callback>
+    __device__ void save(Callback callback);
+
+private:
+    uint8_t* m_buffer;
+    size_t m_size;
+    size_t m_index;
+};
+
+template<typename Callback>
+__device__ void DeviceLoop::save(Callback callback)
+{
+    uint8_t* pointer = (uint8_t*)(&callback);
+    for (size_t i = 0; i < sizeof(Callback); ++i) {
+        m_buffer[i] = pointer[i];
+    }
+    m_index++;
+}
 
 }  // namespace gloop
 #endif  // GLOOP_DEVICE_LOOP_H_

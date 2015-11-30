@@ -5,7 +5,7 @@ list(APPEND CUDA_NVCC_FLAGS
     -rdc=true
     --generate-code code=sm_20,arch=compute_20
     # --generate-code code=sm_35,arch=compute_35
-    -Xptxas -v
+    # -Xptxas -v
     -Xcompiler -fPIC
     -maxrregcount 32
     --expt-extended-lambda

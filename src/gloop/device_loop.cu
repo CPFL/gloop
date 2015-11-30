@@ -24,7 +24,10 @@
 #include "device_loop.cuh"
 namespace gloop {
 
-__device__ void initialize(char* buffer, size_t size)
+__device__ DeviceLoop::DeviceLoop(uint8_t* buffer, size_t size)
+    : m_buffer(buffer)
+    , m_size(size)
+    , m_index(0)
 {
 }
 
