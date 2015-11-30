@@ -36,15 +36,15 @@ __device__ void test_cpy(char* src, char* dst)
         GPU_ASSERT(scratch!=NULL);
     }
 
-    gloop::open(src,O_GRDONLY, [=](int zfd) {
-        gloop::open(dst,O_GWRONCE, [=](int zfd1) {
+    gloop::open(src, O_GRDONLY, [=](int zfd) {
+        gloop::open(dst, O_GWRONCE, [=](int zfd1) {
             gloop::fstat(zfd, [=](size_t filesize) {
                 size_t me=blockIdx.x*FS_BLOCKSIZE;
                 perform_copy(scratch, zfd, zfd1, me, filesize, [=] () {
-                    gloop::close(zfd, [=](int err) {
-                        gloop::close(zfd1, [=](int err) {
-                        });
-                    });
+                    // gloop::close(zfd, [=](int err) {
+                    //     gloop::close(zfd1, [=](int err) {
+                    //     });
+                    // });
                 });
             });
         });

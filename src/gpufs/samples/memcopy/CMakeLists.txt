@@ -5,7 +5,5 @@ include_directories(
 
 cuda_add_executable_dc(memcopy
     fs.cu
-    "gpufs;gpufs_con"
-    ""
-    ""
+    DEPENDS gpufs;gpufs_con
 )

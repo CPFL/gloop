@@ -77,6 +77,7 @@ __device__ auto read(int fd, size_t offset, size_t size, unsigned char* buffer, 
 template<typename Callback, class... Args>
 __global__ void launch(const Callback& callback, Args... args)
 {
+    // char buffer[1024];
     int status = 0;
     do {
         callback(std::forward<Args>(args)...);
