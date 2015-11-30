@@ -24,41 +24,63 @@
 #ifndef GLOOP_H_
 #define GLOOP_H_
 #include <type_traits>
+#include <utility>
+#include "fs_calls.cu.h"
 namespace gloop {
 
+#define GLOOP_CONCAT1(x, y) x##y
+#define GLOOP_CONCAT(x, y) GLOOP_CONCAT1(x, y)
+
+#define SINGLE_THREAD() \
+    __syncthreads();\
+    for (\
+        bool GLOOP_CONCAT(context, __LINE__) { false };\
+        threadIdx.x+threadIdx.y+threadIdx.z ==0 && (GLOOP_CONCAT(context, __LINE__) = !GLOOP_CONCAT(context, __LINE__));\
+        __syncthreads()\
+    )
+
 template<typename Callback>
-__device__ auto open(char* filename, int mode, Callback callback) -> typename std::result_of<Callback(int)>::type
+__device__ auto open(char* filename, int mode, const Callback& callback) -> typename std::result_of<Callback(int)>::type
 {
     int fd = gopen(filename, mode);
     return callback(fd);
 }
 
 template<typename Callback>
-__device__ auto write(int fd, size_t offset, size_t count, unsigned char* buffer, Callback callback) -> typename std::result_of<Callback(size_t)>::type
+__device__ auto write(int fd, size_t offset, size_t count, unsigned char* buffer, const Callback& callback) -> typename std::result_of<Callback(size_t)>::type
 {
     size_t written_size = gwrite(fd, offset, count, buffer);
     return callback(written_size);
 }
 
 template<typename Callback>
-__device__ auto fstat(int fd, Callback callback) -> typename std::result_of<Callback(size_t)>::type
+__device__ auto fstat(int fd, const Callback& callback) -> typename std::result_of<Callback(size_t)>::type
 {
     size_t value = ::fstat(fd);
     return callback(value);
 }
 
 template<typename Callback>
-__device__ auto close(int fd, Callback callback) -> typename std::result_of<Callback(int)>::type
+__device__ auto close(int fd, const Callback& callback) -> typename std::result_of<Callback(int)>::type
 {
     int err = gclose(fd);
     return callback(err);
 }
 
 template<typename Callback>
-__device__ auto read(int fd, size_t offset, size_t size, unsigned char* buffer, Callback callback) -> typename std::result_of<Callback(size_t)>::type
+__device__ auto read(int fd, size_t offset, size_t size, unsigned char* buffer, const Callback& callback) -> typename std::result_of<Callback(size_t)>::type
 {
     size_t bytes_read = gread(fd, offset, size, buffer);
     return callback(bytes_read);
+}
+
+template<typename Callback, class... Args>
+__global__ void launch(const Callback& callback, Args... args)
+{
+    int status = 0;
+    do {
+        callback(std::forward<Args>(args)...);
+    } while (status != 0);
 }
 
 }  // namespace gloop

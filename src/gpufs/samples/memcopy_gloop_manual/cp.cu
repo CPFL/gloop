@@ -9,19 +9,19 @@ template<typename Callback>
 __device__ void perform_copy(uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize, const Callback& callback)
 {
     if (me < filesize) {
-        int toRead=min((unsigned int)FS_BLOCKSIZE,(unsigned int)(filesize-me));
-        gloop::read(zfd, me, toRead, scratch, [=](size_t read) {
-            if (toRead!=read) {
-                assert(NULL);
-            }
+        // int toRead=min((unsigned int)FS_BLOCKSIZE,(unsigned int)(filesize-me));
+        // gloop::read(zfd, me, toRead, scratch, [=](size_t read) {
+        //     if (toRead!=read) {
+        //         assert(NULL);
+        //     }
 
-            // gloop::write(zfd1,me,toRead,scratch, [=](size_t written) {
-            //     if (toRead!=written) {
-            //         assert(NULL);
-            //     }
-            //     perform_copy(scratch, zfd, zfd1, me + FS_BLOCKSIZE*gridDim.x, filesize, callback);
-            // });
-        });
+        //     // gloop::write(zfd1,me,toRead,scratch, [=](size_t written) {
+        //     //     if (toRead!=written) {
+        //     //         assert(NULL);
+        //     //     }
+        //     //     perform_copy(scratch, zfd, zfd1, me + FS_BLOCKSIZE*gridDim.x, filesize, callback);
+        //     // });
+        // });
         return;
     }
     callback();

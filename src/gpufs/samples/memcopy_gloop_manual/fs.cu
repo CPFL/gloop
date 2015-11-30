@@ -155,9 +155,9 @@ int main( int argc, char** argv)
 
 
         // test_cpy<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>(d_filenames[0], d_filenames[1]);
-        gloop::launch<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>([=] __device__ () {
-            test_cpy(d_filenames[0], d_filenames[1]);
-        });
+        gloop::launch<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>([=] __device__ (char* src, char* dst) {
+            test_cpy(src, dst);
+        }, d_filenames[0], d_filenames[1]);
 
         run_gpufs_handler(gpuGlobals,global_devicenum);
         cudaError_t error = cudaDeviceSynchronize();
