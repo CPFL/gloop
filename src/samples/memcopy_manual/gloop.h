@@ -26,6 +26,7 @@
 #include <type_traits>
 #include <utility>
 #include "fs_calls.cu.h"
+#include <gloop/device_loop.cuh>
 namespace gloop {
 
 #define GLOOP_CONCAT1(x, y) x##y
@@ -77,7 +78,8 @@ __device__ auto read(int fd, size_t offset, size_t size, unsigned char* buffer, 
 template<typename Callback, class... Args>
 __global__ void launch(const Callback& callback, Args... args)
 {
-    // char buffer[1024];
+    char buffer[1024];
+    initialize(buffer, 1024);
     int status = 0;
     do {
         callback(std::forward<Args>(args)...);

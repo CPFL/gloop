@@ -24,10 +24,8 @@
 #ifndef GLOOP_DEVICE_LOOP_H_
 #define GLOOP_DEVICE_LOOP_H_
 namespace gloop {
-namespace hooks {
 
-class DeviceLoop {
-};
+__device__ void initialize(char* buffer, size_t size);
 
-} }  // namespace gloop::hooks
+}  // namespace gloop
 #endif  // GLOOP_DEVICE_LOOP_H_

@@ -23,7 +23,7 @@
 */
 #ifndef GLOOP_GLOOP_CU_H_
 #define GLOOP_GLOOP_CU_H_
-#include "fs.cu.h"
+#include "fs.cuh"
 namespace gloop {
 
 class DeviceLoop;

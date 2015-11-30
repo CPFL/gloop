@@ -1,2 +1,1 @@
 add_subdirectory(memcopy)
-add_subdirectory(memcopy_gloop_manual)

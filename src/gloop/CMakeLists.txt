@@ -39,12 +39,12 @@ add_custom_target(redirector
 )
 
 cuda_add_library(gloop STATIC
-    gloop_host.cc
-    fs.cu
+    # gloop_host.cc
     # gloop_device.cu
-    host_loop.cc
+    # host_loop.cc
+    # ${CMAKE_CURRENT_BINARY_DIR}/redirector.cc
+    fs.cu
     device_loop.cu
-    ${CMAKE_CURRENT_BINARY_DIR}/redirector.cc
 )
 add_dependencies(gloop uv redirector)
 target_link_libraries(gloop dl uv)

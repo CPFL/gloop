@@ -24,5 +24,5 @@
 #ifndef GLOOP_GLOOP_H_
 #define GLOOP_GLOOP_H_
 #include "gloop_host.h"
-#include "gloop.cu.h"
+#include "gloop.cuh"
 #endif  // GLOOP_GLOOP_H_
