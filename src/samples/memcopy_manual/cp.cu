@@ -111,10 +111,10 @@ __device__ LAST_SEMAPHORE sync_sem;
 __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
 {
     __shared__ uchar* scratch;
-    GLOOP_SINGLE_THREAD() {
+    BEGIN_SINGLE_THREAD
         scratch=(uchar*)malloc(FS_BLOCKSIZE);
         GPU_ASSERT(scratch!=NULL);
-    }
+    END_SINGLE_THREAD
 
     gloop::open(loop, src, O_GRDONLY, (struct Open1Data) {
         Open1,
@@ -135,7 +135,6 @@ void init_app()
     CUDA_SAFE_CALL(cudaMemset(d_OK,0,sizeof(int)));
     // INITI LOCK
     void* inited;
-
 
     CUDA_SAFE_CALL(cudaGetSymbolAddress(&inited,sync_sem));
     CUDA_SAFE_CALL(cudaMemset(inited,0,sizeof(LAST_SEMAPHORE)));

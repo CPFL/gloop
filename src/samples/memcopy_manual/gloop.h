@@ -173,6 +173,7 @@ __global__ void launch(const Callback& callback, Args... args)
     callback(&loop, std::forward<Args>(args)...);
     while (!loop.done()) {
         void* lambda = loop.dequeue();
+        GPU_ASSERT(*(LambdaId*)(lambda) == Open1);
         switch (*(LambdaId*)(lambda)) {
         case Open1: {
             Open1Data* data = (Open1Data*)lambda;
