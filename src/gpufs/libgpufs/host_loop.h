@@ -63,6 +63,7 @@ void open_loop(volatile GPUGlobals* globals,int gpuid)
 		{
 double vvvv=_timestamp();
 			memcpy(filename,(char*)e->filename,FILENAME_SIZE);
+            printf("[gpufs]: open:(%s)\n", filename);
 			// OPEN
 			if (e->flags&O_GWRONCE) {
 					e->flags=O_RDWR|O_CREAT;
@@ -284,6 +285,7 @@ void rw_loop(volatile GPUGlobals* globals)
 				// we are here only if success
 			}
 
+            printf("[gpufs] req:(%d)\n", req_type);
 
 			switch(req_type)
 			{	

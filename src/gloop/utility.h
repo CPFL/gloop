@@ -23,6 +23,7 @@
 */
 #ifndef GLOOP_UTILITY_H_
 #define GLOOP_UTILITY_H_
+#include <cassert>
 
 #define GLOOP_CONCAT1(x, y) x##y
 #define GLOOP_CONCAT(x, y) GLOOP_CONCAT1(x, y)
@@ -44,5 +45,13 @@
 
 // only 2^n and unsinged
 #define GLOOP_ROUNDDOWN(x, y) ((x) & (-(y)))
+
+#ifndef RELEASE
+#define GLOOP_ASSERT(x) assert(x)
+#else
+#define GLOOP_ASSERT(x) do { } while (0)
+#endif
+
+#define GLOOP_UNREACHABLE() GLOOP_ASSERT(0)
 
 #endif  // GLOOP_UTILITY_H_

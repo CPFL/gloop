@@ -6,6 +6,18 @@ __device__ int OK;
 
 __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize);
 
+__device__ void close2(gloop::DeviceLoop* loop, Close2Data* data)
+{
+}
+
+__device__ void close1(gloop::DeviceLoop* loop, Close1Data* data)
+{
+    int zfd1 = data->zfd1;
+    gloop::close(loop, zfd1, (struct Close2Data) {
+        Close2
+    });
+}
+
 __device__ void write1(gloop::DeviceLoop* loop, Write1Data* data)
 {
     uchar* scratch = data->scratch;
@@ -34,34 +46,38 @@ __device__ void read1(gloop::DeviceLoop* loop, Read1Data* data)
         assert(NULL);
     }
 
-    // gloop::write(loop, zfd1, me, toRead, scratch, (struct Write1Data) {
-    //     Write1,
-    //     scratch,
-    //     zfd,
-    //     zfd1,
-    //     filesize,
-    //     me,
-    //     toRead,
-    //     {}
-    // });
+    gloop::write(loop, zfd1, me, toRead, scratch, (struct Write1Data) {
+        Write1,
+        scratch,
+        zfd,
+        zfd1,
+        filesize,
+        me,
+        toRead,
+        {}
+    });
 }
 
 __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize)
 {
     if (me < filesize) {
         size_t toRead = min((size_t)FS_BLOCKSIZE, (size_t)(filesize-me));
-        // gloop::read(loop, zfd, me, toRead, scratch, (struct Read1Data) {
-        //     Read1,
-        //     scratch,
-        //     zfd,
-        //     zfd1,
-        //     filesize,
-        //     me,
-        //     toRead,
-        //     {}
-        // });
+        gloop::read(loop, zfd, me, toRead, scratch, (struct Read1Data) {
+            Read1,
+            scratch,
+            zfd,
+            zfd1,
+            filesize,
+            me,
+            toRead,
+            {}
+        });
         return;
     }
+    gloop::close(loop, zfd, (struct Close1Data) {
+        Close1,
+        zfd1
+    });
 }
 
 __device__ void fstat1(gloop::DeviceLoop* loop, Fstat1Data* data)
@@ -72,12 +88,6 @@ __device__ void fstat1(gloop::DeviceLoop* loop, Fstat1Data* data)
     size_t filesize = data->filesize;
     size_t me = blockIdx.x * FS_BLOCKSIZE;
     perform_copy(loop, scratch, zfd, zfd1, me, filesize);
-    // perform_copy(loop, scratch, zfd, zfd1, me, filesize, [=] () {
-    //     // gloop::close(loop, zfd, [=](int err) {
-    //     //     gloop::close(loop, zfd1, [=](int err) {
-    //     //     });
-    //     // });
-    // });
 }
 
 __device__ void open2(gloop::DeviceLoop* loop, Open2Data* data)
@@ -85,13 +95,13 @@ __device__ void open2(gloop::DeviceLoop* loop, Open2Data* data)
     uchar* scratch = data->scratch;
     int zfd = data->zfd;
     int zfd1 = data->zfd1;
-    // gloop::fstat(loop, zfd, (struct Fstat1Data) {
-    //     Fstat1,
-    //     scratch,
-    //     zfd,
-    //     zfd1,
-    //     {}
-    // });
+    gloop::fstat(loop, zfd, (struct Fstat1Data) {
+        Fstat1,
+        scratch,
+        zfd,
+        zfd1,
+        {}
+    });
 }
 
 __device__ void open1(gloop::DeviceLoop* loop, Open1Data* data)

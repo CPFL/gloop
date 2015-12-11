@@ -40,6 +40,19 @@ enum LambdaId {
 
 __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize);
 
+struct Close2Data {
+    LambdaId id;
+};
+
+__device__ void close2(gloop::DeviceLoop* loop, Close2Data* data);
+
+struct Close1Data {
+    LambdaId id;
+    int zfd1;
+};
+
+__device__ void close1(gloop::DeviceLoop* loop, Close1Data* data);
+
 struct Write1Data {
     LambdaId id;
     uchar* scratch;
@@ -149,7 +162,7 @@ __device__ auto fstat(DeviceLoop* loop, int fd, Callback callback) -> void
 }
 
 template<typename Callback>
-__device__ auto close(DeviceLoop* loop, int fd, Callback callback) -> typename std::result_of<Callback(int)>::type
+__device__ auto close(DeviceLoop* loop, int fd, Callback callback) -> void
 {
     int err = gclose(fd);
     loop->enqueue(callback);
@@ -168,12 +181,11 @@ __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t size, unsig
 template<typename Callback, class... Args>
 __global__ void launch(const Callback& callback, Args... args)
 {
-    uint64_t buffer[256];
-    DeviceLoop loop(buffer, 256);
+    uint64_t buffer[1024];
+    DeviceLoop loop(buffer, 1024);
     callback(&loop, std::forward<Args>(args)...);
     while (!loop.done()) {
         void* lambda = loop.dequeue();
-        GPU_ASSERT(*(LambdaId*)(lambda) == Open1);
         switch (*(LambdaId*)(lambda)) {
         case Open1: {
             Open1Data* data = (Open1Data*)lambda;
@@ -205,11 +217,17 @@ __global__ void launch(const Callback& callback, Args... args)
             break;
         }
 
-        case Close1:
+        case Close1: {
+            Close1Data* data = (Close1Data*)lambda;
+            close1(&loop, data);
             break;
+        }
 
-        case Close2:
+        case Close2: {
+            Close2Data* data = (Close2Data*)lambda;
+            close2(&loop, data);
             break;
+        }
 
         default:
             break;

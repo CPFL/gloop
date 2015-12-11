@@ -51,7 +51,7 @@ inline __device__ void DeviceLoop::enqueue(Callback callback)
 {
     uint64_t* pointer = (uint64_t*)(&callback);
     *m_put++ = (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8);
-    for (size_t i = 0; i < (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8); ++i, ++m_put) {
+    for (size_t i = 0; i < (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8); ++i) {
         *m_put++ = *pointer++;
     }
     ++m_index;
