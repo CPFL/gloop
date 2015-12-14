@@ -1,6 +1,5 @@
 include_directories(../..)
-cuda_add_executable_dc(grep_text
+add_executable(grep_text
     main.cu
-    DEPENDS gloop uv
 )
-target_link_libraries(grep_text uv gloop ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(grep_text uv ${GLOOP_CUDA_RUNTIME_LIBS} gpufs gpufs_con gloop)

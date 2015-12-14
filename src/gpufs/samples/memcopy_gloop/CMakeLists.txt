@@ -3,8 +3,8 @@ include_directories(
     ../../gpufs_con_lib.user
 )
 
-cuda_add_executable_dc(memcopy_gloop_manual
+add_executable(memcopy_gloop_manual
     fs.cu
     cp.cu
-    DEPENDS gpufs gpufs_con
 )
+target_link_libraries(memcopy_gloop_manual ${GLOOP_CUDA_RUNTIME_LIBS} gpufs gpufs_con)

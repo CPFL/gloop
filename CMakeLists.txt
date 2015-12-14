@@ -1,14 +1,12 @@
-cmake_minimum_required(VERSION 2.8)
-project(gloop)
-
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
-find_package(CUDA 7.5 REQUIRED)
+cmake_minimum_required(VERSION 2.8)
+project(gloop C CXX CUDA)
+
 find_package(Threads)
-include(CUDAMacros)
 
 macro(gloop_cuda_include_directories)
   foreach(dir ${ARGN})

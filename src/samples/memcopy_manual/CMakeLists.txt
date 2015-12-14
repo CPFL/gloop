@@ -3,8 +3,8 @@ include_directories(
     ../../gpufs/gpufs_con_lib.user
 )
 
-cuda_add_executable_dc(memcopy_manual
+add_executable(memcopy_manual
     fs.cu
     cp.cu
-    DEPENDS gpufs gpufs_con gloop
 )
+target_link_libraries(memcopy_manual ${CMAKE_THREAD_LIBS_INIT} gpufs gpufs_con gloop)

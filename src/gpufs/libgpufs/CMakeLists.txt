@@ -1,4 +1,4 @@
-cuda_add_library(gpufs STATIC
+add_library(gpufs STATIC
     cpu_ipc.cu
     fs_calls.cu
     fs_initializer.cu
