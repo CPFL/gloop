@@ -30,13 +30,45 @@ import os
 import subprocess
 import sys
 import tempfile
+
 from clang.cindex import CursorKind
 import clang.cindex
+from colors import red, green, blue
+
+class Processor(object):
+    def __init__(self):
+        pass
+
+    def visit(self, node, parent):
+        self.perform(node, parent)
+        for child in node.get_children():
+            self.visit(child, node)
+
+    def perform(self, node, parent):
+        print node
+
+def runGloopCompiler(args, index):
+    filename = args[index]
+    del args[index]
+    index = clang.cindex.Index.create()
+    translationUnit = index.parse(filename, args)
+    processor = Processor()
+    processor.visit(translationUnit.cursor, None)
+
+# Really simple extraction.
+def extractTargetFile(args):
+    for (i, arg) in enumerate(args):
+        if arg.endswith('.cu'):
+            return i
+    return None
 
 def main():
     args = sys.argv[:]
     args[0] = 'nvcc'
-    print args
+    index = extractTargetFile(args)
+    if index is not None:
+        print red("== [%d] %s" % (index, args[index]))
+        runGloopCompiler(args[:], index)
     return subprocess.call(args)
 
 if __name__ == '__main__':
