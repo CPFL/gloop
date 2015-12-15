@@ -4,4 +4,4 @@ include_directories(
 )
 
 add_executable(memcopy fs.cu)
-target_link_libraries(memcopy ${GLOOP_CUDA_RUNTIME_LIBS} gpufs gpufs_con)
+target_link_libraries(memcopy gpufs gpufs_con ${GLOOP_CUDA_RUNTIME_LIBS})

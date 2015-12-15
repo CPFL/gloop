@@ -115,7 +115,7 @@ int main( int argc, char** argv)
 	int device_number=2;
 	CUDA_SAFE_CALL(cudaSetDevice(device_number));
 
-	memset(time_res,0,MAX_TRIALS*sizeof(double));
+	std::memset(time_res,0,MAX_TRIALS*sizeof(double));
 for(int i=0;i<trials+1;i++){
 
 

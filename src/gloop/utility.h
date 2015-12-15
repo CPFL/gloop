@@ -52,6 +52,12 @@
 #define GLOOP_ASSERT(x) do { } while (0)
 #endif
 
+#if defined(__NVCC__) && !defined(__clang__)
+#define GLOOP_DEVICE_LAMBDA __device__
+#else
+#define GLOOP_DEVICE_LAMBDA
+#endif
+
 #define GLOOP_UNREACHABLE() GLOOP_ASSERT(0)
 
 #endif  // GLOOP_UTILITY_H_

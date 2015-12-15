@@ -28,6 +28,7 @@
 // System includes
 #include <stdio.h>
 #include <assert.h>
+#include <cmath>
 
 // CUDA runtime
 #include <cuda_runtime.h>
@@ -315,9 +316,9 @@ int matrixMultiply(int argc, char **argv, int block_size, dim3 &dimsA, dim3 &dim
 
     for (int i = 0; i < (int)(dimsC.x * dimsC.y); i++)
     {
-        double abs_err = fabs(h_C[i] - (dimsA.x * valB));
+        double abs_err = std::fabs(h_C[i] - (dimsA.x * valB));
         double dot_length = dimsA.x;
-        double abs_val = fabs(h_C[i]);
+        double abs_val = std::fabs(h_C[i]);
         double rel_err = abs_err/abs_val/dot_length ;
 
         if (rel_err > eps)

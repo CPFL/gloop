@@ -341,7 +341,7 @@ int main(int argc, char** argv){
 
 
 	char* all_bufs[1000];
-	memset(all_bufs,0,1000);
+	std::memset(all_bufs,0,1000);
 
 	char* buf=all_bufs[0]=new char[BUF_SIZE];
 	

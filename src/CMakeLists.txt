@@ -1,7 +1,8 @@
 # include subdirectory
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++14 -stdlib=libc++")
-set(GLOOP_CUDA_RUNTIME_LIBS dl;rt;c++;m;cudart_static;${CMAKE_THREAD_LIBS_INIT})
+set(GLOOP_CUDA_RUNTIME_LIBS cudart_static;dl;rt;c++;m;${CMAKE_THREAD_LIBS_INIT})
+link_directories(/usr/local/cuda-7.5/lib64)
 
 if (CMAKE_BUILD_TYPE MATCHES Release)
     add_definitions(

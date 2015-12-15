@@ -208,7 +208,7 @@ int main( int argc, char** argv)
 
 	int nthreads=256;
 int trials =3;
-	memset(times,0,sizeof(double)*MAX_TRIALS);
+	std::memset(times,0,sizeof(double)*MAX_TRIALS);
 for(int t=-1;t<trials+1;t++){
 
 	

@@ -122,7 +122,7 @@ int main( int argc, char** argv)
 	
 
 
-	memset(time_res,0,MAX_TRIALS*sizeof(double));
+	std::memset(time_res,0,MAX_TRIALS*sizeof(double));
 for(int i=1;i<trials+1;i++){
 
 

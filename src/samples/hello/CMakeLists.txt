@@ -4,4 +4,4 @@ include_directories("${SOURCE_DIR}/include")
 add_executable(hello
     main.cu
 )
-target_link_libraries(hello uv ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(hello uv ${GLOOP_CUDA_RUNTIME_LIBS})

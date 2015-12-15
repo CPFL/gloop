@@ -26,6 +26,8 @@
 //#endif
 
 #include <stdio.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "fs_constants.h"
 #include "fs_debug.cu.h"
@@ -55,7 +57,7 @@ __global__ void init_fs(volatile CPU_IPC_OPEN_Queue* _ipcOpenQueue,
 #define  initGpuShmemPtr(T, h_ptr,symbol)\
 {\
  	CUDA_SAFE_CALL(cudaHostAlloc((void**)&(h_ptr), sizeof(T), cudaHostAllocMapped));\
-	memset((void*)h_ptr,0,sizeof(T));\
+	std::memset((void*)h_ptr,0,sizeof(T));\
 	void* d_ptr;\
 	CUDA_SAFE_CALL(cudaHostGetDevicePointer((void**)(&d_ptr), (void*)(h_ptr), 0));\
 	CUDA_SAFE_CALL(cudaMemcpyToSymbol((symbol),&d_ptr,sizeof(void*)));\

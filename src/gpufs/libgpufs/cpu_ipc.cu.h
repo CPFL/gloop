@@ -21,6 +21,7 @@
 #define CPU_IPC_H
 
 #include "fs_structures.cu.h"
+#include <cstring>
 
 #define DO_NOT_OPEN 1
 #define DO_OPEN 0

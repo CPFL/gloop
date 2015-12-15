@@ -41,6 +41,7 @@
  */
 
 // Utilities and system includes
+#include <cmath>
 #include <errno.h>
 #include <cublas_v2.h>
 
@@ -664,7 +665,7 @@ void printDiff(float *data1, float *data2, int width, int height, int iListLengt
         for (i = 0; i < width; i++)
         {
             k = j * width + i;
-            float fDiff = fabs(data1[k] - data2[k]);
+            float fDiff = std::fabs(data1[k] - data2[k]);
             if (fDiff > fListTol)
             {
                 if (error_count < iListLength)

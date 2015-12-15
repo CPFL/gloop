@@ -61,7 +61,7 @@ __host__ void CPU_IPC_OPEN_Entry::init_host() volatile
 	flush_cache=0;
 	drop_residence_inode=0;
 	cpu_inode=(unsigned int)-1;
-	memset((void*)filename,0,FILENAME_SIZE);
+	std::memset((void*)filename,0,FILENAME_SIZE);
 	return_value=0;
 	is_dirty=0;
 	do_not_open=0;

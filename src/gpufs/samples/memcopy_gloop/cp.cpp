@@ -129,7 +129,7 @@ int main(int argc, char** argv)
 
        double avg_time,avg_thpt,std_time,std_thpt;
     char* prefix;
-    memset(time_res,0,MAX_TRIALS*sizeof(double));
+    std::memset(time_res,0,MAX_TRIALS*sizeof(double));
 
     assert(fmem);
     double total_time=0;

@@ -126,7 +126,7 @@ int main( int argc, char** argv)
 
 
 
-    memset(time_res,0,MAX_TRIALS*sizeof(double));
+    std::memset(time_res,0,MAX_TRIALS*sizeof(double));
     for(int i=1;i<trials+1;i++){
 
 
@@ -155,7 +155,7 @@ int main( int argc, char** argv)
 
 
         // test_cpy<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>(d_filenames[0], d_filenames[1]);
-        gloop::launch<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>([=] __device__ (gloop::DeviceLoop* loop, char* src, char* dst) {
+        gloop::launch<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>([=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
             test_cpy(loop, src, dst);
         }, d_filenames[0], d_filenames[1]);
 
