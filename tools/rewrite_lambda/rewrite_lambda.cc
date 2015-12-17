@@ -44,15 +44,18 @@
 
 class RewriteLambdaAction : public clang::PluginASTAction {
 protected:
-    std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &CI, llvm::StringRef InFile) {
+    std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &CI, llvm::StringRef InFile) override
+    {
         return nullptr;
     }
 
-    bool ParseArgs(const clang::CompilerInstance &CI, const std::vector<std::string> &args) {
+    bool ParseArgs(const clang::CompilerInstance &CI, const std::vector<std::string> &args) override
+    {
         return true;
     }
 
-    void PrintHelp(llvm::raw_ostream &ros) {
+    void PrintHelp(llvm::raw_ostream &ros)
+    {
     }
 };
 

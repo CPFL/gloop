@@ -54,6 +54,7 @@ def runGloopCompiler(args, index):
     translationUnit = index.parse(filename, args)
     processor = Processor()
     processor.visit(translationUnit.cursor, None)
+# clang -fsyntax-only -Xclang -load -Xclang out/tools/rewrite_lambda/rewrite_lambda.so -Xclang -plugin -Xclang rewrite-lambda -v tmp/t.cu
 
 # Really simple extraction.
 def extractTargetFile(args):

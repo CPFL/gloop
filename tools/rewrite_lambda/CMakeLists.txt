@@ -10,12 +10,14 @@ llvm_process_sources(srcs
 
 include_directories("/usr/local/include")
 link_directories("/usr/local/lib")
-add_library(rewrite_lambda MODULE ${srcs})
+add_llvm_loadable_module(rewrite_lambda ${srcs})
 
 target_link_libraries(rewrite_lambda
-    clangFrontend
-    clangRewrite
+    clang
     clangAST
-    clangLex
     clangBasic
+    clangFrontend
+    clangLex
+    clangRewrite
+    LLVMSupport
 )
