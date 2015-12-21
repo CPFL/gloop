@@ -37,7 +37,10 @@
 #include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Regex.h"
+#include <cassert>
 #include <iostream>
+
+#define UNREACHABLE() do { assert(0); } while (0)
 
 // http://eli.thegreenplace.net/2012/06/08/basic-source-to-source-transformation-with-clang/
 // http://eli.thegreenplace.net/2014/05/01/modern-source-to-source-transformation-with-clang-and-libtooling
@@ -55,8 +58,32 @@ public:
     {
         if (clang::LambdaExpr* lambdaExpr = llvm::dyn_cast<clang::LambdaExpr>(stmt)) {
             // Found lambda expression.
+            m_rewriter.RemoveText(clang::SourceRange(lambdaExpr->getLocStart(), lambdaExpr->getLocEnd()));
+            for (const auto& capture : lambdaExpr->captures()) {
+                switch (capture.getCaptureKind()) {
+                case clang::LCK_ByCopy: {
+                    clang::VarDecl* varDecl = capture.getCapturedVar();
+                    std::cout << "[clang] " << std::string(varDecl->getName()) << std::endl;
+                    break;
+                }
+
+                case clang::LCK_This:
+                    break;
+
+                case clang::LCK_ByRef:
+                    break;
+
+                case clang::LCK_VLAType:
+                    break;
+                }
+            }
         }
         return true;
+    }
+
+    clang::SourceManager& sourceManager()
+    {
+        return m_rewriter.getSourceMgr();
     }
 
 private:
@@ -68,7 +95,6 @@ public:
     LambdaRewriter(clang::CompilerInstance& CI)
         : m_CI(CI)
         , m_rewriter()
-        , m_visitor(m_rewriter)
     {
     }
 
@@ -76,13 +102,30 @@ public:
     {
         auto& sourceManager = context.getSourceManager();
         m_rewriter.setSourceMgr(sourceManager, m_CI.getLangOpts());
-        m_mainFileID = sourceManager.getMainFileID();
+        m_visitor = llvm::make_unique<LambdaVisitor>(m_rewriter);
     }
 
     virtual bool HandleTopLevelDecl(clang::DeclGroupRef DG) override
     {
         for (auto& decl : DG) {
-            m_visitor.TraverseDecl(decl);
+            // Only analyze __device__ or __global__ code.
+            // The host code should be recognized as is by the subsequent nvcc.
+            if (decl->hasAttrs()) {
+                const clang::AttrVec& attrs = decl->getAttrs();
+                if (std::any_of(
+                            attrs.begin(),
+                            attrs.end(), [] (const clang::Attr* attr) -> bool {
+                        switch (attr->getKind()) {
+                        case clang::attr::CUDADevice:
+                        case clang::attr::CUDAGlobal:
+                            return true;
+                        default:
+                            return false;
+                        }
+                    })) {
+                    m_visitor->TraverseDecl(decl);
+                }
+            }
         }
         return true;
     }
@@ -90,12 +133,13 @@ public:
     virtual void HandleTranslationUnit(clang::ASTContext& context) override
     {
         auto& sourceManager = context.getSourceManager();
+        clang::FileID mainFileID = sourceManager.getMainFileID();
         // http://clang.llvm.org/doxygen/classclang_1_1Rewriter.html#a6345f29dfc642152bf0d51eae32f900e
-        if (const clang::RewriteBuffer* rewriteBuffer = m_rewriter.getRewriteBufferFor(m_mainFileID)) {
+        if (const clang::RewriteBuffer* rewriteBuffer = m_rewriter.getRewriteBufferFor(mainFileID)) {
             std::cout << std::string(rewriteBuffer->begin(), rewriteBuffer->end());
         } else {
             // No modification is made.
-            llvm::StringRef buffer = sourceManager.getBufferData(m_mainFileID);
+            llvm::StringRef buffer = sourceManager.getBufferData(mainFileID);
             std::cout << std::string(buffer.begin(), buffer.end());
         }
     }
@@ -103,8 +147,7 @@ public:
 private:
     clang::CompilerInstance& m_CI;
     clang::Rewriter m_rewriter;
-    clang::FileID m_mainFileID;
-    LambdaVisitor m_visitor;
+    std::unique_ptr<LambdaVisitor> m_visitor;
 };
 
 class RewriteLambdaAction : public clang::PluginASTAction {
