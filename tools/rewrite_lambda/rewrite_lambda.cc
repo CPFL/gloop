@@ -51,6 +51,22 @@ protected:
 
     bool ParseArgs(const clang::CompilerInstance &CI, const std::vector<std::string> &args) override
     {
+        for (const auto& arg : args) {
+            llvm::errs() << "PrintFunctionNames arg = " << arg << "\n";
+
+            // Example error handling.
+            clang::DiagnosticsEngine &D = CI.getDiagnostics();
+            if (arg == "-an-error") {
+                unsigned DiagID = D.getCustomDiagID(clang::DiagnosticsEngine::Error, "invalid argument '%0'");
+                D.Report(DiagID) << arg;
+                return false;
+            }
+        }
+
+        if (!args.empty() && args[0] == "help") {
+            PrintHelp(llvm::errs());
+        }
+
         return true;
     }
 
@@ -59,4 +75,4 @@ protected:
     }
 };
 
-static clang::FrontendPluginRegistry::Add<RewriteLambdaAction> X("rewrite_lambda", "translate lambda for portable one before passing the source to NVCC");
+static clang::FrontendPluginRegistry::Add<RewriteLambdaAction> X("rewrite-lambda", "translate lambda for portable one before passing the source to NVCC");
