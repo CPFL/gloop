@@ -21,26 +21,48 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HOST_LOOP_H_
-#define GLOOP_HOST_LOOP_H_
-#include <redirector.h>
+#include "host_loop.cuh"
+#include <cassert>
+#include <cstdio>
+#include <cuda_runtime_api.h>
 namespace gloop {
-namespace hooks {
 
-class HostLoop : public Redirector {
-private:
-    HostLoop();
+HostLoop::HostLoop()
+    : m_loop(uv_loop_new())
+{
+    runPoller();
+}
 
-public:
-    // Overridden APIs.
-    cudaError_t cudaLaunch(const void * func);
-    cudaError_t cudaMalloc(void ** devPtr, size_t size);
+HostLoop::~HostLoop()
+{
+    uv_loop_close(m_loop);
+    stopPoller();
+}
 
-    void initialize();
+void HostLoop::runPoller()
+{
+    assert(!m_poller);
+    m_stop.store(false, std::memory_order_release);
+    m_poller.reset(new std::thread([this]() {
+        pollerMain();
+    }));
+}
 
-public:
-    static HostLoop& instance();
-};
+void HostLoop::stopPoller()
+{
+    m_stop.store(true, std::memory_order_release);
+    if (m_poller) {
+        m_poller->join();
+        m_poller.reset();
+    }
+}
 
-} }  // namespace gloop::hooks
-#endif  // GLOOP_HOST_LOOP_H_
+void HostLoop::pollerMain()
+{
+    while (!m_stop.load(std::memory_order_acquire)) {
+        while (false) {
+        }
+    }
+}
+
+}  // namespace gloop

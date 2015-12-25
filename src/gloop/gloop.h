@@ -27,5 +27,6 @@
 #include "entry.cuh"
 #include "fs.cuh"
 #include "function.cuh"
+#include "host_loop.cuh"
 #include "device_loop.cuh"
 #endif  // GLOOP_GLOOP_H_

@@ -21,38 +21,28 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "host_loop.h"
-#include <cstdio>
-#include <cuda_runtime_api.h>
+#ifndef GLOOP_HOST_LOOP_H_
+#define GLOOP_HOST_LOOP_H_
+#include <atomic>
+#include <thread>
+#include <memory>
 #include <uv.h>
 namespace gloop {
-namespace hooks {
 
-HostLoop::HostLoop()
-    : Redirector()
-{
-}
+class HostLoop {
+public:
+    HostLoop();
+    ~HostLoop();
 
-HostLoop& HostLoop::instance()
-{
-    static HostLoop mainLoop;
-    return mainLoop;
-}
+private:
+    void runPoller();
+    void stopPoller();
+    void pollerMain();
 
-void HostLoop::initialize()
-{
-}
+    uv_loop_t* m_loop;
+    std::atomic<bool> m_stop { false };
+    std::unique_ptr<std::thread> m_poller;
+};
 
-cudaError_t HostLoop::cudaLaunch(const void *func)
-{
-    std::printf("cudaLaunch\n");
-    return Redirector::cudaLaunch(func);
-}
-
-cudaError_t HostLoop::cudaMalloc(void **devPtr, size_t size)
-{
-    std::printf("cudaMalloc\n");
-    return Redirector::cudaMalloc(devPtr, size);
-}
-
-} }  // namespace gloop::hooks
+}  // namespace gloop
+#endif  // GLOOP_HOST_LOOP_H_
