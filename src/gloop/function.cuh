@@ -21,15 +21,46 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_GLOOP_FS_CU_H_
-#define GLOOP_GLOOP_FS_CU_H_
-#include <functional>
+#ifndef GLOOP_FUNCTION_CU_H_
+#define GLOOP_FUNCTION_CU_H_
+#include <array>
+#include <cstdint>
+#include "gloop.cuh"
 namespace gloop {
-namespace fs {
 
-inline __device__ void open(const char* fileName, int id)
-{
-}
+class DeviceLoop;
 
-} }  // namespace gloop
-#endif // GLOOP_GLOOP_FS_CU_H_
+struct Callback {
+    typedef void (*FunctionPtr)(void*, DeviceLoop* loop, int);
+    __device__ Callback(FunctionPtr functionPtr)
+        : m_functionPtr(functionPtr)
+    {
+    }
+
+    __device__ void operator()(DeviceLoop* loop, int value)
+    {
+        m_functionPtr(this, loop, value);
+    }
+
+    FunctionPtr m_functionPtr;
+};
+
+template<typename RawLambda>
+struct Lambda : public Callback {
+    __device__ Lambda(const RawLambda& lambda)
+        : Callback(Lambda::staticInvoke)
+        , m_lambda(lambda)
+    {
+    }
+
+    static __device__ void staticInvoke(void* ptr, DeviceLoop* loop, int value)
+    {
+        Lambda* lambda = static_cast<Lambda*>(ptr);
+        lambda->m_lambda(loop, value);
+    }
+
+    RawLambda m_lambda;
+};
+
+}  // namespace gloop
+#endif  // GLOOP_FUNCTION_CU_H_

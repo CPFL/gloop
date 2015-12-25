@@ -26,10 +26,7 @@
 #include "fs.cuh"
 namespace gloop {
 
-class DeviceLoop;
-__device__ volatile DeviceLoop* deviceLoop;
-
-__global__ void run()
+inline __global__ void run()
 {
 }
 

@@ -69,7 +69,7 @@ def main():
     index = extractTargetFile(args)
     if index is not None:
         print red("== [%d] %s" % (index, args[index]))
-        runGloopCompiler(args[:], index)
+        # runGloopCompiler(args[:], index)
     return subprocess.call(args)
 
 if __name__ == '__main__':
