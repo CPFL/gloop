@@ -12,7 +12,7 @@
 #include "fs_calls.cu.h"
 #include <sys/mman.h>
 #include <stdio.h>
-#include "gloop.h"
+#include <gloop/gloop.h>
 
 
 __device__ volatile INIT_LOCK init_lock;
@@ -203,15 +203,15 @@ __shared__ int output_count;
 __device__ int global_output;
 
 
-__device__ void process_one_db(struct context ctx, char* previous_db);
+__device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char* previous_db);
 
-__device__ void process_one_chunk_in_db(struct context ctx, char* current_db, char* next_db, int zfd_db, size_t _cursor, size_t db_size, int db_strlen) {
+__device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context ctx, char* current_db, char* next_db, int zfd_db, size_t _cursor, size_t db_size, int db_strlen) {
     if (_cursor < db_size) {
         bool last_iter=db_size-_cursor<(CORPUS_PREFETCH_SIZE+32);
         int db_left=last_iter?db_size-_cursor: CORPUS_PREFETCH_SIZE+32;
 
         corpus[db_left]='\0';
-        gloop::read(zfd_db,_cursor,db_left,(uchar*)corpus, [=](size_t bytes_read) {
+        gloop::fs::read(loop, zfd_db,_cursor,db_left,(uchar*)corpus, [=](gloop::DeviceLoop* loop, int bytes_read) {
             if(bytes_read!=db_left) ERROR("Failed to read DB file");
 
 
@@ -226,7 +226,7 @@ __device__ void process_one_chunk_in_db(struct context ctx, char* current_db, ch
                     output_count=0;
                 }
                 __syncthreads();
-                process_one_chunk_in_db(ctx, current_db, next_db, zfd_db, _cursor, db_size, db_strlen);
+                process_one_chunk_in_db(loop, ctx, current_db, next_db, zfd_db, _cursor, db_size, db_strlen);
             };
 
             size_t next_cursor = _cursor;
@@ -270,7 +270,7 @@ __device__ void process_one_chunk_in_db(struct context ctx, char* current_db, ch
                     if (threadIdx.x==0) old_offset=atomicAdd(&global_output,output_count);
                     __syncthreads();
 
-                    gloop::write(ctx.zfd_o, old_offset, output_count,(uchar*) ctx.output_buffer, [=](size_t written_size) {
+                    gloop::fs::write(loop, ctx.zfd_o, old_offset, output_count,(uchar*) ctx.output_buffer, [=](gloop::DeviceLoop* loop, int written_size) {
                         if (written_size != output_count) ERROR("Write to output failed");
                         next(next_cursor);
                     });
@@ -281,24 +281,24 @@ __device__ void process_one_chunk_in_db(struct context ctx, char* current_db, ch
         });
         return;
     }
-    gloop::close(zfd_db, [=](int err) {
+    gloop::fs::close(loop, zfd_db, [=](gloop::DeviceLoop* loop, int err) {
         BEGIN_SINGLE_THREAD
         output_count=0;
         END_SINGLE_THREAD
-        process_one_db(ctx, next_db);
+        process_one_db(loop, ctx, next_db);
     });
 }
 
-__device__ void process_one_db(struct context ctx, char* previous_db)
+__device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char* previous_db)
 {
     char* next_db;
     __shared__ int db_strlen;
 
     if (char* current_db = get_next(previous_db, &next_db, &db_strlen)) {
-        gloop::open(current_db,O_GRDONLY, [=](int zfd_db) {
+        gloop::fs::open(loop, current_db,O_GRDONLY, [=](gloop::DeviceLoop* loop, int zfd_db) {
             if (zfd_db<0) ERROR("Failed to open DB file");
-            gloop::fstat(zfd_db, [=](size_t db_size) {
-                process_one_chunk_in_db(ctx, current_db, next_db, zfd_db, 0, db_size, db_strlen);
+            gloop::fs::fstat(loop, zfd_db, [=](gloop::DeviceLoop* loop, int db_size) {
+                process_one_chunk_in_db(loop, ctx, current_db, next_db, zfd_db, 0, db_size, db_strlen);
             });
         });
         return;
@@ -306,9 +306,9 @@ __device__ void process_one_db(struct context ctx, char* previous_db)
 
     //we are done.
     //write the output and finish
-    gloop::close(ctx.zfd_src, [=](int err) {
-        gloop::close(ctx.zfd_dbs, [=](int err) {
-            gloop::close(ctx.zfd_o, [=](int err) {
+    gloop::fs::close(loop, ctx.zfd_src, [=](gloop::DeviceLoop* loop, int err) {
+        gloop::fs::close(loop, ctx.zfd_dbs, [=](gloop::DeviceLoop* loop, int err) {
+            gloop::fs::close(loop, ctx.zfd_o, [=](gloop::DeviceLoop* loop, int err) {
                 BEGIN_SINGLE_THREAD
                 {
                     free(ctx.output_buffer);
@@ -321,18 +321,18 @@ __device__ void process_one_db(struct context ctx, char* previous_db)
     });
 }
 
-void __global__ grep_text(char* src, char* out, char* dbs)
+void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* dbs)
 {
-    gloop::open(dbs,O_GRDONLY, [=](int zfd_dbs) {
+    gloop::fs::open(loop, dbs,O_GRDONLY, [=](gloop::DeviceLoop* loop, int zfd_dbs) {
         if (zfd_dbs<0) ERROR("Failed to open output");
 
-        gloop::open(out,O_GWRONCE, [=](int zfd_o) {
+        gloop::fs::open(loop, out,O_GWRONCE, [=](gloop::DeviceLoop* loop, int zfd_o) {
             if (zfd_o<0) ERROR("Failed to open output");
 
-            gloop::open(src,O_GRDONLY, [=](int zfd_src) {
+            gloop::fs::open(loop, src,O_GRDONLY, [=](gloop::DeviceLoop* loop, int zfd_src) {
                 if (zfd_src<0) ERROR("Failed to open input");
 
-                gloop::fstat(zfd_src, [=](size_t in_size) {
+                gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop* loop, int in_size) {
                     int total_words=in_size/32;
 
                     if (total_words==0) ERROR("empty input");
@@ -350,15 +350,15 @@ void __global__ grep_text(char* src, char* out, char* dbs)
 
 
                     if (words_per_chunk==0) {
-                        gloop::close(zfd_o, [=](int err) {
-                            gloop::close(zfd_src, [=](int err) {
+                        gloop::fs::close(loop, zfd_o, [=](gloop::DeviceLoop* loop, int err) {
+                            gloop::fs::close(loop, zfd_src, [=](gloop::DeviceLoop* loop, int err) {
                             });
                         });
                         return;
                     }
 
 
-                    gloop::fstat(zfd_src, [=](size_t src_size) {
+                    gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop* loop, size_t src_size) {
                         int data_to_process=words_per_chunk*32;
 
                         if (blockIdx.x==gridDim.x-1)
@@ -389,13 +389,13 @@ void __global__ grep_text(char* src, char* out, char* dbs)
                         }
                         END_SINGLE_THREAD
 
-                        gloop::fstat(zfd_dbs, [=](size_t dbs_size) {
-                            gloop::read(zfd_dbs,0,dbs_size,(uchar*)db_files, [=](size_t db_bytes_read) {
+                        gloop::fs::fstat(loop, zfd_dbs, [=](gloop::DeviceLoop* loop, size_t dbs_size) {
+                            gloop::fs::read(loop, zfd_dbs,0,dbs_size,(uchar*)db_files, [=](gloop::DeviceLoop* loop, size_t db_bytes_read) {
                                 if(db_bytes_read!=dbs_size) ERROR("Failed to read dbs");
                                 db_files[db_bytes_read]='\0';
 
                                 int to_read=min(data_to_process,(int)src_size);
-                                gloop::read(zfd_src,blockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](size_t bytes_read) {
+                                gloop::fs::read(loop, zfd_src,blockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](gloop::DeviceLoop* loop, size_t bytes_read) {
                                     if (bytes_read!=to_read) ERROR("FAILED to read input");
                                     struct context ctx {
                                         zfd_src,
@@ -407,7 +407,7 @@ void __global__ grep_text(char* src, char* out, char* dbs)
                                         to_read,
                                     };
 
-                                    process_one_db(ctx, db_files);
+                                    process_one_db(loop, ctx, db_files);
                                 });
                             });
                         });

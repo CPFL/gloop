@@ -13,7 +13,7 @@
 
 // INCLUDING CODE INLINE - change later
 #include "host_loop.h"
-#include "gloop.h"
+#include <gloop/gloop.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>

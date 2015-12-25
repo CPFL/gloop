@@ -1,19 +1,19 @@
 #include "fs_debug.cu.h"
 #include "fs_initializer.cu.h"
 
-#include "gloop.h"
+#include <gloop/gloop.h>
 __device__ int OK;
 
 __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize)
 {
     if (me < filesize) {
         size_t toRead = min((size_t)FS_BLOCKSIZE, (size_t)(filesize-me));
-        gloop::read(loop, zfd, me, toRead, scratch, [=](gloop::DeviceLoop* loop, int read) {
+        gloop::fs::read(loop, zfd, me, toRead, scratch, [=](gloop::DeviceLoop* loop, int read) {
             if (toRead != read) {
                 assert(NULL);
             }
 
-            gloop::write(loop, zfd1, me, toRead, scratch, [=](gloop::DeviceLoop* loop, int written) {
+            gloop::fs::write(loop, zfd1, me, toRead, scratch, [=](gloop::DeviceLoop* loop, int written) {
                 if (toRead != written) {
                     assert(NULL);
                 }
@@ -23,8 +23,8 @@ __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, i
         return;
     }
 
-    gloop::close(loop, zfd, [=](gloop::DeviceLoop* loop, int err) {
-        gloop::close(loop, zfd1, [=](gloop::DeviceLoop* loop, int err) {
+    gloop::fs::close(loop, zfd, [=](gloop::DeviceLoop* loop, int err) {
+        gloop::fs::close(loop, zfd1, [=](gloop::DeviceLoop* loop, int err) {
         });
     });
 }
@@ -38,9 +38,9 @@ __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
         GPU_ASSERT(scratch!=NULL);
     END_SINGLE_THREAD
 
-    gloop::open(loop, src, O_GRDONLY, [=](gloop::DeviceLoop* loop, int zfd) {
-        gloop::open(loop, dst, O_GWRONCE, [=](gloop::DeviceLoop* loop, int zfd1) {
-            gloop::fstat(loop, zfd, [=](gloop::DeviceLoop* loop, int filesize) {
+    gloop::fs::open(loop, src, O_GRDONLY, [=](gloop::DeviceLoop* loop, int zfd) {
+        gloop::fs::open(loop, dst, O_GWRONCE, [=](gloop::DeviceLoop* loop, int zfd1) {
+            gloop::fs::fstat(loop, zfd, [=](gloop::DeviceLoop* loop, int filesize) {
                 size_t me = blockIdx.x * FS_BLOCKSIZE;
                 perform_copy(loop, scratch, zfd, zfd1, me, filesize);
             });

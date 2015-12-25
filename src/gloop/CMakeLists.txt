@@ -37,7 +37,6 @@ add_library(gloop STATIC
     # gloop_device.cu
     # host_loop.cc
     # ${CMAKE_CURRENT_BINARY_DIR}/redirector.cc
-    fs.cu
     device_loop.cu
 )
 target_link_libraries(gloop dl uv)

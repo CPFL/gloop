@@ -25,7 +25,7 @@
 #define GLOOP_FUNCTION_CU_H_
 #include <array>
 #include <cstdint>
-#include "gloop.cuh"
+#include "device_loop.cuh"
 namespace gloop {
 
 class DeviceLoop;

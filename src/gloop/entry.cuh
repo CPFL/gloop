@@ -21,45 +21,25 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_H_
-#define GLOOP_H_
-#include <type_traits>
+#ifndef GLOOP_ENTRY_H_
+#define GLOOP_ENTRY_H_
+#include <utility>
+#include "device_loop.cuh"
+#include "serialized.cuh"
+
 namespace gloop {
 
-template<typename Callback>
-__device__ auto open(char* filename, int mode, Callback callback) -> typename std::result_of<Callback(int)>::type
+template<typename Callback, class... Args>
+inline __global__ void launch(const Callback& callback, Args... args)
 {
-    int fd = gopen(filename, mode);
-    return callback(fd);
-}
-
-template<typename Callback>
-__device__ auto write(int fd, size_t offset, size_t count, unsigned char* buffer, Callback callback) -> typename std::result_of<Callback(size_t)>::type
-{
-    size_t written_size = gwrite(fd, offset, count, buffer);
-    return callback(written_size);
-}
-
-template<typename Callback>
-__device__ auto fstat(int fd, Callback callback) -> typename std::result_of<Callback(size_t)>::type
-{
-    size_t value = ::fstat(fd);
-    return callback(value);
-}
-
-template<typename Callback>
-__device__ auto close(int fd, Callback callback) -> typename std::result_of<Callback(int)>::type
-{
-    int err = gclose(fd);
-    return callback(err);
-}
-
-template<typename Callback>
-__device__ auto read(int fd, size_t offset, size_t size, unsigned char* buffer, Callback callback) -> typename std::result_of<Callback(size_t)>::type
-{
-    size_t bytes_read = gread(fd, offset, size, buffer);
-    return callback(bytes_read);
+    uint64_t buffer[4096];
+    DeviceLoop loop(buffer, 4096);
+    callback(&loop, std::forward<Args>(args)...);
+    while (!loop.done()) {
+        Serialized<void>* lambda = reinterpret_cast<Serialized<void>*>(loop.dequeue());
+        lambda->callback()(&loop, lambda->value());
+    }
 }
 
 }  // namespace gloop
-#endif  // GLOOP_H_
+#endif  // GLOOP_ENTRY_H_

@@ -40,6 +40,7 @@ __device__ void* DeviceLoop::dequeue()
     void* result = m_get;
     m_get += size;
     --m_index;
+    GPU_ASSERT(m_put + m_size > m_get)
     return result;
 }
 

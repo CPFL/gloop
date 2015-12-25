@@ -21,6 +21,7 @@
 
 // INCLUDING CODE INLINE - change later
 #include "host_loop.h"
+#include <gloop/gloop.h>
 //
 
 
@@ -30,9 +31,10 @@
 #include <fcntl.h>
 #include <string.h>
 
-#define MAIN_FS_FILE
-#include "grep_text_gpu.cu"
-
+void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* dbs);
+void init_device_app();
+void init_app();
+double post_app(double total_time, float trials );
 
 char*  update_filename(const char* h_filename){
 	int n=strlen(h_filename);
@@ -92,8 +94,9 @@ for(int i=1;i<trials+1;i++){
 	double time_before=_timestamp();
 	if (!i) time_before=0;
 
-        grep_text<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>(d_filenames[0],d_filenames[1],d_filenames[2]);
-	
+    gloop::launch<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>([] __device__ (gloop::DeviceLoop* loop, char* src, char* out, char* dbs) {
+        grep_text(loop, src, out, dbs);
+    }, d_filenames[0],d_filenames[1],d_filenames[2]);
 	
 	run_gpufs_handler(gpuGlobals,0);
 

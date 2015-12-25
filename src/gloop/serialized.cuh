@@ -21,8 +21,33 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "fs.cuh"
-namespace gloop {
-namespace fs {
+#ifndef GLOOP_SERIALIZED_H_
+#define GLOOP_SERIALIZED_H_
+#include "function.cuh"
 
-} }  // namespace gloop::fs
+namespace gloop {
+
+template<typename Callback>
+struct Serialized {
+    uint64_t m_value;
+    Lambda<Callback> m_lambda;
+};
+
+template<>
+struct Serialized<void> {
+    uint64_t m_value;
+
+    __device__ uint64_t value()
+    {
+        return m_value;
+    }
+
+    __device__ Callback& callback()
+    {
+        // The alignment of the m_value is largest in the system, 8byte.
+        return *reinterpret_cast<Callback*>((reinterpret_cast<char*>(this) + sizeof(m_value)));
+    }
+};
+
+}  // namespace gloop
+#endif  // GLOOP_SERIALIZED_H_
