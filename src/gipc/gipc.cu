@@ -22,6 +22,7 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <cassert>
 #include <gpufs/libgpufs/util.cu.h>
 #include "gipc.cuh"
 
@@ -31,18 +32,21 @@ __device__ void Channel::emit()
 {
     lock();
     {
-        GPU_ASSERT(status == Wait);
-        status = Status::Emit;
-        while (status != Status::Wait);
+        GPU_ASSERT(m_status == Wait);
+        __threadfence_system();
+        m_status = Status::Emit;
+        __threadfence_system();
+        WAIT_ON_MEM_NE(m_status, Status::Wait);
     }
     unlock();
 }
 
 __host__ void Channel::wait()
 {
-    while (status == Status::Wait);
-    GPU_ASSERT(status == Status::Emit);
-    status == Status::Wait;
+    while (m_status == Status::Wait);
+    __sync_synchronize();
+    m_status == Status::Wait;
+    __sync_synchronize();
 }
 
 __device__ void Channel::lock()

@@ -23,6 +23,8 @@
 */
 #ifndef GIPC_GIPC_CU_H_
 #define GIPC_GIPC_CU_H_
+#include <cstdint>
+
 namespace gipc {
 
 class Channel {
