@@ -23,8 +23,8 @@
 */
 #ifndef GLOOP_DEVICE_LOOP_H_
 #define GLOOP_DEVICE_LOOP_H_
-#include "utility.h"
 #include <cstdint>
+#include "utility.h"
 namespace gloop {
 
 class DeviceLoop {

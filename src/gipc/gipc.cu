@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -21,49 +21,38 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "host_loop.cuh"
-#include <cassert>
-#include <cstdio>
-#include <cuda_runtime_api.h>
-namespace gloop {
 
-HostLoop::HostLoop(GPUGlobals* globals)
-    : m_globals(globals)
-    , m_loop(uv_loop_new())
-{
-    runPoller();
-}
+#include <gpufs/libgpufs/util.cu.h>
+#include "gipc.cuh"
 
-HostLoop::~HostLoop()
-{
-    uv_loop_close(m_loop);
-    stopPoller();
-}
+namespace gipc {
 
-void HostLoop::runPoller()
+__device__ void Channel::emit()
 {
-    assert(!m_poller);
-    m_stop.store(false, std::memory_order_release);
-    m_poller.reset(new std::thread([this]() {
-        pollerMain();
-    }));
-}
-
-void HostLoop::stopPoller()
-{
-    m_stop.store(true, std::memory_order_release);
-    if (m_poller) {
-        m_poller->join();
-        m_poller.reset();
+    lock();
+    {
+        GPU_ASSERT(status == Wait);
+        status = Status::Emit;
+        while (status != Status::Wait);
     }
+    unlock();
 }
 
-void HostLoop::pollerMain()
+__host__ void Channel::wait()
 {
-    while (!m_stop.load(std::memory_order_acquire)) {
-        while (false) {
-        }
-    }
+    while (status == Status::Wait);
+    GPU_ASSERT(status == Status::Emit);
+    status == Status::Wait;
 }
 
-}  // namespace gloop
+__device__ void Channel::lock()
+{
+    MUTEX_LOCK(m_lock);
+}
+
+__device__ void Channel::unlock()
+{
+    MUTEX_UNLOCK(m_lock);
+}
+
+}  // namespace gpic

@@ -156,7 +156,7 @@ int main( int argc, char** argv)
 
         // test_cpy<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>(d_filenames[0], d_filenames[1]);
         {
-            gloop::HostLoop hostLoop;
+            gloop::HostLoop hostLoop(gpuGlobals);
             gloop::launch<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>([=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
                 test_cpy(loop, src, dst);
             }, d_filenames[0], d_filenames[1]);

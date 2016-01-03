@@ -23,9 +23,9 @@
 */
 #ifndef GLOOP_FS_H_
 #define GLOOP_FS_H_
+#include <gpufs/libgpufs/fs_calls.cu.h>
 #include <type_traits>
 #include <utility>
-#include "fs_calls.cu.h"
 #include "device_loop.cuh"
 #include "function.cuh"
 #include "serialized.cuh"

@@ -27,11 +27,14 @@
 #include <thread>
 #include <memory>
 #include <uv.h>
+
+struct GPUGlobals;
+
 namespace gloop {
 
 class HostLoop {
 public:
-    HostLoop();
+    HostLoop(GPUGlobals*);
     ~HostLoop();
 
 private:
@@ -39,6 +42,7 @@ private:
     void stopPoller();
     void pollerMain();
 
+    GPUGlobals* m_globals;
     uv_loop_t* m_loop;
     std::atomic<bool> m_stop { false };
     std::unique_ptr<std::thread> m_poller;
