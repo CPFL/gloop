@@ -34,7 +34,7 @@ namespace gloop {
 
 class HostLoop {
 public:
-    HostLoop(GPUGlobals*);
+    HostLoop(volatile GPUGlobals*);
     ~HostLoop();
 
 private:
@@ -42,7 +42,7 @@ private:
     void stopPoller();
     void pollerMain();
 
-    GPUGlobals* m_globals;
+    volatile GPUGlobals* m_globals;
     uv_loop_t* m_loop;
     std::atomic<bool> m_stop { false };
     std::unique_ptr<std::thread> m_poller;

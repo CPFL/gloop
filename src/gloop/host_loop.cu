@@ -27,7 +27,7 @@
 #include <cuda_runtime_api.h>
 namespace gloop {
 
-HostLoop::HostLoop(GPUGlobals* globals)
+HostLoop::HostLoop(volatile GPUGlobals* globals)
     : m_globals(globals)
     , m_loop(uv_loop_new())
 {

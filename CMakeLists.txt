@@ -19,6 +19,8 @@ macro(gloop_cuda_include_directories)
   endforeach()
 endmacro()
 
+include_directories("${PROJECT_BINARY_DIR}/include")
+
 add_subdirectory(third_party)
 add_subdirectory(src)
 # add_subdirectory(tools)
