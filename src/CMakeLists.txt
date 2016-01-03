@@ -3,6 +3,8 @@
 # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++14 -stdlib=libc++")
 # set(GLOOP_CUDA_RUNTIME_LIBS cudart_static;dl;rt;c++;m;${CMAKE_THREAD_LIBS_INIT})
 
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
+
 
 # list(APPEND CUDA_NVCC_FLAGS
 #     -arch=sm_20

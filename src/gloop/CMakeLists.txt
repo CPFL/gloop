@@ -1,6 +1,5 @@
 ExternalProject_Get_Property(LIBUV_LIB_EP SOURCE_DIR)
 include_directories("${SOURCE_DIR}/include")
-include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 include_directories(".")
 
 # set(CUDA_RUNTIME_API_HEADER)
