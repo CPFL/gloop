@@ -60,4 +60,9 @@
 
 #define GLOOP_UNREACHABLE() GLOOP_ASSERT(0)
 
+#define GLOOP_NONCOPYABLE(ClassName) \
+private: \
+    ClassName(ClassName const&) = delete; \
+    ClassName& operator=(ClassName const&) = delete;
+
 #endif  // GLOOP_UTILITY_H_

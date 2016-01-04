@@ -37,6 +37,26 @@ add_library(gloop STATIC
     # ${CMAKE_CURRENT_BINARY_DIR}/redirector.cc
     host_loop.cu
     device_loop.cu
+    monitor_session.cc
 )
-target_link_libraries(gloop dl uv)
+target_link_libraries(gloop
+    dl
+    uv
+    rt
+    boost_system
+    boost_thread
+    boost_date_time
+)
+
+add_executable(gloop-monitor
+    monitor.cc
+)
+target_link_libraries(gloop-monitor
+    gloop
+    rt
+    ${CMAKE_THREAD_LIBS_INIT}
+    boost_system
+    boost_thread
+    boost_date_time
+)
 # add_dependencies(gloop uv redirector)
