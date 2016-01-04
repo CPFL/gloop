@@ -25,6 +25,7 @@
 #include <boost/bind.hpp>
 #include <mutex>
 #include <vector>
+#include "make_unique.h"
 #include "monitor_session.h"
 
 namespace gloop {
@@ -77,41 +78,31 @@ bool Session::handle(Command& command)
 
 bool Session::initialize(Command& command)
 {
-    std::vector<char> name(200);
-
-    // request queue
-    {
-        const int ret = std::snprintf(name.data(), name.size() - 1, "gloop_shared_req_queue_%u", id());
-        if (ret < 0) {
-            std::perror(nullptr);
-            std::exit(1);
-        }
-        name[ret] = '\0';
-
-        boost::interprocess::message_queue::remove(name.data());
-        m_requestQueue.reset(new boost::interprocess::message_queue(boost::interprocess::create_only, name.data(), 0x100000, sizeof(Command)));
-    }
-
-    // response queue
-    {
-        const int ret = std::snprintf(name.data(), name.size() - 1, "gloop_shared_res_queue_%u", id());
-        if (ret < 0) {
-            std::perror(nullptr);
-            std::exit(1);
-        }
-        name[ret] = '\0';
-
-        boost::interprocess::message_queue::remove(name.data());
-        m_responseQueue.reset(new boost::interprocess::message_queue(boost::interprocess::create_only, name.data(), 0x100000, sizeof(Command)));
-    }
-
-    m_thread.reset(new std::thread(&Session::main, this));
+    m_requestQueue = Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, id(), true);
+    m_responseQueue = Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, id(), true);
+    m_thread = make_unique<std::thread>(&Session::main, this);
 
     command = (Command) {
         .type = Command::Type::Initialize,
         .payload = id()
     };
     return true;
+}
+
+std::unique_ptr<boost::interprocess::message_queue> Session::createQueue(const char* prefix, uint32_t id, bool create)
+{
+    std::vector<char> name(200);
+    const int ret = std::snprintf(name.data(), name.size() - 1, "%s%u", prefix, id);
+    if (ret < 0) {
+        std::perror(nullptr);
+        std::exit(1);
+    }
+    name[ret] = '\0';
+    if (create) {
+        boost::interprocess::message_queue::remove(name.data());
+        return make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only, name.data(), 0x100000, sizeof(Command));
+    }
+    return make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, name.data());
 }
 
 void Session::main()

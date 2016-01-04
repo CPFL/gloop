@@ -26,6 +26,8 @@
 
 #define GLOOP_VERSION "0.0.1"
 #define GLOOP_ENDPOINT "/tmp/gloop_endpoint"
+#define GLOOP_SHARED_REQUEST_QUEUE "gloop_shared_req_queue_"
+#define GLOOP_SHARED_RESPONSE_QUEUE "gloop_shared_res_queue_"
 
 namespace gloop {
 }  // namespace gloop

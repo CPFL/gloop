@@ -28,6 +28,8 @@
 #include <thread>
 #include <type_traits>
 #include <memory>
+#include "command.h"
+#include "config.h"
 #include "noncopyable.h"
 namespace gloop {
 namespace monitor {
@@ -41,18 +43,12 @@ public:
     boost::asio::local::stream_protocol::socket& socket() { return m_socket; }
     uint32_t id() const { return m_id; }
 
-    struct Command {
-        enum Type {
-            Initialize
-        };
-        uint32_t type;
-        uint32_t payload;
-    };
     typedef std::aligned_storage<sizeof(Command), std::alignment_of<Command>::value>::type CommandBuffer;
 
     void send(Command command);
 
     void handShake();
+    static std::unique_ptr<boost::interprocess::message_queue> createQueue(const char* prefix, uint32_t id, bool create);
 
 private:
     Command* buffer() { return reinterpret_cast<Command*>(&m_buffer); }

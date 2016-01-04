@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -21,45 +21,23 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HOST_LOOP_H_
-#define GLOOP_HOST_LOOP_H_
-#include <atomic>
-#include <boost/interprocess/ipc/message_queue.hpp>
-#include <thread>
-#include <memory>
-#include <uv.h>
-
-struct GPUGlobals;
-
+#ifndef GLOOP_COMMAND_H_
+#define GLOOP_COMMAND_H_
 namespace gloop {
 
-class HostLoop {
-public:
-    HostLoop(volatile GPUGlobals*);
-    ~HostLoop();
+struct Command {
+    enum class Type : uint32_t {
+        Initialize,
+        Operation
+    };
 
-    uint32_t id() const { return m_id; }
+    enum Operation {
+        Complete
+    };
 
-    void wait();
-
-private:
-    void runPoller();
-    void stopPoller();
-    void pollerMain();
-
-    bool handle(Command);
-
-    volatile GPUGlobals* m_globals;
-    uv_loop_t* m_loop;
-    std::atomic<bool> m_stop { false };
-    std::unique_ptr<std::thread> m_poller;
-
-    uint32_t m_id { 0 };
-    boost::asio::io_service m_ioService;
-    boost::asio::local::stream_protocol::socket m_socket;
-    std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
-    std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
+    Type type;
+    uint32_t payload;
 };
 
 }  // namespace gloop
-#endif  // GLOOP_HOST_LOOP_H_
+#endif  // GLOOP_COMMAND_H_

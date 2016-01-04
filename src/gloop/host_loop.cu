@@ -21,17 +21,57 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "host_loop.cuh"
+#include <boost/asio.hpp>
 #include <cassert>
 #include <cstdio>
 #include <cuda_runtime_api.h>
-#include "spinlock.h"
+#include "command.h"
+#include "config.h"
+#include "host_loop.cuh"
+#include "make_unique.h"
+#include "monitor_session.h"
 namespace gloop {
 
 HostLoop::HostLoop(volatile GPUGlobals* globals)
     : m_globals(globals)
     , m_loop(uv_loop_new())
+    , m_socket(m_ioService)
 {
+    // Connect to the gloop monitor.
+    {
+        m_socket.connect(boost::asio::local::stream_protocol::endpoint(GLOOP_ENDPOINT));
+        Command command = {
+            .type = Command::Type::Initialize,
+        };
+        Command result { };
+        while (true) {
+            boost::system::error_code error;
+            boost::asio::write(
+                m_socket,
+                boost::asio::buffer(reinterpret_cast<const char*>(&command), sizeof(Command)),
+                boost::asio::transfer_all(),
+                error);
+            if (error != boost::asio::error::make_error_code(boost::asio::error::interrupted)) {
+                break;
+            }
+            // retry
+        }
+        while (true) {
+            boost::system::error_code error;
+            boost::asio::read(
+                m_socket,
+                boost::asio::buffer(reinterpret_cast<char*>(&result), sizeof(Command)),
+                boost::asio::transfer_all(),
+                error);
+            if (error != boost::asio::error::make_error_code(boost::asio::error::interrupted)) {
+                break;
+            }
+        }
+        m_id = result.payload;
+    }
+    m_requestQueue = monitor::Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, m_id, false);
+    m_responseQueue = monitor::Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, m_id, false);
+
     runPoller();
 }
 
@@ -41,13 +81,14 @@ HostLoop::~HostLoop()
     stopPoller();
 }
 
+// GPU RPC poller.
 void HostLoop::runPoller()
 {
     assert(!m_poller);
     m_stop.store(false, std::memory_order_release);
-    m_poller.reset(new std::thread([this]() {
+    m_poller = make_unique<std::thread>([this]() {
         pollerMain();
-    }));
+    });
 }
 
 void HostLoop::stopPoller()
@@ -61,10 +102,31 @@ void HostLoop::stopPoller()
 
 void HostLoop::pollerMain()
 {
+    Command command = {
+        .type = Command::Type::Operation,
+        .payload = Command::Operation::Complete,
+    };
+    m_responseQueue->send(&command, sizeof(Command), 0);
     while (!m_stop.load(std::memory_order_acquire)) {
-        while (false) {
+    }
+}
+
+void HostLoop::wait()
+{
+    while (true) {
+        Command result = { };
+        unsigned int priority { };
+        std::size_t size { };
+        m_responseQueue->receive(&result, sizeof(Command), size, priority);
+        if (handle(result)) {
+            break;
         }
     }
+}
+
+bool HostLoop::handle(Command command)
+{
+    return true;
 }
 
 }  // namespace gloop
