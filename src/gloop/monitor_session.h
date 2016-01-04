@@ -25,12 +25,10 @@
 #define GLOOP_MONITOR_SESSION_H_
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
-#include <boost/smart_ptr/detail/spinlock.hpp>  // Not good, but for now, it's OK.
 #include <thread>
 #include <type_traits>
 #include <memory>
-#include "spinlock.h"
-#include "utility.h"
+#include "noncopyable.h"
 namespace gloop {
 namespace monitor {
 
@@ -69,7 +67,6 @@ private:
     uint32_t m_id;
     boost::asio::local::stream_protocol::socket m_socket;
     CommandBuffer m_buffer;
-    Spinlock m_lock;
     std::unique_ptr<std::thread> m_thread;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;

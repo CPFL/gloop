@@ -24,6 +24,7 @@
 #ifndef GLOOP_HOST_LOOP_H_
 #define GLOOP_HOST_LOOP_H_
 #include <atomic>
+#include <boost/interprocess/ipc/message_queue.hpp>
 #include <thread>
 #include <memory>
 #include <uv.h>
@@ -46,6 +47,8 @@ private:
     uv_loop_t* m_loop;
     std::atomic<bool> m_stop { false };
     std::unique_ptr<std::thread> m_poller;
+    std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
+    std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
 };
 
 }  // namespace gloop

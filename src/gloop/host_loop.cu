@@ -25,6 +25,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cuda_runtime_api.h>
+#include "spinlock.h"
 namespace gloop {
 
 HostLoop::HostLoop(volatile GPUGlobals* globals)

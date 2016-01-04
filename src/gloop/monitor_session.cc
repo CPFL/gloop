@@ -129,7 +129,6 @@ void Session::main()
 
 void Session::send(Command command)
 {
-    std::lock_guard<Spinlock> lock(m_lock);
     m_responseQueue->send(&command, sizeof(Command), 0);
 }
 

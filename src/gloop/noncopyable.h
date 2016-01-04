@@ -21,32 +21,12 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_SPINLOCK_H_
-#define GLOOP_SPINLOCK_H_
-#include <atomic>
-#include "noncopyable.h"
-namespace gloop {
+#ifndef GLOOP_NONCOPYABLE_H_
+#define GLOOP_NONCOPYABLE_H_
 
-// spinlock. Not considering thundering herd etc.
-// http://stackoverflow.com/questions/26583433/c11-implementation-of-spinlock-using-atomic
-class Spinlock {
-GLOOP_NONCOPYABLE(Spinlock)
-public:
-    Spinlock() = default;
+#define GLOOP_NONCOPYABLE(ClassName) \
+private: \
+    ClassName(ClassName const&) = delete; \
+    ClassName& operator=(ClassName const&) = delete;
 
-    void lock()
-    {
-        while (m_locked.test_and_set(std::memory_order_acquire));
-    }
-
-    void unlock()
-    {
-        m_locked.clear(std::memory_order_release);
-    }
-
-private:
-    std::atomic_flag m_locked = ATOMIC_FLAG_INIT;
-};
-
-}  // namespace gloop
-#endif  // GLOOP_SPINLOCK_H_
+#endif  // GLOOP_NONCOPYABLE_H_
