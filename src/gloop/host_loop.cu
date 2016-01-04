@@ -30,6 +30,7 @@
 #include "host_loop.cuh"
 #include "make_unique.h"
 #include "monitor_session.h"
+#include "utility.h"
 namespace gloop {
 
 HostLoop::HostLoop(volatile GPUGlobals* globals)
@@ -107,6 +108,7 @@ void HostLoop::pollerMain()
         .payload = Command::Operation::Complete,
     };
     m_responseQueue->send(&command, sizeof(Command), 0);
+
     while (!m_stop.load(std::memory_order_acquire)) {
     }
 }
@@ -126,7 +128,15 @@ void HostLoop::wait()
 
 bool HostLoop::handle(Command command)
 {
-    return true;
+    switch (command.type) {
+    case Command::Type::Initialize:
+        GLOOP_UNREACHABLE();
+        break;
+    case Command::Type::Operation:
+        if (command.payload == Command::Operation::Complete)
+            return true;
+    }
+    return false;
 }
 
 }  // namespace gloop

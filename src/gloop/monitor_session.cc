@@ -70,10 +70,13 @@ void Session::handleWrite(const boost::system::error_code& error)
 
 bool Session::handle(Command& command)
 {
-    switch (static_cast<Command::Type>(command.type)) {
+    switch (command.type) {
     case Command::Type::Initialize:
         return initialize(command);
+    case Command::Type::Operation:
+        break;
     }
+    return false;
 }
 
 bool Session::initialize(Command& command)
