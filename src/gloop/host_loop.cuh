@@ -24,10 +24,12 @@
 #ifndef GLOOP_HOST_LOOP_H_
 #define GLOOP_HOST_LOOP_H_
 #include <atomic>
+#include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <thread>
 #include <memory>
 #include <uv.h>
+#include "command.h"
 
 struct GPUGlobals;
 
