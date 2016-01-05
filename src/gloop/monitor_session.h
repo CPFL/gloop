@@ -25,7 +25,7 @@
 #define GLOOP_MONITOR_SESSION_H_
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
-#include <thread>
+#include <boost/thread.hpp>
 #include <type_traits>
 #include <memory>
 #include "command.h"
@@ -63,7 +63,7 @@ private:
     uint32_t m_id;
     boost::asio::local::stream_protocol::socket m_socket;
     CommandBuffer m_buffer;
-    std::unique_ptr<std::thread> m_thread;
+    std::unique_ptr<boost::thread> m_thread;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
 };

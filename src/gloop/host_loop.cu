@@ -22,6 +22,7 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <boost/asio.hpp>
+#include <boost/thread.hpp>
 #include <cassert>
 #include <cstdio>
 #include <cuda_runtime_api.h>
@@ -87,7 +88,7 @@ void HostLoop::runPoller()
 {
     assert(!m_poller);
     m_stop.store(false, std::memory_order_release);
-    m_poller = make_unique<std::thread>([this]() {
+    m_poller = make_unique<boost::thread>([this]() {
         pollerMain();
     });
 }

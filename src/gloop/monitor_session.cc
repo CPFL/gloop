@@ -25,6 +25,7 @@
 #include <boost/bind.hpp>
 #include <mutex>
 #include <vector>
+#include "data_log.h"
 #include "make_unique.h"
 #include "monitor_session.h"
 
@@ -39,10 +40,12 @@ Session::Session(boost::asio::io_service& ioService, uint32_t id)
 
 Session::~Session()
 {
+    GLOOP_DATA_LOG("close:(%u)\n", static_cast<unsigned>(id()));
 }
 
 void Session::handShake()
 {
+    GLOOP_DATA_LOG("open:(%u)\n", static_cast<unsigned>(id()));
     boost::asio::async_read(m_socket, boost::asio::buffer(&m_buffer, sizeof(Command)), boost::bind(&Session::handleRead, this, boost::asio::placeholders::error));
 }
 
@@ -83,7 +86,7 @@ bool Session::initialize(Command& command)
 {
     m_requestQueue = Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, id(), true);
     m_responseQueue = Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, id(), true);
-    m_thread = make_unique<std::thread>(&Session::main, this);
+    m_thread = make_unique<boost::thread>(&Session::main, this);
 
     command = (Command) {
         .type = Command::Type::Initialize,

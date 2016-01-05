@@ -21,58 +21,32 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#ifndef GLOOP_DATA_LOG_H_
+#define GLOOP_DATA_LOG_H_
+#include <cstdio>
 
-#include <atomic>
-#include <boost/asio.hpp>
-#include <unistd.h>
-#include "config.h"
-#include "data_log.h"
-#include "monitor_session.h"
+#define GLOOP_RAW_FPRINTF(stream, fmt, args...) do {\
+        std::fprintf(stream, "[GLOOP] " fmt, ##args);\
+        std::fflush(stream);\
+    } while (0)
 
-class Server {
-public:
-    Server(boost::asio::io_service& ioService, const char* endpoint);
+#define GLOOP_FPRINTF(stream, fmt, args...) \
+    GLOOP_RAW_FPRINTF(stream, "%s:%d - " fmt, __func__, __LINE__, ##args)
 
-private:
-    void accept();
+#define GLOOP_FATAL(stream, fmt, args...) do {\
+        std::fprintf(stream, "[GLOOP] %s:%d - " fmt, __func__, __LINE__, ##args);\
+        std::fflush(stream);\
+    } while (0)
 
-    std::atomic<uint32_t> m_nextId { 0 };
-    boost::asio::io_service& m_ioService;
-    boost::asio::local::stream_protocol::acceptor m_acceptor;
-};
+#define GLOOP_DATA_LOG(fmt, args...) GLOOP_FPRINTF(stderr, fmt, ##args)
 
+#if defined(NDEBUG)
+    #define GLOOP_DEBUG(fmt, args...) do { } while (0)
+#else
+    #define GLOOP_DEBUG(fmt, args...) GLOOP_FPRINTF(stderr, fmt, ##args)
+#endif
 
-Server::Server(boost::asio::io_service& ioService, const char* endpoint)
-    : m_ioService(ioService)
-    , m_acceptor(ioService, boost::asio::local::stream_protocol::endpoint(endpoint))
-{
-    accept();
-}
+namespace gloop {
 
-void Server::accept()
-{
-    auto* session = new gloop::monitor::Session(m_ioService, m_nextId++);
-    m_acceptor.async_accept(session->socket(), [=](const boost::system::error_code& error) {
-        if (!error) {
-            session->handShake();
-        } else {
-            delete session;
-        }
-        accept();
-    });
-}
-
-int main(int argc, char** argv)
-{
-    ::unlink(GLOOP_ENDPOINT);
-    try {
-        GLOOP_DATA_LOG("monitor start\n");
-        boost::asio::io_service ioService;
-        Server server(ioService, GLOOP_ENDPOINT);
-        ioService.run();
-    } catch (std::exception& e) {
-        GLOOP_DATA_LOG("Exception: %s\n", e.what());
-    }
-
-    return 0;
-}
+}  // namespae gloop
+#endif  // GLOOP_DATA_LOG_H_

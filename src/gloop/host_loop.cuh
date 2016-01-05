@@ -33,6 +33,10 @@
 
 struct GPUGlobals;
 
+namespace boost {
+class thread;
+}  // namespace boost
+
 namespace gloop {
 
 class HostLoop {
@@ -54,7 +58,7 @@ private:
     volatile GPUGlobals* m_globals;
     uv_loop_t* m_loop;
     std::atomic<bool> m_stop { false };
-    std::unique_ptr<std::thread> m_poller;
+    std::unique_ptr<boost::thread> m_poller;
 
     uint32_t m_id { 0 };
     boost::asio::io_service m_ioService;
