@@ -49,28 +49,18 @@ private:
 template<typename Callback>
 inline __device__ void DeviceLoop::enqueue(Callback callback)
 {
-    BEGIN_SINGLE_THREAD
-    {
-        GPU_ASSERT((m_put + 1 + (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8)) <= m_buffer + m_size);
-        uint64_t* pointer = (uint64_t*)(&callback);
-        *m_put++ = (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8);
-        for (size_t i = 0; i < (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8); ++i) {
-            *m_put++ = *pointer++;
-        }
-        ++m_index;
+    GPU_ASSERT((m_put + 1 + (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8)) <= m_buffer + m_size);
+    uint64_t* pointer = (uint64_t*)(&callback);
+    *m_put++ = (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8);
+    for (size_t i = 0; i < (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8); ++i) {
+        *m_put++ = *pointer++;
     }
-    END_SINGLE_THREAD
+    ++m_index;
 }
 
 inline __device__ bool DeviceLoop::done()
 {
-    __shared__ bool result;
-    BEGIN_SINGLE_THREAD
-    {
-        result = m_index == 0;
-    }
-    END_SINGLE_THREAD
-    return result;
+    return m_index == 0;
 }
 
 }  // namespace gloop
