@@ -36,11 +36,16 @@ __device__ DeviceLoop::DeviceLoop(uint64_t* buffer, size_t size)
 
 __device__ void* DeviceLoop::dequeue()
 {
-    size_t size = *m_get++;
-    void* result = m_get;
-    m_get += size;
-    --m_index;
-    GPU_ASSERT(m_put + m_size > m_get)
+    __shared__ void* result;
+    BEGIN_SINGLE_THREAD
+    {
+        size_t size = *m_get++;
+        result = m_get;
+        m_get += size;
+        --m_index;
+        GPU_ASSERT(m_put + m_size > m_get)
+    }
+    END_SINGLE_THREAD
     return result;
 }
 

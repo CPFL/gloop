@@ -32,8 +32,8 @@ namespace gloop {
 template<typename Callback, class... Args>
 inline __global__ void launch(const Callback& callback, Args... args)
 {
-    uint64_t buffer[4096];
-    DeviceLoop loop(buffer, 4096);
+    __shared__ uint64_t buffer[128];
+    DeviceLoop loop(buffer, 128);
     callback(&loop, std::forward<Args>(args)...);
     while (!loop.done()) {
         Serialized<void>* lambda = reinterpret_cast<Serialized<void>*>(loop.dequeue());
