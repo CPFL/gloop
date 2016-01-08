@@ -42,7 +42,6 @@ namespace gloop {
 class HostLoop : public GPUGlobals {
 GLOOP_NONCOPYABLE(HostLoop);
 public:
-    HostLoop(int deviceNumber);
     ~HostLoop();
 
     uint32_t id() const { return m_id; }
@@ -53,6 +52,8 @@ public:
     static std::unique_ptr<HostLoop> create(int deviceNumber);
 
 private:
+    HostLoop(int deviceNumber);
+
     void runPoller();
     void stopPoller();
     void pollerMain();

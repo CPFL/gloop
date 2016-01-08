@@ -90,7 +90,7 @@ HostLoop::~HostLoop()
 std::unique_ptr<HostLoop> HostLoop::create(int deviceNumber)
 {
     gloop::initialize();
-    return make_unique<HostLoop>(deviceNumber);
+    return std::unique_ptr<HostLoop>(new HostLoop(deviceNumber));
 }
 
 // GPU RPC poller.
@@ -140,12 +140,20 @@ void HostLoop::initialize()
 			_preclose_table);
 	cudaThreadSynchronize();
 	CUDA_SAFE_CALL(cudaPeekAtLastError());
-
 }
 
 void HostLoop::wait()
 {
-    run_gpufs_handler(this, m_deviceNumber);
+    bool done = false;
+    while (!done) {
+        open_loop(this, m_deviceNumber);
+        rw_loop(this);
+        if (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream)) {
+            logGPUfsDone();
+            done = true;
+        }
+        async_close_loop(this);
+    }
 #if 0
     while (true) {
         Command result = { };
