@@ -128,12 +128,8 @@ int main( int argc, char** argv)
 
     std::memset(time_res,0,MAX_TRIALS*sizeof(double));
     for(int i=1;i<trials+1;i++){
-
-
-
-
-        volatile GPUGlobals* gpuGlobals;
-        initializer(&gpuGlobals);
+        std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(global_devicenum);
+        hostLoop->initialize();
 
         init_device_app();
         init_app();
@@ -154,15 +150,14 @@ int main( int argc, char** argv)
         c_open=c_rw=c_close=0;
 
 
-        // test_cpy<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>(d_filenames[0], d_filenames[1]);
+        // test_cpy<<<nblocks,nthreads,0,hostLoop->streamMgr->kernelStream>>>(d_filenames[0], d_filenames[1]);
         {
-            gloop::HostLoop hostLoop(gpuGlobals);
-            gloop::launch<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>([=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
+            gloop::launch<<<nblocks,nthreads,0,hostLoop->streamMgr->kernelStream>>>([=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
                 test_cpy(loop, src, dst);
             }, d_filenames[0], d_filenames[1]);
+            hostLoop->wait();
         }
 
-        run_gpufs_handler(gpuGlobals,global_devicenum);
         cudaError_t error = cudaDeviceSynchronize();
         double time_after=_timestamp();
         if(!i) time_after=0;
@@ -182,7 +177,7 @@ int main( int argc, char** argv)
         //PRINT_DEBUG;
 
         fprintf(stderr,"\n");
-        delete gpuGlobals;
+        hostLoop.reset();
 
         PRINT_MALLOC;
         PRINT_FREE;

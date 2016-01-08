@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -21,55 +21,23 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HOST_LOOP_H_
-#define GLOOP_HOST_LOOP_H_
-#include <atomic>
-#include <boost/asio.hpp>
-#include <boost/interprocess/ipc/message_queue.hpp>
-#include <gpufs/libgpufs/fs_initializer.cu.h>
-#include <memory>
-#include <thread>
-#include <uv.h>
-#include "command.h"
-#include "noncopyable.h"
 
-namespace boost {
-class thread;
-}  // namespace boost
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+#include <mutex>
+#include <thread>
+#include <gpufs/libgpufs/util.cu.h>
+#include "system_initialize.h"
 
 namespace gloop {
 
-class HostLoop : public GPUGlobals {
-GLOOP_NONCOPYABLE(HostLoop);
-public:
-    HostLoop(int deviceNumber);
-    ~HostLoop();
+static std::once_flag initializeFlag;
 
-    uint32_t id() const { return m_id; }
-
-    void initialize();
-    void wait();
-
-    static std::unique_ptr<HostLoop> create(int deviceNumber);
-
-private:
-    void runPoller();
-    void stopPoller();
-    void pollerMain();
-
-    bool handle(Command);
-
-    int m_deviceNumber;
-    uv_loop_t* m_loop;
-    std::atomic<bool> m_stop { false };
-    std::unique_ptr<boost::thread> m_poller;
-
-    uint32_t m_id { 0 };
-    boost::asio::io_service m_ioService;
-    boost::asio::local::stream_protocol::socket m_socket;
-    std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
-    std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
-};
+void initialize()
+{
+    std::call_once(initializeFlag, []() {
+        CUDA_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceMapHost));
+    });
+}
 
 }  // namespace gloop
-#endif  // GLOOP_HOST_LOOP_H_

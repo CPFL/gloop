@@ -50,8 +50,7 @@ __global__ void init_fs(volatile CPU_IPC_OPEN_Queue* _ipcOpenQueue,
 			volatile FTable* _ftable,
 			volatile void* _rtree_raw_store,
 			rtree*volatile _rtree_array,
-			volatile preclose_table* _preclose_table,
-			async_close_rb_t* _async_rpc);
+			volatile preclose_table* _preclose_table);
 
 
 #define  initGpuShmemPtr(T, h_ptr,symbol)\

@@ -26,16 +26,20 @@
 #include <cassert>
 #include <cstdio>
 #include <cuda_runtime_api.h>
+#include <gpufs/libgpufs/fs_initializer.cu.h>
+#include <gpufs/libgpufs/host_loop.h>
+#include <memory>
 #include "command.h"
 #include "config.h"
 #include "host_loop.cuh"
 #include "make_unique.h"
 #include "monitor_session.h"
+#include "system_initialize.h"
 #include "utility.h"
 namespace gloop {
 
-HostLoop::HostLoop(volatile GPUGlobals* globals)
-    : m_globals(globals)
+HostLoop::HostLoop(int deviceNumber)
+    : m_deviceNumber(deviceNumber)
     , m_loop(uv_loop_new())
     , m_socket(m_ioService)
 {
@@ -83,6 +87,12 @@ HostLoop::~HostLoop()
     stopPoller();
 }
 
+std::unique_ptr<HostLoop> HostLoop::create(int deviceNumber)
+{
+    gloop::initialize();
+    return make_unique<HostLoop>(deviceNumber);
+}
+
 // GPU RPC poller.
 void HostLoop::runPoller()
 {
@@ -114,8 +124,29 @@ void HostLoop::pollerMain()
     }
 }
 
+void HostLoop::initialize()
+{
+    // this must be done from a single thread!
+	init_fs<<<1,1>>>(
+            cpu_ipcOpenQueue,
+            cpu_ipcRWQueue,
+            ipcRWManager,
+            otable,
+            ppool,
+            rawStorage,
+            ftable,
+			rtree_pool,
+		 	rtree_array,
+			_preclose_table);
+	cudaThreadSynchronize();
+	CUDA_SAFE_CALL(cudaPeekAtLastError());
+
+}
+
 void HostLoop::wait()
 {
+    run_gpufs_handler(this, m_deviceNumber);
+#if 0
     while (true) {
         Command result = { };
         unsigned int priority { };
@@ -125,6 +156,7 @@ void HostLoop::wait()
             break;
         }
     }
+#endif
 }
 
 bool HostLoop::handle(Command command)

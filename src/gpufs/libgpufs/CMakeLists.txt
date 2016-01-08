@@ -4,6 +4,7 @@ add_library(gpufs STATIC
     fs_initializer.cu
     fs_structures.cu
     hash_table.cu
+    host_loop.cu
     mallocfree.cu
     preclose_table.cu
     radix_tree.cu
