@@ -29,11 +29,13 @@
 
 namespace gloop {
 
+#define GLOOP_SHARED_SLOT_SIZE 256
+
 template<typename Callback, class... Args>
 inline __global__ void launch(const Callback& callback, Args... args)
 {
-    __shared__ uint64_t buffer[128];
-    DeviceLoop loop(buffer, 128);
+    __shared__ uint64_t buffer[GLOOP_SHARED_SLOT_SIZE];
+    DeviceLoop loop(buffer, GLOOP_SHARED_SLOT_SIZE);
     callback(&loop, std::forward<Args>(args)...);
     while (!loop.done()) {
         Serialized<void>* lambda = reinterpret_cast<Serialized<void>*>(loop.dequeue());
