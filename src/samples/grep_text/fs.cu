@@ -76,10 +76,10 @@ int main( int argc, char** argv)
 for(int i=1;i<trials+1;i++){
 
 
-	
-	volatile GPUGlobals* gpuGlobals;
-	initializer(&gpuGlobals);
-	
+
+    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+    hostLoop->initialize();
+
 	init_device_app();
 	init_app();
 
@@ -94,11 +94,10 @@ for(int i=1;i<trials+1;i++){
 	double time_before=_timestamp();
 	if (!i) time_before=0;
 
-    gloop::launch<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>([] __device__ (gloop::DeviceLoop* loop, char* src, char* out, char* dbs) {
+    gloop::launch<<<nblocks,nthreads,0,hostLoop->streamMgr->kernelStream>>>([] __device__ (gloop::DeviceLoop* loop, char* src, char* out, char* dbs) {
         grep_text(loop, src, out, dbs);
     }, d_filenames[0],d_filenames[1],d_filenames[2]);
-	
-	run_gpufs_handler(gpuGlobals,0);
+    hostLoop->wait();
 
 
 
@@ -117,7 +116,7 @@ for(int i=1;i<trials+1;i++){
     //PRINT_DEBUG;
 
 	fprintf(stderr,"\n");
-	delete gpuGlobals;
+    hostLoop.reset();
 
 	PRINT_MALLOC;
 	PRINT_FREE;
