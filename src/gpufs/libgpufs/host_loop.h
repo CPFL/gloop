@@ -22,8 +22,6 @@
 
 struct GPUGlobals;
 
-void run_gpufs_handler(volatile GPUGlobals* gpuGlobals, int deviceNum);
-
 void open_loop(volatile GPUGlobals* globals,int gpuid);
 void rw_loop(volatile GPUGlobals* globals);
 void async_close_loop(volatile GPUGlobals* globals);

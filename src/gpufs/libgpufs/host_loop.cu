@@ -456,19 +456,3 @@ void logGPUfsDone()
 	fprintf(stderr,"Transfer time: %.3f\n",transfer_time);
 	transfer_time=0;
 }
-
-void run_gpufs_handler(volatile GPUGlobals* gpuGlobals, int deviceNum){
-       int device_num=0;
-        int done=0;
-        while(!done)
-        {
-                open_loop(gpuGlobals,device_num);
-                rw_loop(gpuGlobals);
-                if ( cudaErrorNotReady != cudaStreamQuery(gpuGlobals->streamMgr->kernelStream)) {
-			logGPUfsDone();
-                        done=1;
-                }
-                async_close_loop(gpuGlobals);
-        }
-
-}
