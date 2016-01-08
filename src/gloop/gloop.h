@@ -23,7 +23,6 @@
 */
 #ifndef GLOOP_GLOOP_H_
 #define GLOOP_GLOOP_H_
-#include "gloop_host.h"
 #include "entry.cuh"
 #include "fs.cuh"
 #include "function.cuh"

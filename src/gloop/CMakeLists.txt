@@ -32,7 +32,6 @@ include_directories(".")
 # )
 
 add_library(gloop STATIC
-    # gloop_host.cc
     # gloop_device.cu
     # ${CMAKE_CURRENT_BINARY_DIR}/redirector.cc
     host_loop.cu
