@@ -77,8 +77,6 @@ HostLoop::HostLoop(int deviceNumber)
     }
     m_requestQueue = monitor::Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, m_id, false);
     m_responseQueue = monitor::Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, m_id, false);
-
-    runPoller();
 }
 
 HostLoop::~HostLoop()
@@ -114,14 +112,24 @@ void HostLoop::stopPoller()
 
 void HostLoop::pollerMain()
 {
+    bool done = false;
+    while (!done) {
+        open_loop(this, m_deviceNumber);
+        rw_loop(this);
+        if (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream)) {
+            logGPUfsDone();
+            done = true;
+        }
+        async_close_loop(this);
+    }
+
     Command command = {
         .type = Command::Type::Operation,
         .payload = Command::Operation::Complete,
     };
     m_responseQueue->send(&command, sizeof(Command), 0);
-
-    while (!m_stop.load(std::memory_order_acquire)) {
-    }
+    // while (!m_stop.load(std::memory_order_acquire)) {
+    // }
 }
 
 void HostLoop::initialize()
@@ -144,17 +152,7 @@ void HostLoop::initialize()
 
 void HostLoop::wait()
 {
-    bool done = false;
-    while (!done) {
-        open_loop(this, m_deviceNumber);
-        rw_loop(this);
-        if (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream)) {
-            logGPUfsDone();
-            done = true;
-        }
-        async_close_loop(this);
-    }
-#if 0
+    runPoller();
     while (true) {
         Command result = { };
         unsigned int priority { };
@@ -164,7 +162,6 @@ void HostLoop::wait()
             break;
         }
     }
-#endif
 }
 
 bool HostLoop::handle(Command command)
