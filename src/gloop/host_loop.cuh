@@ -59,6 +59,7 @@ private:
     void pollerMain();
 
     bool handle(Command);
+    void send(Command);
 
     int m_deviceNumber;
     uv_loop_t* m_loop;

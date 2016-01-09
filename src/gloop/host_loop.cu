@@ -110,6 +110,11 @@ void HostLoop::stopPoller()
     }
 }
 
+void HostLoop::send(Command command)
+{
+    m_responseQueue->send(&command, sizeof(Command), 0);
+}
+
 void HostLoop::pollerMain()
 {
     bool done = false;
@@ -122,14 +127,10 @@ void HostLoop::pollerMain()
         }
         async_close_loop(this);
     }
-
-    Command command = {
+    send({
         .type = Command::Type::Operation,
         .payload = Command::Operation::Complete,
-    };
-    m_responseQueue->send(&command, sizeof(Command), 0);
-    // while (!m_stop.load(std::memory_order_acquire)) {
-    // }
+    });
 }
 
 void HostLoop::initialize()
@@ -167,12 +168,20 @@ void HostLoop::wait()
 bool HostLoop::handle(Command command)
 {
     switch (command.type) {
-    case Command::Type::Initialize:
+    case Command::Type::Initialize: {
         GLOOP_UNREACHABLE();
         break;
-    case Command::Type::Operation:
+    }
+
+    case Command::Type::Operation: {
+        if (command.payload == Command::Operation::DeviceLoopComplete)
+            return true;
+
         if (command.payload == Command::Operation::Complete)
             return true;
+
+        break;
+    }
     }
     return false;
 }

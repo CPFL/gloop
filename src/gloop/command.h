@@ -31,7 +31,8 @@ struct Command {
         Operation
     };
 
-    enum Operation {
+    enum Operation : uint32_t {
+        DeviceLoopComplete,
         Complete
     };
 
