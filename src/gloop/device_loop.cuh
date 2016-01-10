@@ -24,11 +24,14 @@
 #ifndef GLOOP_DEVICE_LOOP_H_
 #define GLOOP_DEVICE_LOOP_H_
 #include <cstdint>
+#include "nvfunction.cuh"
 #include "utility.h"
 namespace gloop {
 
 class DeviceLoop {
 public:
+    typedef gloop::function<void(DeviceLoop*, int)> Function;
+
     __device__ DeviceLoop(uint64_t* buffer, size_t size);
 
     template<typename Callback>
