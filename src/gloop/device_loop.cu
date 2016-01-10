@@ -25,12 +25,12 @@
 #include "device_loop.cuh"
 namespace gloop {
 
-__device__ DeviceLoop::DeviceLoop(Function* buffer, size_t size)
-    :  m_size(size)
-    , m_functions(buffer)
-    , m_put(m_functions)
-    , m_get(m_functions)
-    , m_pending(0)
+__device__ DeviceLoop::DeviceLoop(uint64_t* buffer, size_t size)
+    : m_buffer(buffer)
+    , m_put(m_buffer)
+    , m_get(m_buffer)
+    , m_size(size)
+    , m_index(0)
 {
 }
 
@@ -39,9 +39,11 @@ __device__ void* DeviceLoop::dequeue()
     __shared__ void* result;
     BEGIN_SINGLE_THREAD
     {
-        result = m_get++;
-        m_pending++;
-        GPU_ASSERT(m_put + m_size > m_get);
+        size_t size = *m_get++;
+        result = m_get;
+        m_get += size;
+        --m_index;
+        GPU_ASSERT(m_put + m_size > m_get)
     }
     END_SINGLE_THREAD
     return result;

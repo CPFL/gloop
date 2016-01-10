@@ -75,8 +75,6 @@
 #ifndef GLOOP__NV_LIBCXX_FUNCTIONAL_H__
 #define GLOOP__NV_LIBCXX_FUNCTIONAL_H__
 
-#define GLOOP_LAMBDA_SIZE 16
-
 #if __cplusplus < 201103L 
   #if defined(_MSC_VER)
     #if _MSC_VER < 1800
@@ -211,7 +209,7 @@ union _Small_functor_types
   void (*__func_ptr)();
   void (__dummy_class::*mem_fn_ptr)();
 
-  uint64_t __payload[GLOOP_LAMBDA_SIZE];
+  uint64_t __payload[4];
 };
 
 struct _Small_functor_data {

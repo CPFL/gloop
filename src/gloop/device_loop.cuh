@@ -25,14 +25,11 @@
 #define GLOOP_DEVICE_LOOP_H_
 #include <cstdint>
 #include "utility.h"
-#include "function.cuh"
 namespace gloop {
 
 class DeviceLoop {
 public:
-    typedef gloop::function<void(DeviceLoop*)> Function;
-
-    __device__ DeviceLoop(Function* buffer, size_t size);
+    __device__ DeviceLoop(uint64_t* buffer, size_t size);
 
     template<typename Callback>
     __device__ void enqueue(Callback callback);
@@ -42,11 +39,11 @@ public:
     __device__ bool done();
 
 private:
+    uint64_t* m_buffer;
+    uint64_t* m_put;
+    uint64_t* m_get;
     size_t m_size;
-    Function* m_functions;
-    Function* m_put;
-    Function* m_get;
-    size_t m_pending;
+    size_t m_index;
 };
 
 template<typename Callback>
@@ -54,9 +51,13 @@ inline __device__ void DeviceLoop::enqueue(Callback callback)
 {
     BEGIN_SINGLE_THREAD
     {
-        GPU_ASSERT(m_put + 1 <= m_functions + m_size)
-        ++m_pending;
-        *m_put++ = callback;
+        GPU_ASSERT((m_put + 1 + (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8)) <= m_buffer + m_size);
+        uint64_t* pointer = (uint64_t*)(&callback);
+        *m_put++ = (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8);
+        for (size_t i = 0; i < (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8); ++i) {
+            *m_put++ = *pointer++;
+        }
+        ++m_index;
     }
     END_SINGLE_THREAD
 }
@@ -66,7 +67,7 @@ inline __device__ bool DeviceLoop::done()
     __shared__ bool result;
     BEGIN_SINGLE_THREAD
     {
-        result = m_pending == 0;
+        result = m_index == 0;
     }
     END_SINGLE_THREAD
     return result;

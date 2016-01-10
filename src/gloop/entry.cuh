@@ -25,22 +25,21 @@
 #define GLOOP_ENTRY_H_
 #include <utility>
 #include "device_loop.cuh"
-#include "function.cuh"
 #include "serialized.cuh"
 
 namespace gloop {
 
-#define GLOOP_SHARED_SLOT_SIZE 1024
+#define GLOOP_SHARED_SLOT_SIZE 256
 
 template<typename Callback, class... Args>
 inline __global__ void launch(const Callback& callback, Args... args)
 {
     __shared__ uint64_t buffer[GLOOP_SHARED_SLOT_SIZE];
-    DeviceLoop loop(reinterpret_cast<DeviceLoop::Function*>(buffer), GLOOP_SHARED_SLOT_SIZE * sizeof(uint64_t) / sizeof(DeviceLoop::Function));
+    DeviceLoop loop(buffer, GLOOP_SHARED_SLOT_SIZE);
     callback(&loop, std::forward<Args>(args)...);
     while (!loop.done()) {
-        DeviceLoop::Function* lambda = reinterpret_cast<DeviceLoop::Function*>(loop.dequeue());
-        (*lambda)(&loop);
+        Serialized<void>* lambda = reinterpret_cast<Serialized<void>*>(loop.dequeue());
+        lambda->callback()(&loop, lambda->value());
     }
 }
 
