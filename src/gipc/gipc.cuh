@@ -31,6 +31,7 @@ class Channel {
 public:
     __device__ void emit();
     __host__ void wait();
+    __host__ bool peek();
 
 private:
     __device__ void lock();
