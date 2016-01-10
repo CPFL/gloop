@@ -26,6 +26,7 @@
 #include <atomic>
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
+#include <gipc/gipc.cuh>
 #include <gpufs/libgpufs/fs_initializer.cu.h>
 #include <memory>
 #include <thread>

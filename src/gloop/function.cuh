@@ -26,6 +26,7 @@
 #include <array>
 #include <cstdint>
 #include "device_loop.cuh"
+#include "nvfunction.cuh"
 namespace gloop {
 
 class DeviceLoop;

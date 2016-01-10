@@ -34,44 +34,48 @@ namespace gloop {
 namespace fs {
 
 template<typename Callback>
-inline __device__ Serialized<Callback> makeSerialized(const Callback& callback, int value)
-{
-    return { value, Lambda<Callback>(callback) };
-}
-
-template<typename Callback>
 inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Callback callback) -> void
 {
     int fd = gopen(filename, mode);
-    loop->enqueue(makeSerialized(callback, fd));
+    loop->enqueue([=](DeviceLoop* loop) {
+        callback(loop, fd);
+    });
 }
 
 template<typename Callback>
 inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Callback callback) -> void
 {
-    size_t written_size = gwrite(fd, offset, count, buffer);
-    loop->enqueue(makeSerialized(callback, written_size));
+    size_t writtenSize = gwrite(fd, offset, count, buffer);
+    loop->enqueue([=](DeviceLoop* loop) {
+        callback(loop, writtenSize);
+    });
 }
 
 template<typename Callback>
 inline __device__ auto fstat(DeviceLoop* loop, int fd, Callback callback) -> void
 {
     size_t value = ::fstat(fd);
-    loop->enqueue(makeSerialized(callback, value));
+    loop->enqueue([=](DeviceLoop* loop) {
+        callback(loop, value);
+    });
 }
 
 template<typename Callback>
 inline __device__ auto close(DeviceLoop* loop, int fd, Callback callback) -> void
 {
     int err = gclose(fd);
-    loop->enqueue(makeSerialized(callback, err));
+    loop->enqueue([=](DeviceLoop* loop) {
+        callback(loop, err);
+    });
 }
 
 template<typename Callback>
 inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t size, unsigned char* buffer, Callback callback) -> void
 {
     size_t bytes_read = gread(fd, offset, size, buffer);
-    loop->enqueue(makeSerialized(callback, bytes_read));
+    loop->enqueue([=](DeviceLoop* loop) {
+        callback(loop, bytes_read);
+    });
 }
 
 } }  // namespace gloop::fs
