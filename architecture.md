@@ -42,3 +42,5 @@ async I/O の種類は多岐にわたる. FileSystem APIs はその代表例だ�
     + 難しい, ため, host loop と連携して適当なタイミングで全部一旦止めるということをしてあげなければならない. gang scheduling のようなものを想定している.
     + これを scheduling してあげるというのも, ひとつの challenge.
     + しかし, Chimera や ISCA '14 の paper を引いて, 「将来的に SM 単位で別の context が動かせるなら, わざわざ全部 empty にする必要はなくって」というように言うこともできる.
++ mmap, msync などの API, gloop が host に抜けられるのであれば抜けて cudaHostRegister で本当に mmaped memory を与えれば良い
+    + GPU kernel 実行中は GPU page table を変えられない, のであれば, 一回抜けて戻れば良い

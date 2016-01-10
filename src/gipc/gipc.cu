@@ -45,8 +45,13 @@ __host__ void Channel::wait()
 {
     while (m_status == Status::Wait);
     __sync_synchronize();
-    m_status == Status::Wait;
+    m_status = Status::Wait;
     __sync_synchronize();
+}
+
+__host__ bool Channel::peek()
+{
+    return m_status == Status::Emit;
 }
 
 __device__ void Channel::lock()
