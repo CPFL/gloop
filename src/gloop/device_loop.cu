@@ -26,7 +26,7 @@
 #include "function.cuh"
 namespace gloop {
 
-__device__ DeviceLoop::DeviceLoop(uint64_t* buffer, size_t size)
+__device__ DeviceLoop::DeviceLoop(Callback* buffer, size_t size)
     : m_buffer(buffer)
     , m_put(m_buffer)
     , m_get(m_buffer)
@@ -35,16 +35,24 @@ __device__ DeviceLoop::DeviceLoop(uint64_t* buffer, size_t size)
 {
 }
 
+static inline __device__ void copyCallback(const DeviceLoop::Callback* src, DeviceLoop::Callback* dst)
+{
+    uint64_t* pointer = (uint64_t*)(src);
+    uint64_t* put = (uint64_t*)(dst);
+    static_assert(sizeof(DeviceLoop::Callback) % sizeof(uint64_t) == 0, "Callback size should be n * sizeof(uint64_t)");
+    for (size_t i = 0; i < (sizeof(DeviceLoop::Callback) / sizeof(uint64_t)); ++i) {
+        *put++ = *pointer++;
+    }
+}
+
 __device__ void DeviceLoop::enqueue(Callback lambda)
 {
     BEGIN_SINGLE_THREAD
     {
         static_assert(sizeof(Callback) % sizeof(uint64_t) == 0, "OK.");
-        GPU_ASSERT((m_put + 1 + (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8)) <= m_buffer + m_size);
-        uint64_t* pointer = (uint64_t*)(&lambda);
-        for (size_t i = 0; i < (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8); ++i) {
-            *m_put++ = *pointer++;
-        }
+        GPU_ASSERT((m_put + 1) <= m_buffer + m_size);
+        copyCallback(&lambda, m_put);
+        m_put++;
         ++m_index;
     }
     END_SINGLE_THREAD
@@ -56,7 +64,7 @@ __device__ void* DeviceLoop::dequeue()
     BEGIN_SINGLE_THREAD
     {
         result = m_get;
-        m_get += (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8);
+        m_get++;
         --m_index;
         GPU_ASSERT(m_put + m_size > m_get)
     }

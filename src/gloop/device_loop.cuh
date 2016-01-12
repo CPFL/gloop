@@ -32,7 +32,7 @@ class DeviceLoop {
 public:
     typedef gloop::function<void(DeviceLoop*, int)> Callback;
 
-    __device__ DeviceLoop(uint64_t* buffer, size_t size);
+    __device__ DeviceLoop(Callback* buffer, size_t size);
 
     __device__ void enqueue(Callback lambda);
 
@@ -43,9 +43,9 @@ public:
     __device__ bool drain();
 
 private:
-    uint64_t* m_buffer;
-    uint64_t* m_put;
-    uint64_t* m_get;
+    Callback* m_buffer;
+    Callback* m_put;
+    Callback* m_get;
     size_t m_size;
     size_t m_index;
 };

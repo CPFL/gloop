@@ -34,7 +34,7 @@ template<typename Callback, class... Args>
 inline __global__ void launch(const Callback& callback, Args... args)
 {
     __shared__ uint64_t buffer[GLOOP_SHARED_SLOT_SIZE];
-    DeviceLoop loop(buffer, GLOOP_SHARED_SLOT_SIZE);
+    DeviceLoop loop(reinterpret_cast<DeviceLoop::Callback*>(buffer), GLOOP_SHARED_SLOT_SIZE * sizeof(uint64_t) / sizeof(DeviceLoop::Callback));
     callback(&loop, std::forward<Args>(args)...);
     loop.drain();
 }
