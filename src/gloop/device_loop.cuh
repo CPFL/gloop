@@ -24,7 +24,6 @@
 #ifndef GLOOP_DEVICE_LOOP_H_
 #define GLOOP_DEVICE_LOOP_H_
 #include <cstdint>
-#include "device_context.cuh"
 #include "function.cuh"
 #include "utility.h"
 namespace gloop {
@@ -34,10 +33,25 @@ namespace gloop {
 class DeviceLoop {
 public:
     typedef gloop::function<void(DeviceLoop*, int)> Callback;
-
     typedef std::aligned_storage<sizeof(DeviceLoop::Callback), alignof(DeviceLoop::Callback)>::type UninitializedStorage;
 
-    static const std::size_t PerBlockSize = GLOOP_SHARED_SLOT_SIZE * sizeof(UninitializedStorage);
+    struct DeviceLoopControl {
+        uint32_t put { 0 };
+        uint32_t get { 0 };
+        uint64_t used { static_cast<decltype(used)>(-1) };
+        uint8_t queue[GLOOP_SHARED_SLOT_SIZE];
+    };
+
+    struct PerBlockContext {
+        static const std::size_t PerBlockSize = GLOOP_SHARED_SLOT_SIZE * sizeof(UninitializedStorage);
+        typedef std::aligned_storage<PerBlockSize>::type Slots;
+        Slots slots;
+        DeviceLoopControl control;
+    };
+
+    struct DeviceContext {
+        PerBlockContext* context;
+    };
 
     __device__ DeviceLoop(DeviceContext, UninitializedStorage* buffer, size_t size);
 
@@ -58,10 +72,7 @@ private:
 
     DeviceContext m_deviceContext;
     Callback* m_slots;
-    uint32_t m_put;
-    uint32_t m_get;
-    uint32_t m_queue[GLOOP_SHARED_SLOT_SIZE];
-    uint64_t m_used;
+    DeviceLoopControl m_control;
 };
 
 }  // namespace gloop

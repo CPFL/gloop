@@ -22,6 +22,7 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <gpufs/libgpufs/fs_calls.cu.h>
+#include "device_context.cuh"
 #include "device_loop.cuh"
 #include "function.cuh"
 namespace gloop {
@@ -29,9 +30,7 @@ namespace gloop {
 __device__ DeviceLoop::DeviceLoop(DeviceContext deviceContext, UninitializedStorage* buffer, size_t size)
     : m_deviceContext(deviceContext)
     , m_slots(reinterpret_cast<Callback*>(buffer))
-    , m_put(0)
-    , m_get(0)
-    , m_used(static_cast<decltype(m_used)>(-1))
+    , m_control()
 {
     GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
 }
@@ -52,8 +51,8 @@ __device__ void DeviceLoop::enqueue(Callback lambda)
     BEGIN_SINGLE_THREAD
     {
         uint32_t position = allocate();
-        m_queue[m_put++ % GLOOP_SHARED_SLOT_SIZE] = position;
-        GPU_ASSERT(m_put != m_get);
+        m_control.queue[m_control.put++ % GLOOP_SHARED_SLOT_SIZE] = position;
+        GPU_ASSERT(m_control.put != m_control.get);
         GPU_ASSERT(position < GLOOP_SHARED_SLOT_SIZE);
         copyCallback(&lambda, m_slots + position);
     }
@@ -65,11 +64,11 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
     __shared__ Callback* result;
     BEGIN_SINGLE_THREAD
     {
-        if (m_put == m_get) {
+        if (m_control.put == m_control.get) {
             result = nullptr;
         } else {
-            GPU_ASSERT(m_get != m_put);
-            uint32_t position = m_queue[m_get++ % GLOOP_SHARED_SLOT_SIZE];
+            GPU_ASSERT(m_control.get != m_control.put);
+            uint32_t position = m_control.queue[m_control.get++ % GLOOP_SHARED_SLOT_SIZE];
             result = m_slots + position;
         }
     }
@@ -89,10 +88,10 @@ __device__ bool DeviceLoop::drain()
 __device__ uint32_t DeviceLoop::allocate()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    int position = __ffsll(m_used) - 1;
+    int position = __ffsll(m_control.used) - 1;
     GPU_ASSERT(position >= 0);
-    GPU_ASSERT(m_used & (1ULL << position));
-    m_used &= ~(1ULL << position);
+    GPU_ASSERT(m_control.used & (1ULL << position));
+    m_control.used &= ~(1ULL << position);
     return position;
 }
 
@@ -101,19 +100,55 @@ __device__ void DeviceLoop::deallocate(Callback* callback)
     BEGIN_SINGLE_THREAD
     {
         uint32_t position = (callback - m_slots);
-        GPU_ASSERT(!(m_used & (1ULL << position)));
-        m_used |= (1ULL << position);
+        GPU_ASSERT(!(m_control.used & (1ULL << position)));
+        m_control.used |= (1ULL << position);
     }
     END_SINGLE_THREAD
 }
 
+static GLOOP_ALWAYS_INLINE __device__ void copyContext(void* src, void* dst)
+{
+    typedef DeviceLoop::UninitializedStorage UninitializedStorage;
+    UninitializedStorage* storage = reinterpret_cast<UninitializedStorage*>(dst);
+    if (GLOOP_TMAX() >= GLOOP_SHARED_SLOT_SIZE) {
+        int target = GLOOP_TID();
+        if (GLOOP_TID() < GLOOP_SHARED_SLOT_SIZE) {
+            *(storage + target) = *(reinterpret_cast<UninitializedStorage*>(src) + target);
+        }
+    } else {
+        int count = GLOOP_SHARED_SLOT_SIZE / GLOOP_TMAX();
+        if (GLOOP_SHARED_SLOT_SIZE % GLOOP_TMAX()) {
+            ++count;
+        }
+        for (int i = 0; i < count; ++i) {
+            int target = count * GLOOP_TID() + i;
+            if (target < GLOOP_SHARED_SLOT_SIZE) {
+                *(storage + target) = *(reinterpret_cast<UninitializedStorage*>(src) + target);
+            }
+        }
+    }
+}
+
 __device__ void DeviceLoop::suspend()
 {
+    PerBlockContext* blockContext = m_deviceContext.context + GLOOP_BID();
+    copyContext(m_slots, &blockContext->slots);
+    BEGIN_SINGLE_THREAD
+    {
+        m_control = blockContext->control;
+    }
+    END_SINGLE_THREAD
 }
 
 __device__ void DeviceLoop::resume()
 {
-    uint32_t blockId = GLOOP_BID();
+    PerBlockContext* blockContext = m_deviceContext.context + GLOOP_BID();
+    copyContext(&blockContext->slots, m_slots);
+    BEGIN_SINGLE_THREAD
+    {
+        blockContext->control = m_control;
+    }
+    END_SINGLE_THREAD
 }
 
 }  // namespace gloop

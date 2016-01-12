@@ -35,13 +35,13 @@ GLOOP_NONCOPYABLE(HostContext);
 public:
     __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 blocks);
 
-    __host__ DeviceContext deviceContext() { return { m_context }; }
+    __host__ DeviceContext deviceContext() { return m_context; }
 
 private:
     HostContext(dim3 blocks);
     bool initialize();
 
-    void* m_context { nullptr };
+    DeviceContext m_context { nullptr };
     dim3 m_blocks { };
     bool m_resumed { false };
 };

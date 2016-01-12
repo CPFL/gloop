@@ -23,11 +23,10 @@
 */
 #ifndef GLOOP_DEVICE_CONTEXT_CU_H_
 #define GLOOP_DEVICE_CONTEXT_CU_H_
+#include "device_loop.cuh"
 namespace gloop {
 
-struct DeviceContext {
-    void* context;
-};
+typedef DeviceLoop::DeviceContext DeviceContext;
 
 }  // namespace gloop
 #endif  // GLOOP_DEVICE_CONTEXT_CU_H_
