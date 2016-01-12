@@ -82,6 +82,7 @@ __device__ bool DeviceLoop::drain()
     while (true) {
         // FIXME: more coarse grained checking.
         if (g_channel->peek()) {
+            suspend();
             return false;
         }
 
