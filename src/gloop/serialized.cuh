@@ -24,29 +24,13 @@
 #ifndef GLOOP_SERIALIZED_H_
 #define GLOOP_SERIALIZED_H_
 #include "function.cuh"
+#include "nvfunction.cuh"
 
 namespace gloop {
 
-template<typename Callback>
 struct Serialized {
     uint64_t m_value;
-    Lambda<Callback> m_lambda;
-};
-
-template<>
-struct Serialized<void> {
-    uint64_t m_value;
-
-    __device__ uint64_t value()
-    {
-        return m_value;
-    }
-
-    __device__ Callback& callback()
-    {
-        // The alignment of the m_value is largest in the system, 8byte.
-        return *reinterpret_cast<Callback*>((reinterpret_cast<char*>(this) + sizeof(m_value)));
-    }
+    gloop::function<void(DeviceLoop*, int)> m_lambda;
 };
 
 }  // namespace gloop

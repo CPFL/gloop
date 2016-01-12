@@ -34,9 +34,9 @@ namespace gloop {
 namespace fs {
 
 template<typename Callback>
-inline __device__ Serialized<Callback> makeSerialized(const Callback& callback, int value)
+inline __device__ Serialized makeSerialized(const Callback& callback, int value)
 {
-    return { value, Lambda<Callback>(callback) };
+    return { value, callback };
 }
 
 template<typename Callback>

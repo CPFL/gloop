@@ -53,8 +53,8 @@ __device__ void* DeviceLoop::dequeue()
 __device__ bool DeviceLoop::drain()
 {
     while (!done()) {
-        Serialized<void>* lambda = reinterpret_cast<Serialized<void>*>(dequeue());
-        lambda->callback()(this, lambda->value());
+        Serialized* lambda = reinterpret_cast<Serialized*>(dequeue());
+        lambda->m_lambda(this, lambda->m_value);
     }
     return true;
 }
