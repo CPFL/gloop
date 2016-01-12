@@ -113,7 +113,7 @@ static GLOOP_ALWAYS_INLINE __device__ void copyContext(void* src, void* dst)
     UninitializedStorage* storage = reinterpret_cast<UninitializedStorage*>(dst);
     if (GLOOP_TMAX() >= GLOOP_SHARED_SLOT_SIZE) {
         int target = GLOOP_TID();
-        if (GLOOP_TID() < GLOOP_SHARED_SLOT_SIZE) {
+        if (target < GLOOP_SHARED_SLOT_SIZE) {
             *(storage + target) = *(reinterpret_cast<UninitializedStorage*>(src) + target);
         }
     } else {
@@ -122,7 +122,7 @@ static GLOOP_ALWAYS_INLINE __device__ void copyContext(void* src, void* dst)
             ++count;
         }
         for (int i = 0; i < count; ++i) {
-            int target = count * GLOOP_TID() + i;
+            int target = i * GLOOP_TMAX() + GLOOP_TID();
             if (target < GLOOP_SHARED_SLOT_SIZE) {
                 *(storage + target) = *(reinterpret_cast<UninitializedStorage*>(src) + target);
             }
@@ -136,7 +136,7 @@ __device__ void DeviceLoop::suspend()
     copyContext(m_slots, &blockContext->slots);
     BEGIN_SINGLE_THREAD
     {
-        m_control = blockContext->control;
+        blockContext->control = m_control;
     }
     END_SINGLE_THREAD
 }
@@ -147,7 +147,7 @@ __device__ void DeviceLoop::resume()
     copyContext(&blockContext->slots, m_slots);
     BEGIN_SINGLE_THREAD
     {
-        blockContext->control = m_control;
+        m_control = blockContext->control;
     }
     END_SINGLE_THREAD
 }
