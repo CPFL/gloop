@@ -25,7 +25,7 @@
 #include <boost/thread.hpp>
 #include <cassert>
 #include <cstdio>
-#include <cuda_runtime_api.h>
+#include <cuda.h>
 #include <gpufs/libgpufs/fs_initializer.cu.h>
 #include <gpufs/libgpufs/host_loop.h>
 #include <memory>
@@ -88,7 +88,9 @@ HostLoop::~HostLoop()
 std::unique_ptr<HostLoop> HostLoop::create(int deviceNumber)
 {
     gloop::initialize();
-    return std::unique_ptr<HostLoop>(new HostLoop(deviceNumber));
+    std::unique_ptr<HostLoop> hostLoop(new HostLoop(deviceNumber));
+    hostLoop->initialize();
+    return hostLoop;
 }
 
 // GPU RPC poller.

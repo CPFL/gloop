@@ -128,8 +128,9 @@ int main( int argc, char** argv)
 
     std::memset(time_res,0,MAX_TRIALS*sizeof(double));
     for(int i=1;i<trials+1;i++){
+        dim3 blocks(nblocks);
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(global_devicenum);
-        hostLoop->initialize();
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
 
         init_device_app();
         init_app();

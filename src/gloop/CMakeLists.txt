@@ -36,6 +36,7 @@ include_directories("../gpufs/gpufs_con_lib.user/")
 add_library(gloop STATIC
     # gloop_device.cu
     # ${CMAKE_CURRENT_BINARY_DIR}/redirector.cc
+    host_context.cu
     host_loop.cu
     device_loop.cu
     system_initialize.cu

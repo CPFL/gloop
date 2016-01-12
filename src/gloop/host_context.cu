@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -21,11 +21,26 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_GLOOP_H_
-#define GLOOP_GLOOP_H_
-#include "device_loop.cuh"
-#include "entry.cuh"
-#include "fs.cuh"
 #include "host_context.cuh"
-#include "host_loop.cuh"
-#endif  // GLOOP_GLOOP_H_
+
+namespace gloop {
+
+std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 blocks)
+{
+    std::unique_ptr<HostContext> hostContext(new HostContext(blocks));
+    if (!hostContext->initialize())
+        return nullptr;
+    return hostContext;
+}
+
+HostContext::HostContext(dim3 blocks)
+    : m_blocks(blocks)
+{
+}
+
+bool HostContext::initialize()
+{
+    return true;
+}
+
+}  // namespace gloop

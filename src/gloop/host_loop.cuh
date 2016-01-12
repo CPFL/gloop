@@ -46,13 +46,14 @@ public:
 
     uint32_t id() const { return m_id; }
 
-    void initialize();
     void wait();
 
     static std::unique_ptr<HostLoop> create(int deviceNumber);
 
 private:
     HostLoop(int deviceNumber);
+
+    void initialize();
 
     void runPoller();
     void stopPoller();
