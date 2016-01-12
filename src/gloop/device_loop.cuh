@@ -24,11 +24,14 @@
 #ifndef GLOOP_DEVICE_LOOP_H_
 #define GLOOP_DEVICE_LOOP_H_
 #include <cstdint>
+#include <gipc/gipc.cuh>
 #include "function.cuh"
 #include "utility.h"
 namespace gloop {
 
 #define GLOOP_SHARED_SLOT_SIZE 64
+
+__device__ extern gipc::Channel* g_channel;
 
 class DeviceLoop {
 public:

@@ -79,9 +79,18 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
 
 __device__ bool DeviceLoop::drain()
 {
-    while (Callback* callback = dequeue()) {
-        (*callback)(this, 0);
-        deallocate(callback);
+    while (true) {
+        // FIXME: more coarse grained checking.
+        if (g_channel->peek()) {
+            return false;
+        }
+
+        if (Callback* callback = dequeue()) {
+            (*callback)(this, 0);
+            deallocate(callback);
+        } else {
+            break;
+        }
     }
     return true;
 }

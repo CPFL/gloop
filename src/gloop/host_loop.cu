@@ -31,12 +31,15 @@
 #include <memory>
 #include "command.h"
 #include "config.h"
+#include "helper.cuh"
 #include "host_loop.cuh"
 #include "make_unique.h"
 #include "monitor_session.h"
 #include "system_initialize.h"
 #include "utility.h"
 namespace gloop {
+
+__device__ gipc::Channel* g_channel;
 
 HostLoop::HostLoop(int deviceNumber)
     : m_deviceNumber(deviceNumber)
@@ -121,17 +124,19 @@ void HostLoop::pollerMain()
 {
     bool done = false;
     while (!done) {
+        if (m_stop.load(std::memory_order_acquire)) {
+            m_channel->stop();
+            while (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream));
+            m_stop.store(false, std::memory_order_acquire);
+            break;
+        }
+
         open_loop(this, m_deviceNumber);
         rw_loop(this);
 
-        if (m_stop.load(std::memory_order_acquire)) {
-            while (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream));
-            m_stop.store(false, std::memory_order_acquire);
-        }
-
         if (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream)) {
             logGPUfsDone();
-            done = true;
+            break;
         }
         async_close_loop(this);
     }
@@ -139,6 +144,11 @@ void HostLoop::pollerMain()
         .type = Command::Type::Operation,
         .payload = Command::Operation::Complete,
     });
+}
+
+__global__ static void initializeDevice(gipc::Channel* channel)
+{
+    g_channel = channel;
 }
 
 void HostLoop::initialize()
@@ -156,6 +166,10 @@ void HostLoop::initialize()
 			rtree_pool,
 		 	rtree_array,
 			_preclose_table);
+
+    // FIXME: This is not efficient.
+    initializeDevice<<<1, 1>>>(m_channel.get());
+
 	cudaThreadSynchronize();
 	CUDA_SAFE_CALL(cudaPeekAtLastError());
 }
@@ -163,6 +177,7 @@ void HostLoop::initialize()
 void HostLoop::wait()
 {
     runPoller();
+
     while (true) {
         Command result = { };
         unsigned int priority { };

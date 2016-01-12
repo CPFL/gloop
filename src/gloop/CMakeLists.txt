@@ -49,6 +49,7 @@ target_link_libraries(gloop
     boost_system
     boost_thread
     boost_date_time
+    gipc
 )
 
 add_executable(gloop-monitor

@@ -41,6 +41,13 @@ __device__ void Channel::emit()
     unlock();
 }
 
+__host__ void Channel::stop()
+{
+    __sync_synchronize();
+    m_status = Status::Emit;
+    __sync_synchronize();
+}
+
 __host__ void Channel::wait()
 {
     while (m_status == Status::Wait);
@@ -49,7 +56,7 @@ __host__ void Channel::wait()
     __sync_synchronize();
 }
 
-__host__ bool Channel::peek()
+__device__ __host__ bool Channel::peek()
 {
     return m_status == Status::Emit;
 }

@@ -32,7 +32,9 @@ class Channel : public Mapped {
 public:
     __device__ void emit();
     __host__ void wait();
-    __host__ bool peek();
+    __device__ __host__ bool peek();
+
+    __host__ void stop();
 
 private:
     __device__ void lock();
