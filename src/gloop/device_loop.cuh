@@ -28,6 +28,8 @@
 #include "utility.h"
 namespace gloop {
 
+#define GLOOP_SHARED_SLOT_SIZE 64
+
 class DeviceLoop {
 public:
     typedef gloop::function<void(DeviceLoop*, int)> Callback;
@@ -36,18 +38,23 @@ public:
 
     __device__ void enqueue(Callback lambda);
 
-    __device__ void* dequeue();
+    __device__ Callback* dequeue();
 
     __device__ bool done();
 
     __device__ bool drain();
 
+    __device__ void deallocate(Callback* callback);
+
 private:
-    Callback* m_buffer;
-    Callback* m_put;
-    Callback* m_get;
-    size_t m_size;
-    size_t m_pending;
+    __device__ uint32_t allocate();
+
+
+    Callback* m_slots;
+    size_t m_put;
+    size_t m_get;
+    uint64_t m_used;
+    uint32_t m_queue[GLOOP_SHARED_SLOT_SIZE];
 };
 
 inline __device__ bool DeviceLoop::done()
@@ -55,7 +62,7 @@ inline __device__ bool DeviceLoop::done()
     __shared__ bool result;
     BEGIN_SINGLE_THREAD
     {
-        result = m_pending == 0;
+        result = m_put == m_get;
     }
     END_SINGLE_THREAD
     return result;
