@@ -60,6 +60,6 @@
 
 #define GLOOP_UNREACHABLE() GLOOP_ASSERT(0)
 
-#define GLOOP_ASSERT_SINGLE_THREAD()
+#define GLOOP_ASSERT_SINGLE_THREAD() GPU_ASSERT(threadIdx.x+threadIdx.y+threadIdx.z ==0)
 
 #endif  // GLOOP_UTILITY_H_
