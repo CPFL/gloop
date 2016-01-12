@@ -42,7 +42,7 @@ HostContext::HostContext(dim3 blocks)
 
 bool HostContext::initialize()
 {
-    GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceContext::PerBlockContext) * m_blocks.x * m_blocks.y));
+    GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceLoop::PerBlockContext) * m_blocks.x * m_blocks.y));
     return true;
 }
 
