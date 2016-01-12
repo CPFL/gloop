@@ -30,12 +30,20 @@
 
 namespace gloop {
 
-template<typename Lambda, class... Args>
-inline __global__ void launch(DeviceContext deviceContext, const Lambda& callback, Args... args)
+template<typename DeviceLambda, class... Args>
+inline __global__ void launch(DeviceContext deviceContext, const DeviceLambda& callback, Args... args)
 {
     __shared__ DeviceLoop::UninitializedStorage buffer[GLOOP_SHARED_SLOT_SIZE];
     DeviceLoop loop(deviceContext, buffer, GLOOP_SHARED_SLOT_SIZE);
     callback(&loop, std::forward<Args>(args)...);
+    loop.drain();
+}
+
+inline __global__ void resume(DeviceContext deviceContext)
+{
+    __shared__ DeviceLoop::UninitializedStorage buffer[GLOOP_SHARED_SLOT_SIZE];
+    DeviceLoop loop(deviceContext, buffer, GLOOP_SHARED_SLOT_SIZE);
+    loop.resume();
     loop.drain();
 }
 

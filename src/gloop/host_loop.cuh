@@ -31,6 +31,8 @@
 #include <thread>
 #include <uv.h>
 #include "command.h"
+#include "entry.cuh"
+#include "host_context.cuh"
 #include "noncopyable.h"
 
 namespace boost {
@@ -49,6 +51,9 @@ public:
     void wait();
 
     static std::unique_ptr<HostLoop> create(int deviceNumber);
+
+    template<typename DeviceLambda, class... Args>
+    __host__ void launch(HostContext& context, dim3 threads, const DeviceLambda& callback, Args... args);
 
 private:
     HostLoop(int deviceNumber);
@@ -73,6 +78,13 @@ private:
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
 };
+
+template<typename DeviceLambda, class... Args>
+inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
+{
+    gloop::launch<<<hostContext.blocks(), threads, 0, this->streamMgr->kernelStream>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
+    wait();
+}
 
 }  // namespace gloop
 #endif  // GLOOP_HOST_LOOP_H_

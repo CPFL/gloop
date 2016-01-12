@@ -26,9 +26,10 @@
 #include <cuda.h>
 #include <memory>
 #include "device_context.cuh"
-#include "host_loop.cuh"
 #include "noncopyable.h"
 namespace gloop {
+
+class HostLoop;
 
 class HostContext {
 GLOOP_NONCOPYABLE(HostContext);
@@ -36,6 +37,8 @@ public:
     __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 blocks);
 
     __host__ DeviceContext deviceContext() { return m_context; }
+
+    dim3 blocks() const { return m_blocks; }
 
 private:
     HostContext(dim3 blocks);
@@ -45,6 +48,7 @@ private:
     dim3 m_blocks { };
     bool m_resumed { false };
 };
+
 
 }  // namespace gloop
 #endif  // GLOOP_HOST_CONTEXT_CU_H_

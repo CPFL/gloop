@@ -63,12 +63,13 @@ public:
 
     __device__ void deallocate(Callback* callback);
 
+    __device__ void resume();
+
 private:
     __device__ uint32_t allocate();
 
     __device__ void suspend();
 
-    __device__ void resume();
 
     DeviceContext m_deviceContext;
     Callback* m_slots;

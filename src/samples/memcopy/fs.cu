@@ -153,10 +153,9 @@ int main( int argc, char** argv)
 
         // test_cpy<<<nblocks,nthreads,0,hostLoop->streamMgr->kernelStream>>>(d_filenames[0], d_filenames[1]);
         {
-            gloop::launch<<<nblocks,nthreads,0,hostLoop->streamMgr->kernelStream>>>(hostContext->deviceContext(), [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
+            hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
                 test_cpy(loop, src, dst);
             }, d_filenames[0], d_filenames[1]);
-            hostLoop->wait();
         }
 
         cudaError_t error = cudaDeviceSynchronize();
