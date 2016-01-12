@@ -23,7 +23,7 @@
 */
 #include <gpufs/libgpufs/fs_calls.cu.h>
 #include "device_loop.cuh"
-#include "serialized.cuh"
+#include "nvfunction.cuh"
 namespace gloop {
 
 __device__ DeviceLoop::DeviceLoop(uint64_t* buffer, size_t size)
@@ -33,6 +33,21 @@ __device__ DeviceLoop::DeviceLoop(uint64_t* buffer, size_t size)
     , m_size(size)
     , m_index(0)
 {
+}
+
+__device__ void DeviceLoop::enqueue(Callback lambda)
+{
+    BEGIN_SINGLE_THREAD
+    {
+        GPU_ASSERT((m_put + 1 + (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8)) <= m_buffer + m_size);
+        uint64_t* pointer = (uint64_t*)(&lambda);
+        *m_put++ = (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8);
+        for (size_t i = 0; i < (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8); ++i) {
+            *m_put++ = *pointer++;
+        }
+        ++m_index;
+    }
+    END_SINGLE_THREAD
 }
 
 __device__ void* DeviceLoop::dequeue()
@@ -53,8 +68,8 @@ __device__ void* DeviceLoop::dequeue()
 __device__ bool DeviceLoop::drain()
 {
     while (!done()) {
-        Serialized* lambda = reinterpret_cast<Serialized*>(dequeue());
-        lambda->m_lambda(this, lambda->m_value);
+        Callback* lambda = reinterpret_cast<Callback*>(dequeue());
+        (*lambda)(this, 0);
     }
     return true;
 }

@@ -28,60 +28,53 @@
 #include <utility>
 #include "device_loop.cuh"
 #include "nvfunction.cuh"
-#include "serialized.cuh"
 
 namespace gloop {
 namespace fs {
 
 template<typename Callback>
-inline __device__ Serialized makeSerialized(const Callback& callback, int value)
-{
-    return { value, callback };
-}
-
-template<typename Callback>
 inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Callback callback) -> void
 {
     int fd = gopen(filename, mode);
-    loop->enqueue(makeSerialized([callback, fd](DeviceLoop* loop, int) {
+    loop->enqueue([callback, fd](DeviceLoop* loop, int) {
         callback(loop, fd);
-    }, fd));
+    });
 }
 
 template<typename Callback>
 inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Callback callback) -> void
 {
     size_t writtenSize = gwrite(fd, offset, count, buffer);
-    loop->enqueue(makeSerialized([callback, writtenSize](DeviceLoop* loop, int) {
+    loop->enqueue([callback, writtenSize](DeviceLoop* loop, int) {
         callback(loop, writtenSize);
-    }, writtenSize));
+    });
 }
 
 template<typename Callback>
 inline __device__ auto fstat(DeviceLoop* loop, int fd, Callback callback) -> void
 {
     size_t value = ::fstat(fd);
-    loop->enqueue(makeSerialized([callback, value](DeviceLoop* loop, int) {
+    loop->enqueue([callback, value](DeviceLoop* loop, int) {
         callback(loop, value);
-    }, value));
+    });
 }
 
 template<typename Callback>
 inline __device__ auto close(DeviceLoop* loop, int fd, Callback callback) -> void
 {
     int err = gclose(fd);
-    loop->enqueue(makeSerialized([callback, err](DeviceLoop* loop, int) {
+    loop->enqueue([callback, err](DeviceLoop* loop, int) {
         callback(loop, err);
-    }, err));
+    });
 }
 
 template<typename Callback>
 inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t size, unsigned char* buffer, Callback callback) -> void
 {
     size_t bytesRead = gread(fd, offset, size, buffer);
-    loop->enqueue(makeSerialized([callback, bytesRead](DeviceLoop* loop, int) {
+    loop->enqueue([callback, bytesRead](DeviceLoop* loop, int) {
         callback(loop, bytesRead);
-    }, bytesRead));
+    });
 }
 
 } }  // namespace gloop::fs

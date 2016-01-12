@@ -30,12 +30,11 @@ namespace gloop {
 
 class DeviceLoop {
 public:
-    typedef gloop::function<void(DeviceLoop*, int)> Function;
+    typedef gloop::function<void(DeviceLoop*, int)> Callback;
 
     __device__ DeviceLoop(uint64_t* buffer, size_t size);
 
-    template<typename Callback>
-    __device__ void enqueue(Callback callback);
+    __device__ void enqueue(Callback lambda);
 
     __device__ void* dequeue();
 
@@ -50,22 +49,6 @@ private:
     size_t m_size;
     size_t m_index;
 };
-
-template<typename Callback>
-inline __device__ void DeviceLoop::enqueue(Callback callback)
-{
-    BEGIN_SINGLE_THREAD
-    {
-        GPU_ASSERT((m_put + 1 + (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8)) <= m_buffer + m_size);
-        uint64_t* pointer = (uint64_t*)(&callback);
-        *m_put++ = (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8);
-        for (size_t i = 0; i < (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8); ++i) {
-            *m_put++ = *pointer++;
-        }
-        ++m_index;
-    }
-    END_SINGLE_THREAD
-}
 
 inline __device__ bool DeviceLoop::done()
 {
