@@ -35,6 +35,7 @@ __device__ DeviceLoop::DeviceLoop(DeviceContext deviceContext, UninitializedStor
     GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
 }
 
+// TODO: Callback should be treated as destructible.
 static inline __device__ void copyCallback(const DeviceLoop::Callback* src, DeviceLoop::Callback* dst)
 {
     uint64_t* pointer = (uint64_t*)(src);
