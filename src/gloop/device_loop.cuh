@@ -47,7 +47,7 @@ private:
     Callback* m_put;
     Callback* m_get;
     size_t m_size;
-    size_t m_index;
+    size_t m_pending;
 };
 
 inline __device__ bool DeviceLoop::done()
@@ -55,7 +55,7 @@ inline __device__ bool DeviceLoop::done()
     __shared__ bool result;
     BEGIN_SINGLE_THREAD
     {
-        result = m_index == 0;
+        result = m_pending == 0;
     }
     END_SINGLE_THREAD
     return result;

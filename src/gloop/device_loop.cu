@@ -31,7 +31,7 @@ __device__ DeviceLoop::DeviceLoop(Callback* buffer, size_t size)
     , m_put(m_buffer)
     , m_get(m_buffer)
     , m_size(size)
-    , m_index(0)
+    , m_pending(0)
 {
 }
 
@@ -53,7 +53,7 @@ __device__ void DeviceLoop::enqueue(Callback lambda)
         GPU_ASSERT((m_put + 1) <= m_buffer + m_size);
         copyCallback(&lambda, m_put);
         m_put++;
-        ++m_index;
+        ++m_pending;
     }
     END_SINGLE_THREAD
 }
@@ -65,7 +65,7 @@ __device__ void* DeviceLoop::dequeue()
     {
         result = m_get;
         m_get++;
-        --m_index;
+        --m_pending;
         GPU_ASSERT(m_put + m_size > m_get)
     }
     END_SINGLE_THREAD
