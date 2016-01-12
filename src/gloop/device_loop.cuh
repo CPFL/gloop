@@ -44,14 +44,14 @@ public:
 
     __device__ Callback* dequeue();
 
-    __device__ bool done();
-
     __device__ bool drain();
 
     __device__ void deallocate(Callback* callback);
 
 private:
     __device__ uint32_t allocate();
+
+    GLOOP_ALWAYS_INLINE __device__ bool done();
 
 
     Callback* m_slots;

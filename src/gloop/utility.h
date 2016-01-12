@@ -67,4 +67,6 @@
         exit(-1);\
     }
 
+#define GLOOP_ALWAYS_INLINE inline __attribute__((__always_inline__))
+
 #endif  // GLOOP_UTILITY_H_
