@@ -65,20 +65,13 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
     __shared__ Callback* result;
     BEGIN_SINGLE_THREAD
     {
-        GPU_ASSERT(m_get != m_put);
-        uint32_t position = m_queue[m_get++ % GLOOP_SHARED_SLOT_SIZE];
-        result = m_slots + position;
-    }
-    END_SINGLE_THREAD
-    return result;
-}
-
-__device__ bool DeviceLoop::done()
-{
-    __shared__ bool result;
-    BEGIN_SINGLE_THREAD
-    {
-        result = m_put == m_get;
+        if (m_put == m_get) {
+            result = nullptr;
+        } else {
+            GPU_ASSERT(m_get != m_put);
+            uint32_t position = m_queue[m_get++ % GLOOP_SHARED_SLOT_SIZE];
+            result = m_slots + position;
+        }
     }
     END_SINGLE_THREAD
     return result;
@@ -86,8 +79,7 @@ __device__ bool DeviceLoop::done()
 
 __device__ bool DeviceLoop::drain()
 {
-    while (!done()) {
-        Callback* callback = dequeue();
+    while (Callback* callback = dequeue()) {
         (*callback)(this, 0);
         deallocate(callback);
     }

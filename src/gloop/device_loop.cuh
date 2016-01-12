@@ -52,7 +52,6 @@ public:
 private:
     __device__ uint32_t allocate();
 
-    GLOOP_ALWAYS_INLINE __device__ bool done();
     __device__ void suspend();
 
     __device__ void resume();
