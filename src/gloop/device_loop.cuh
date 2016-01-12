@@ -58,10 +58,10 @@ private:
 
     DeviceContext m_deviceContext;
     Callback* m_slots;
-    size_t m_put;
-    size_t m_get;
-    uint64_t m_used;
+    uint32_t m_put;
+    uint32_t m_get;
     uint32_t m_queue[GLOOP_SHARED_SLOT_SIZE];
+    uint64_t m_used;
 };
 
 }  // namespace gloop
