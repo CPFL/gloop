@@ -190,16 +190,16 @@ bool HostLoop::handle(Command command)
     }
 
     case Command::Type::Operation: {
-        if (command.payload == Command::Operation::HostBack) {
+        switch (static_cast<Command::Operation>(command.payload)) {
+        case Command::Operation::HostBack:
             return hostBack();
+
+        case Command::Operation::DeviceLoopComplete:
+            return true;
+
+        case Command::Operation::Complete:
+            return true;
         }
-
-        if (command.payload == Command::Operation::DeviceLoopComplete)
-            return true;
-
-        if (command.payload == Command::Operation::Complete)
-            return true;
-
         break;
     }
     }
