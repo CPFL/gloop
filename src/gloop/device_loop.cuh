@@ -41,6 +41,8 @@ public:
 
     __device__ bool done();
 
+    __device__ bool drain();
+
 private:
     uint64_t* m_buffer;
     uint64_t* m_put;

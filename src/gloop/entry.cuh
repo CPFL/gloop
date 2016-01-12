@@ -25,7 +25,6 @@
 #define GLOOP_ENTRY_H_
 #include <utility>
 #include "device_loop.cuh"
-#include "serialized.cuh"
 
 namespace gloop {
 
@@ -37,10 +36,7 @@ inline __global__ void launch(const Callback& callback, Args... args)
     __shared__ uint64_t buffer[GLOOP_SHARED_SLOT_SIZE];
     DeviceLoop loop(buffer, GLOOP_SHARED_SLOT_SIZE);
     callback(&loop, std::forward<Args>(args)...);
-    while (!loop.done()) {
-        Serialized<void>* lambda = reinterpret_cast<Serialized<void>*>(loop.dequeue());
-        lambda->callback()(&loop, lambda->value());
-    }
+    loop.drain();
 }
 
 }  // namespace gloop

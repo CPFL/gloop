@@ -23,6 +23,7 @@
 */
 #include <gpufs/libgpufs/fs_calls.cu.h>
 #include "device_loop.cuh"
+#include "serialized.cuh"
 namespace gloop {
 
 __device__ DeviceLoop::DeviceLoop(uint64_t* buffer, size_t size)
@@ -47,6 +48,15 @@ __device__ void* DeviceLoop::dequeue()
     }
     END_SINGLE_THREAD
     return result;
+}
+
+__device__ bool DeviceLoop::drain()
+{
+    while (!done()) {
+        Serialized<void>* lambda = reinterpret_cast<Serialized<void>*>(dequeue());
+        lambda->callback()(this, lambda->value());
+    }
+    return true;
 }
 
 }  // namespace gloop
