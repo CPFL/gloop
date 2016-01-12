@@ -39,9 +39,9 @@ __device__ void DeviceLoop::enqueue(Callback lambda)
 {
     BEGIN_SINGLE_THREAD
     {
+        static_assert(sizeof(Callback) % sizeof(uint64_t) == 0, "OK.");
         GPU_ASSERT((m_put + 1 + (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8)) <= m_buffer + m_size);
         uint64_t* pointer = (uint64_t*)(&lambda);
-        *m_put++ = (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8);
         for (size_t i = 0; i < (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8); ++i) {
             *m_put++ = *pointer++;
         }
@@ -55,9 +55,8 @@ __device__ void* DeviceLoop::dequeue()
     __shared__ void* result;
     BEGIN_SINGLE_THREAD
     {
-        size_t size = *m_get++;
         result = m_get;
-        m_get += size;
+        m_get += (GLOOP_ROUNDUP(sizeof(Callback), 8) / 8);
         --m_index;
         GPU_ASSERT(m_put + m_size > m_get)
     }
