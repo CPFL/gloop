@@ -29,8 +29,9 @@ namespace gloop {
 std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 blocks)
 {
     std::unique_ptr<HostContext> hostContext(new HostContext(blocks));
-    if (!hostContext->initialize())
+    if (!hostContext->initialize()) {
         return nullptr;
+    }
     return hostContext;
 }
 

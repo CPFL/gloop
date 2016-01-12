@@ -69,4 +69,7 @@
 
 #define GLOOP_ALWAYS_INLINE inline __attribute__((__always_inline__))
 
+#define GLOOP_TID() (threadIdx.x + threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y)
+#define GLOOP_BID() (blockIdx.x + blockIdx.y * gridDim.x)
+
 #endif  // GLOOP_UTILITY_H_

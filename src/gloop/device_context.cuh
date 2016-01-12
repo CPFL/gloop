@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -21,23 +21,13 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_ENTRY_H_
-#define GLOOP_ENTRY_H_
-#include <type_traits>
-#include <utility>
-#include "device_context.cuh"
-#include "device_loop.cuh"
-
+#ifndef GLOOP_DEVICE_CONTEXT_CU_H_
+#define GLOOP_DEVICE_CONTEXT_CU_H_
 namespace gloop {
 
-template<typename Lambda, class... Args>
-inline __global__ void launch(DeviceContext deviceContext, const Lambda& callback, Args... args)
-{
-    __shared__ DeviceLoop::UninitializedStorage buffer[GLOOP_SHARED_SLOT_SIZE];
-    DeviceLoop loop(deviceContext, buffer, GLOOP_SHARED_SLOT_SIZE);
-    callback(&loop, std::forward<Args>(args)...);
-    loop.drain();
-}
+struct DeviceContext {
+    void* context;
+};
 
 }  // namespace gloop
-#endif  // GLOOP_ENTRY_H_
+#endif  // GLOOP_DEVICE_CONTEXT_CU_H_

@@ -24,6 +24,7 @@
 #ifndef GLOOP_DEVICE_LOOP_H_
 #define GLOOP_DEVICE_LOOP_H_
 #include <cstdint>
+#include "device_context.cuh"
 #include "function.cuh"
 #include "utility.h"
 namespace gloop {
@@ -38,7 +39,7 @@ public:
 
     static const std::size_t PerBlockSize = GLOOP_SHARED_SLOT_SIZE * sizeof(UninitializedStorage);
 
-    __device__ DeviceLoop(UninitializedStorage* buffer, size_t size);
+    __device__ DeviceLoop(DeviceContext, UninitializedStorage* buffer, size_t size);
 
     __device__ void enqueue(Callback lambda);
 
@@ -52,8 +53,11 @@ private:
     __device__ uint32_t allocate();
 
     GLOOP_ALWAYS_INLINE __device__ bool done();
+    __device__ void suspend();
 
+    __device__ void resume();
 
+    DeviceContext m_deviceContext;
     Callback* m_slots;
     size_t m_put;
     size_t m_get;

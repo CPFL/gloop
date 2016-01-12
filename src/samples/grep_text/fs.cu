@@ -95,7 +95,7 @@ for(int i=1;i<trials+1;i++){
 	double time_before=_timestamp();
 	if (!i) time_before=0;
 
-    gloop::launch<<<blocks,nthreads,0,hostLoop->streamMgr->kernelStream>>>([] __device__ (gloop::DeviceLoop* loop, char* src, char* out, char* dbs) {
+    gloop::launch<<<blocks,nthreads,0,hostLoop->streamMgr->kernelStream>>>(hostContext->deviceContext(), [] __device__ (gloop::DeviceLoop* loop, char* src, char* out, char* dbs) {
         grep_text(loop, src, out, dbs);
     }, d_filenames[0],d_filenames[1],d_filenames[2]);
     hostLoop->wait();
