@@ -72,6 +72,17 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
     return result;
 }
 
+__device__ bool DeviceLoop::done()
+{
+    __shared__ bool result;
+    BEGIN_SINGLE_THREAD
+    {
+        result = m_put == m_get;
+    }
+    END_SINGLE_THREAD
+    return result;
+}
+
 __device__ bool DeviceLoop::drain()
 {
     while (!done()) {

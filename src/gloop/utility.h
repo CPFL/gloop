@@ -62,4 +62,9 @@
 
 #define GLOOP_ASSERT_SINGLE_THREAD() GPU_ASSERT(threadIdx.x+threadIdx.y+threadIdx.z ==0)
 
+#define GLOOP_CUDA_SAFE_CALL(x) if((x) != cudaSuccess) {\
+        fprintf(stderr, "CUDA ERROR %s: %d %s\n", __FILE__, __LINE__, cudaGetErrorString(cudaGetLastError()));\
+        exit(-1);\
+    }
+
 #endif  // GLOOP_UTILITY_H_

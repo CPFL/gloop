@@ -36,6 +36,8 @@ public:
 
     typedef std::aligned_storage<sizeof(DeviceLoop::Callback), alignof(DeviceLoop::Callback)>::type UninitializedStorage;
 
+    static const std::size_t PerBlockSize = GLOOP_SHARED_SLOT_SIZE * sizeof(UninitializedStorage);
+
     __device__ DeviceLoop(UninitializedStorage* buffer, size_t size);
 
     __device__ void enqueue(Callback lambda);
@@ -58,17 +60,6 @@ private:
     uint64_t m_used;
     uint32_t m_queue[GLOOP_SHARED_SLOT_SIZE];
 };
-
-inline __device__ bool DeviceLoop::done()
-{
-    __shared__ bool result;
-    BEGIN_SINGLE_THREAD
-    {
-        result = m_put == m_get;
-    }
-    END_SINGLE_THREAD
-    return result;
-}
 
 }  // namespace gloop
 #endif  // GLOOP_DEVICE_LOOP_H_

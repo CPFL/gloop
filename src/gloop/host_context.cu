@@ -21,6 +21,7 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include "device_loop.cuh"
 #include "host_context.cuh"
 
 namespace gloop {
@@ -40,6 +41,7 @@ HostContext::HostContext(dim3 blocks)
 
 bool HostContext::initialize()
 {
+    GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context, DeviceLoop::PerBlockSize * m_blocks.x * m_blocks.y));
     return true;
 }
 
