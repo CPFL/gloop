@@ -32,8 +32,8 @@
 namespace gloop {
 namespace fs {
 
-template<typename Callback>
-inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Callback callback) -> void
+template<typename Lambda>
+inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Lambda callback) -> void
 {
     int fd = gopen(filename, mode);
     loop->enqueue([callback, fd](DeviceLoop* loop, int) {
@@ -41,8 +41,8 @@ inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Callback
     });
 }
 
-template<typename Callback>
-inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Callback callback) -> void
+template<typename Lambda>
+inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     size_t writtenSize = gwrite(fd, offset, count, buffer);
     loop->enqueue([callback, writtenSize](DeviceLoop* loop, int) {
@@ -50,8 +50,8 @@ inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t cou
     });
 }
 
-template<typename Callback>
-inline __device__ auto fstat(DeviceLoop* loop, int fd, Callback callback) -> void
+template<typename Lambda>
+inline __device__ auto fstat(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
     size_t value = ::fstat(fd);
     loop->enqueue([callback, value](DeviceLoop* loop, int) {
@@ -59,8 +59,8 @@ inline __device__ auto fstat(DeviceLoop* loop, int fd, Callback callback) -> voi
     });
 }
 
-template<typename Callback>
-inline __device__ auto close(DeviceLoop* loop, int fd, Callback callback) -> void
+template<typename Lambda>
+inline __device__ auto close(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
     int err = gclose(fd);
     loop->enqueue([callback, err](DeviceLoop* loop, int) {
@@ -68,8 +68,8 @@ inline __device__ auto close(DeviceLoop* loop, int fd, Callback callback) -> voi
     });
 }
 
-template<typename Callback>
-inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t size, unsigned char* buffer, Callback callback) -> void
+template<typename Lambda>
+inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t size, unsigned char* buffer, Lambda callback) -> void
 {
     size_t bytesRead = gread(fd, offset, size, buffer);
     loop->enqueue([callback, bytesRead](DeviceLoop* loop, int) {

@@ -23,6 +23,7 @@
 */
 #ifndef GLOOP_ENTRY_H_
 #define GLOOP_ENTRY_H_
+#include <type_traits>
 #include <utility>
 #include "device_loop.cuh"
 
@@ -31,8 +32,8 @@ namespace gloop {
 template<typename Lambda, class... Args>
 inline __global__ void launch(const Lambda& callback, Args... args)
 {
-    __shared__ uint64_t buffer[(GLOOP_SHARED_SLOT_SIZE * sizeof(DeviceLoop::Callback)) / sizeof(uint64_t)];
-    DeviceLoop loop(reinterpret_cast<DeviceLoop::Callback*>(buffer), GLOOP_SHARED_SLOT_SIZE);
+    __shared__ DeviceLoop::UninitializedStorage buffer[GLOOP_SHARED_SLOT_SIZE];
+    DeviceLoop loop(buffer, GLOOP_SHARED_SLOT_SIZE);
     callback(&loop, std::forward<Args>(args)...);
     loop.drain();
 }

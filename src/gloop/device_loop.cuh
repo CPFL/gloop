@@ -34,7 +34,9 @@ class DeviceLoop {
 public:
     typedef gloop::function<void(DeviceLoop*, int)> Callback;
 
-    __device__ DeviceLoop(Callback* buffer, size_t size);
+    typedef std::aligned_storage<sizeof(DeviceLoop::Callback), alignof(DeviceLoop::Callback)>::type UninitializedStorage;
+
+    __device__ DeviceLoop(UninitializedStorage* buffer, size_t size);
 
     __device__ void enqueue(Callback lambda);
 

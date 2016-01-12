@@ -26,8 +26,8 @@
 #include "function.cuh"
 namespace gloop {
 
-__device__ DeviceLoop::DeviceLoop(Callback* buffer, size_t size)
-    : m_slots(buffer)
+__device__ DeviceLoop::DeviceLoop(UninitializedStorage* buffer, size_t size)
+    : m_slots(reinterpret_cast<Callback*>(buffer))
     , m_put(0)
     , m_get(0)
     , m_used(static_cast<decltype(m_used)>(-1))
