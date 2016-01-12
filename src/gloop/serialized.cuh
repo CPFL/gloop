@@ -23,7 +23,6 @@
 */
 #ifndef GLOOP_SERIALIZED_H_
 #define GLOOP_SERIALIZED_H_
-#include "function.cuh"
 #include "nvfunction.cuh"
 
 namespace gloop {

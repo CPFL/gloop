@@ -27,7 +27,7 @@
 #include <type_traits>
 #include <utility>
 #include "device_loop.cuh"
-#include "function.cuh"
+#include "nvfunction.cuh"
 #include "serialized.cuh"
 
 namespace gloop {
