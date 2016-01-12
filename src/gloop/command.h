@@ -32,6 +32,7 @@ struct Command {
     };
 
     enum Operation : uint32_t {
+        HostBack,
         DeviceLoopComplete,
         Complete
     };

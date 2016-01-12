@@ -27,6 +27,7 @@
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <gpufs/libgpufs/fs_initializer.cu.h>
+#include <gipc/gipc.cuh>
 #include <memory>
 #include <thread>
 #include <uv.h>
@@ -67,10 +68,17 @@ private:
     bool handle(Command);
     void send(Command);
 
+    bool hostBack();
+
     int m_deviceNumber;
     uv_loop_t* m_loop;
     std::atomic<bool> m_stop { false };
+    std::atomic<bool> m_hostBack { false };
     std::unique_ptr<boost::thread> m_poller;
+
+    HostContext* m_currentContext { nullptr };
+
+    std::unique_ptr<gipc::Channel> m_channel;
 
     uint32_t m_id { 0 };
     boost::asio::io_service m_ioService;
@@ -82,8 +90,10 @@ private:
 template<typename DeviceLambda, class... Args>
 inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
 {
+    m_currentContext = &hostContext;
     gloop::launch<<<hostContext.blocks(), threads, 0, this->streamMgr->kernelStream>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
     wait();
+    m_currentContext = nullptr;
 }
 
 }  // namespace gloop

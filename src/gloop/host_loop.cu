@@ -123,6 +123,12 @@ void HostLoop::pollerMain()
     while (!done) {
         open_loop(this, m_deviceNumber);
         rw_loop(this);
+
+        if (m_stop.load(std::memory_order_acquire)) {
+            while (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream));
+            m_stop.store(false, std::memory_order_acquire);
+        }
+
         if (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream)) {
             logGPUfsDone();
             done = true;
@@ -137,6 +143,7 @@ void HostLoop::pollerMain()
 
 void HostLoop::initialize()
 {
+    m_channel = make_unique<gipc::Channel>();
     // this must be done from a single thread!
 	init_fs<<<1,1>>>(
             cpu_ipcOpenQueue,
@@ -167,6 +174,13 @@ void HostLoop::wait()
     }
 }
 
+bool HostLoop::hostBack()
+{
+    m_stop.store(true, std::memory_order_release);
+    while (m_stop.load(std::memory_order_acquire));
+    return true;
+}
+
 bool HostLoop::handle(Command command)
 {
     switch (command.type) {
@@ -176,6 +190,10 @@ bool HostLoop::handle(Command command)
     }
 
     case Command::Type::Operation: {
+        if (command.payload == Command::Operation::HostBack) {
+            return hostBack();
+        }
+
         if (command.payload == Command::Operation::DeviceLoopComplete)
             return true;
 

@@ -24,10 +24,11 @@
 #ifndef GIPC_GIPC_CU_H_
 #define GIPC_GIPC_CU_H_
 #include <cstdint>
+#include "mapped.cuh"
 
 namespace gipc {
 
-class Channel {
+class Channel : public Mapped {
 public:
     __device__ void emit();
     __host__ void wait();
