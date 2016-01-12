@@ -25,7 +25,7 @@
 #define GLOOP_GLOOP_H_
 #include "entry.cuh"
 #include "fs.cuh"
-#include "nvfunction.cuh"
+#include "function.cuh"
 #include "host_loop.cuh"
 #include "device_loop.cuh"
 #endif  // GLOOP_GLOOP_H_

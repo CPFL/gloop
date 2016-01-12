@@ -23,7 +23,7 @@
 */
 #include <gpufs/libgpufs/fs_calls.cu.h>
 #include "device_loop.cuh"
-#include "nvfunction.cuh"
+#include "function.cuh"
 namespace gloop {
 
 __device__ DeviceLoop::DeviceLoop(uint64_t* buffer, size_t size)
