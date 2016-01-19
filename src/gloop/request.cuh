@@ -21,30 +21,59 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "device_context.cuh"
-#include "host_context.cuh"
-
+#ifndef GLOOP_REQUEST_CU_H_
+#define GLOOP_REQUEST_CU_H_
 namespace gloop {
+namespace request {
 
-std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 blocks)
-{
-    std::unique_ptr<HostContext> hostContext(new HostContext(blocks));
-    if (!hostContext->initialize()) {
-        return nullptr;
-    }
-    return hostContext;
-}
+// Derived from GPUfs.
+#define GLOOP_FILENAME_SIZE 32
 
-HostContext::HostContext(dim3 blocks)
-    : m_blocks(blocks)
-{
-}
+struct Result {
+    int result;
+};
 
-bool HostContext::initialize()
-{
-    GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceLoop::PerBlockContext) * m_blocks.x * m_blocks.y));
-    GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&m_context.channels, sizeof(DeviceLoop::PerBlockIPC) * m_blocks.x * m_blocks.y, cudaHostAllocMapped));
-    return true;
-}
+struct Filename {
+    char name[GLOOP_FILENAME_SIZE];
+};
 
-}  // namespace gloop
+struct Open {
+    Filename filename;
+    int mode;
+};
+
+struct Write {
+    int fd;
+    size_t offset;
+    size_t count;
+    unsigned char* buffer;
+};
+
+struct Fstat {
+    int fd;
+};
+
+struct Close {
+    int fd;
+};
+
+struct Read {
+    int fd;
+    size_t offset;
+    size_t size;
+    unsigned char* buffer;
+};
+
+struct Request {
+    union {
+        Open open;
+        Write write;
+        Fstat fstat;
+        Close close;
+        Read read;
+        Result result;
+    } u;
+};
+
+} }  // namespace gloop::request
+#endif  // GLOOP_REQUEST_CU_H_

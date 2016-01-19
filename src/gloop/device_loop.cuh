@@ -26,6 +26,7 @@
 #include <cstdint>
 #include <gipc/gipc.cuh>
 #include "function.cuh"
+#include "request.cuh"
 #include "utility.h"
 namespace gloop {
 
@@ -52,8 +53,15 @@ public:
         DeviceLoopControl control;
     };
 
+    struct PerBlockIPC {
+        uint64_t hostPending { 0 };
+        uint64_t devicePending { 0 };
+        request::Request requests[GLOOP_SHARED_SLOT_SIZE] { { } };
+    };
+
     struct DeviceContext {
         PerBlockContext* context;
+        PerBlockIPC* channels;
     };
 
     __device__ DeviceLoop(DeviceContext, UninitializedStorage* buffer, size_t size);
