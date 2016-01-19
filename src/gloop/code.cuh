@@ -23,10 +23,11 @@
 */
 #ifndef GLOOP_CODE_CU_H_
 #define GLOOP_CODE_CU_H_
+#include <cstdint>
 namespace gloop {
 
 enum class Code : uint32_t {
-    Open,
+    Open = 0,
     Write,
     Fstat,
     Close,

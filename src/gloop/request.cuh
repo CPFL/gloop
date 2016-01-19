@@ -65,6 +65,7 @@ struct Read {
 };
 
 struct Request {
+    uint32_t code;
     union {
         Open open;
         Write write;

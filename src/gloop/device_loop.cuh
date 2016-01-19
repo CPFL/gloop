@@ -25,6 +25,7 @@
 #define GLOOP_DEVICE_LOOP_H_
 #include <cstdint>
 #include <gipc/gipc.cuh>
+#include "code.cuh"
 #include "function.cuh"
 #include "request.cuh"
 #include "utility.h"
@@ -68,7 +69,7 @@ public:
 
     __device__ request::Request* enqueue(Callback lambda);
 
-    __device__ void emit(request::Request*);
+    __device__ void emit(Code code, request::Request*);
 
     __device__ Callback* dequeue();
 

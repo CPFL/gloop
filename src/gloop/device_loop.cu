@@ -166,11 +166,15 @@ __device__ void DeviceLoop::resume()
     END_SINGLE_THREAD
 }
 
-__device__ void DeviceLoop::emit(request::Request* request)
+__device__ void DeviceLoop::emit(Code code, request::Request* request)
 {
     BEGIN_SINGLE_THREAD
     {
+        request->code = static_cast<uint32_t>(code);
         uint32_t pos = position(request);
+        __threadfence_system();
+        channel()->hostPending |= (1ULL << pos);
+        __threadfence_system();
     }
     END_SINGLE_THREAD
 }
