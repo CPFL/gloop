@@ -46,18 +46,21 @@ static inline __device__ void copyCallback(const DeviceLoop::Callback* src, Devi
     }
 }
 
-__device__ void DeviceLoop::enqueue(Callback lambda)
+__device__ request::Request* DeviceLoop::enqueue(Callback lambda)
 {
+    __shared__ request::Request* result;
     static_assert(sizeof(Callback) % sizeof(uint64_t) == 0, "OK.");
     BEGIN_SINGLE_THREAD
     {
-        uint32_t position = allocate();
-        m_control.queue[m_control.put++ % GLOOP_SHARED_SLOT_SIZE] = position;
+        uint32_t pos = allocate();
+        m_control.queue[m_control.put++ % GLOOP_SHARED_SLOT_SIZE] = pos;
+        result = channel()->requests + pos;
         GPU_ASSERT(m_control.put != m_control.get);
-        GPU_ASSERT(position < GLOOP_SHARED_SLOT_SIZE);
-        copyCallback(&lambda, m_slots + position);
+        GPU_ASSERT(pos < GLOOP_SHARED_SLOT_SIZE);
+        copyCallback(&lambda, m_slots + pos);
     }
     END_SINGLE_THREAD
+    return result;
 }
 
 __device__ auto DeviceLoop::dequeue() -> Callback*
@@ -69,8 +72,8 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
             result = nullptr;
         } else {
             GPU_ASSERT(m_control.get != m_control.put);
-            uint32_t position = m_control.queue[m_control.get++ % GLOOP_SHARED_SLOT_SIZE];
-            result = m_slots + position;
+            uint32_t pos = m_control.queue[m_control.get++ % GLOOP_SHARED_SLOT_SIZE];
+            result = m_slots + pos;
         }
     }
     END_SINGLE_THREAD
@@ -87,7 +90,8 @@ __device__ bool DeviceLoop::drain()
         }
 
         if (Callback* callback = dequeue()) {
-            (*callback)(this, 0);
+            uint32_t pos = position(callback);
+            (*callback)(this, &channel()->requests[pos]);
             deallocate(callback);
         } else {
             break;
@@ -99,20 +103,20 @@ __device__ bool DeviceLoop::drain()
 __device__ uint32_t DeviceLoop::allocate()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    int position = __ffsll(m_control.used) - 1;
-    GPU_ASSERT(position >= 0);
-    GPU_ASSERT(m_control.used & (1ULL << position));
-    m_control.used &= ~(1ULL << position);
-    return position;
+    int pos = __ffsll(m_control.used) - 1;
+    GPU_ASSERT(pos >= 0);
+    GPU_ASSERT(m_control.used & (1ULL << pos));
+    m_control.used &= ~(1ULL << pos);
+    return pos;
 }
 
 __device__ void DeviceLoop::deallocate(Callback* callback)
 {
     BEGIN_SINGLE_THREAD
     {
-        uint32_t position = (callback - m_slots);
-        GPU_ASSERT(!(m_control.used & (1ULL << position)));
-        m_control.used |= (1ULL << position);
+        uint32_t pos = position(callback);
+        GPU_ASSERT(!(m_control.used & (1ULL << pos)));
+        m_control.used |= (1ULL << pos);
     }
     END_SINGLE_THREAD
 }
@@ -142,7 +146,7 @@ static GLOOP_ALWAYS_INLINE __device__ void copyContext(void* src, void* dst)
 
 __device__ void DeviceLoop::suspend()
 {
-    PerBlockContext* blockContext = m_deviceContext.context + GLOOP_BID();
+    PerBlockContext* blockContext = context();
     copyContext(m_slots, &blockContext->slots);
     BEGIN_SINGLE_THREAD
     {
@@ -153,11 +157,20 @@ __device__ void DeviceLoop::suspend()
 
 __device__ void DeviceLoop::resume()
 {
-    PerBlockContext* blockContext = m_deviceContext.context + GLOOP_BID();
+    PerBlockContext* blockContext = context();
     copyContext(&blockContext->slots, m_slots);
     BEGIN_SINGLE_THREAD
     {
         m_control = blockContext->control;
+    }
+    END_SINGLE_THREAD
+}
+
+__device__ void DeviceLoop::emit(request::Request* request)
+{
+    BEGIN_SINGLE_THREAD
+    {
+        uint32_t pos = position(request);
     }
     END_SINGLE_THREAD
 }

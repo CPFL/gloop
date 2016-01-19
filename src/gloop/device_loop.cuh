@@ -36,7 +36,7 @@ __device__ extern gipc::Channel* g_channel;
 
 class DeviceLoop {
 public:
-    typedef gloop::function<void(DeviceLoop*, int)> Callback;
+    typedef gloop::function<void(DeviceLoop*, request::Request*)> Callback;
     typedef std::aligned_storage<sizeof(DeviceLoop::Callback), alignof(DeviceLoop::Callback)>::type UninitializedStorage;
 
     struct DeviceLoopControl {
@@ -66,7 +66,9 @@ public:
 
     __device__ DeviceLoop(DeviceContext, UninitializedStorage* buffer, size_t size);
 
-    __device__ void enqueue(Callback lambda);
+    __device__ request::Request* enqueue(Callback lambda);
+
+    __device__ void emit(request::Request*);
 
     __device__ Callback* dequeue();
 
@@ -81,11 +83,36 @@ private:
 
     __device__ void suspend();
 
+    GLOOP_ALWAYS_INLINE __device__ PerBlockIPC* channel() const;
+    GLOOP_ALWAYS_INLINE __device__ PerBlockContext* context() const;
+    GLOOP_ALWAYS_INLINE __device__ uint32_t position(Callback*);
+    GLOOP_ALWAYS_INLINE __device__ uint32_t position(request::Request*);
+
 
     DeviceContext m_deviceContext;
     Callback* m_slots;
     DeviceLoopControl m_control;
 };
+
+__device__ uint32_t DeviceLoop::position(Callback* callback)
+{
+    return callback - m_slots;
+}
+
+__device__ uint32_t DeviceLoop::position(request::Request* request)
+{
+    return request - channel()->requests;
+}
+
+__device__ auto DeviceLoop::channel() const -> PerBlockIPC*
+{
+    return m_deviceContext.channels + GLOOP_BID();
+}
+
+__device__ auto DeviceLoop::context() const -> PerBlockContext*
+{
+    return m_deviceContext.context + GLOOP_BID();
+}
 
 }  // namespace gloop
 #endif  // GLOOP_DEVICE_LOOP_H_

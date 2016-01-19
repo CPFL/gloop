@@ -21,59 +21,64 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_REQUEST_CU_H_
-#define GLOOP_REQUEST_CU_H_
+
+#include "device_loop.cuh"
+#include "fs.cuh"
+#include "request.cuh"
+
 namespace gloop {
-namespace request {
+namespace fs {
 
-// Derived from GPUfs.
-#define GLOOP_FILENAME_SIZE 32
+__device__ void openImpl(DeviceLoop* loop, request::Open& req, char* filename, int mode)
+{
+    BEGIN_SINGLE_THREAD
+    {
+        memcpy(req.filename.data, filename, GLOOP_FILENAME_SIZE);
+        req.mode = mode;
+    }
+    END_SINGLE_THREAD
+}
 
-struct Result {
-    int result;
-};
+__device__ void writeImpl(DeviceLoop* loop, request::Write& req, int fd, size_t offset, size_t count, unsigned char* buffer)
+{
+    BEGIN_SINGLE_THREAD
+    {
+        req.fd = fd;
+        req.offset = offset;
+        req.count = count;
+        req.buffer = buffer;
+    }
+    END_SINGLE_THREAD
+}
 
-struct Filename {
-    char data[GLOOP_FILENAME_SIZE];
-};
+__device__ void fstatImpl(DeviceLoop* loop, request::Fstat& req, int fd)
+{
+    BEGIN_SINGLE_THREAD
+    {
+        req.fd = fd;
+    }
+    END_SINGLE_THREAD
+}
 
-struct Open {
-    Filename filename;
-    int mode;
-};
+__device__ void closeImpl(DeviceLoop* loop, request::Close& req, int fd)
+{
+    BEGIN_SINGLE_THREAD
+    {
+        req.fd = fd;
+    }
+    END_SINGLE_THREAD
+}
 
-struct Write {
-    int fd;
-    size_t offset;
-    size_t count;
-    unsigned char* buffer;
-};
+__device__ void readImpl(DeviceLoop* loop, request::Read& req, int fd, size_t offset, size_t size, unsigned char* buffer)
+{
+    BEGIN_SINGLE_THREAD
+    {
+        req.fd = fd;
+        req.offset = offset;
+        req.size = size;
+        req.buffer = buffer;
+    }
+    END_SINGLE_THREAD
+}
 
-struct Fstat {
-    int fd;
-};
-
-struct Close {
-    int fd;
-};
-
-struct Read {
-    int fd;
-    size_t offset;
-    size_t size;
-    unsigned char* buffer;
-};
-
-struct Request {
-    union {
-        Open open;
-        Write write;
-        Fstat fstat;
-        Close close;
-        Read read;
-        Result result;
-    } u;
-};
-
-} }  // namespace gloop::request
-#endif  // GLOOP_REQUEST_CU_H_
+} }  // namespace gloop::fs

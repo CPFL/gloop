@@ -27,24 +27,32 @@
 #include <type_traits>
 #include <utility>
 #include "device_loop.cuh"
+#include "request.cuh"
 
 namespace gloop {
 namespace fs {
+
+__device__ void openImpl(DeviceLoop*, request::Open&, char* filename, int mode);
+__device__ void writeImpl(DeviceLoop*, request::Write&, int fd, size_t offset, size_t count, unsigned char* buffer);
+__device__ void fstatImpl(DeviceLoop*, request::Fstat&, int fd);
+__device__ void closeImpl(DeviceLoop*, request::Close&, int fd);
+__device__ void readImpl(DeviceLoop*, request::Read&, int fd, size_t offset, size_t size, unsigned char* buffer);
 
 template<typename Lambda>
 inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Lambda callback) -> void
 {
     int fd = gopen(filename, mode);
-    loop->enqueue([callback, fd](DeviceLoop* loop, int) {
+    auto* req = loop->enqueue([callback, fd](DeviceLoop* loop, request::Request* req) {
         callback(loop, fd);
     });
+    openImpl(loop, req->u.open, filename, mode);
 }
 
 template<typename Lambda>
 inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     size_t writtenSize = gwrite(fd, offset, count, buffer);
-    loop->enqueue([callback, writtenSize](DeviceLoop* loop, int) {
+    auto* req = loop->enqueue([callback, writtenSize](DeviceLoop* loop, request::Request* req) {
         callback(loop, writtenSize);
     });
 }
@@ -53,7 +61,7 @@ template<typename Lambda>
 inline __device__ auto fstat(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
     size_t value = ::fstat(fd);
-    loop->enqueue([callback, value](DeviceLoop* loop, int) {
+    auto* req = loop->enqueue([callback, value](DeviceLoop* loop, request::Request* req) {
         callback(loop, value);
     });
 }
@@ -62,7 +70,7 @@ template<typename Lambda>
 inline __device__ auto close(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
     int err = gclose(fd);
-    loop->enqueue([callback, err](DeviceLoop* loop, int) {
+    auto* req = loop->enqueue([callback, err](DeviceLoop* loop, request::Request* req) {
         callback(loop, err);
     });
 }
@@ -71,7 +79,7 @@ template<typename Lambda>
 inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t size, unsigned char* buffer, Lambda callback) -> void
 {
     size_t bytesRead = gread(fd, offset, size, buffer);
-    loop->enqueue([callback, bytesRead](DeviceLoop* loop, int) {
+    auto* req = loop->enqueue([callback, bytesRead](DeviceLoop* loop, request::Request* req) {
         callback(loop, bytesRead);
     });
 }
