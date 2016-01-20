@@ -27,22 +27,25 @@
 #include <gipc/gipc.cuh>
 #include "code.cuh"
 #include "function.cuh"
-#include "request.cuh"
+#include "ipc.cuh"
+#include "request.h"
 #include "utility.h"
 namespace gloop {
 
 #define GLOOP_SHARED_SLOT_SIZE 64
 
-__device__ extern gipc::Channel* g_channel;
+__device__ extern IPC* g_channel;
 
 class DeviceLoop {
 public:
-    typedef gloop::function<void(DeviceLoop*, request::Request*)> Callback;
+    typedef gloop::function<void(DeviceLoop*, volatile request::Request*)> Callback;
     typedef std::aligned_storage<sizeof(DeviceLoop::Callback), alignof(DeviceLoop::Callback)>::type UninitializedStorage;
 
     struct DeviceLoopControl {
         uint32_t put { 0 };
         uint32_t get { 0 };
+        uint32_t pending { 0 };
+        uint32_t devicePending { 0 };
         uint64_t used { static_cast<decltype(used)>(-1) };
         uint8_t queue[GLOOP_SHARED_SLOT_SIZE];
     };
@@ -54,22 +57,16 @@ public:
         DeviceLoopControl control;
     };
 
-    struct PerBlockIPC {
-        uint64_t hostPending { 0 };
-        uint64_t devicePending { 0 };
-        request::Request requests[GLOOP_SHARED_SLOT_SIZE] { { } };
-    };
-
     struct DeviceContext {
         PerBlockContext* context;
-        PerBlockIPC* channels;
+        IPC* channels;
     };
 
     __device__ DeviceLoop(DeviceContext, UninitializedStorage* buffer, size_t size);
 
-    __device__ request::Request* enqueue(Callback lambda);
+    __device__ IPC* enqueue(Callback lambda);
 
-    __device__ void emit(Code code, request::Request*);
+    __device__ void emit(Code code, IPC*);
 
     __device__ Callback* dequeue();
 
@@ -84,10 +81,10 @@ private:
 
     __device__ void suspend();
 
-    GLOOP_ALWAYS_INLINE __device__ PerBlockIPC* channel() const;
+    GLOOP_ALWAYS_INLINE __device__ IPC* channel() const;
     GLOOP_ALWAYS_INLINE __device__ PerBlockContext* context() const;
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(Callback*);
-    GLOOP_ALWAYS_INLINE __device__ uint32_t position(request::Request*);
+    GLOOP_ALWAYS_INLINE __device__ uint32_t position(IPC*);
 
 
     DeviceContext m_deviceContext;
@@ -100,14 +97,14 @@ __device__ uint32_t DeviceLoop::position(Callback* callback)
     return callback - m_slots;
 }
 
-__device__ uint32_t DeviceLoop::position(request::Request* request)
+__device__ uint32_t DeviceLoop::position(IPC* ipc)
 {
-    return request - channel()->requests;
+    return ipc - channel();
 }
 
-__device__ auto DeviceLoop::channel() const -> PerBlockIPC*
+__device__ auto DeviceLoop::channel() const -> IPC*
 {
-    return m_deviceContext.channels + GLOOP_BID();
+    return m_deviceContext.channels + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
 }
 
 __device__ auto DeviceLoop::context() const -> PerBlockContext*

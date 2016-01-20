@@ -26,13 +26,22 @@
 #include <cstdint>
 namespace gloop {
 
-enum class Code : uint32_t {
-    Open = 0,
+enum class Code : int32_t {
+    Complete = -1,
+    None = 0,
+
+    Open = 1,
     Write,
     Fstat,
     Close,
     Read,
+
 };
+
+inline bool IsOperationCode(Code code)
+{
+    return static_cast<int32_t>(code) > 0;
+}
 
 }  // namespace gloop
 #endif  // GLOOP_CODE_CU_H_

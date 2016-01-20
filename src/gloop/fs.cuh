@@ -27,60 +27,60 @@
 #include <type_traits>
 #include <utility>
 #include "device_loop.cuh"
-#include "request.cuh"
+#include "request.h"
 
 namespace gloop {
 namespace fs {
 
-__device__ void openImpl(DeviceLoop*, request::Open&, char* filename, int mode);
-__device__ void writeImpl(DeviceLoop*, request::Write&, int fd, size_t offset, size_t count, unsigned char* buffer);
-__device__ void fstatImpl(DeviceLoop*, request::Fstat&, int fd);
-__device__ void closeImpl(DeviceLoop*, request::Close&, int fd);
-__device__ void readImpl(DeviceLoop*, request::Read&, int fd, size_t offset, size_t size, unsigned char* buffer);
+__device__ void openImpl(DeviceLoop*, IPC*, volatile request::Open&, char* filename, int mode);
+__device__ void writeImpl(DeviceLoop*, IPC*, volatile request::Write&, int fd, size_t offset, size_t count, unsigned char* buffer);
+__device__ void fstatImpl(DeviceLoop*, IPC*, volatile request::Fstat&, int fd);
+__device__ void closeImpl(DeviceLoop*, IPC*, volatile request::Close&, int fd);
+__device__ void readImpl(DeviceLoop*, IPC*, volatile request::Read&, int fd, size_t offset, size_t size, unsigned char* buffer);
 
 template<typename Lambda>
 inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Lambda callback) -> void
 {
-    auto* req = loop->enqueue([callback](DeviceLoop* loop, request::Request* req) {
+    auto* ipc = loop->enqueue([callback](DeviceLoop* loop, volatile request::Request* req) {
         callback(loop, req->u.result.result);
     });
-    openImpl(loop, req->u.open, filename, mode);
+    openImpl(loop, ipc, ipc->request()->u.open, filename, mode);
 }
 
 template<typename Lambda>
 inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
-    auto* req = loop->enqueue([callback](DeviceLoop* loop, request::Request* req) {
+    auto* ipc = loop->enqueue([callback](DeviceLoop* loop, volatile request::Request* req) {
         callback(loop, req->u.result.result);
     });
-    writeImpl(loop, req->u.write, fd, offset, count, buffer);
+    writeImpl(loop, ipc, ipc->request()->u.write, fd, offset, count, buffer);
 }
 
 template<typename Lambda>
 inline __device__ auto fstat(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
-    auto* req = loop->enqueue([callback](DeviceLoop* loop, request::Request* req) {
+    auto* ipc = loop->enqueue([callback](DeviceLoop* loop, volatile request::Request* req) {
         callback(loop, req->u.result.result);
     });
-    fstatImpl(loop, req->u.fstat, fd);
+    fstatImpl(loop, ipc, ipc->request()->u.fstat, fd);
 }
 
 template<typename Lambda>
 inline __device__ auto close(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
-    auto* req = loop->enqueue([callback](DeviceLoop* loop, request::Request* req) {
+    auto* ipc = loop->enqueue([callback](DeviceLoop* loop, volatile request::Request* req) {
         callback(loop, req->u.result.result);
     });
-    closeImpl(loop, req->u.close, fd);
+    closeImpl(loop, ipc, ipc->request()->u.close, fd);
 }
 
 template<typename Lambda>
 inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t size, unsigned char* buffer, Lambda callback) -> void
 {
-    auto* req = loop->enqueue([callback](DeviceLoop* loop, request::Request* req) {
+    auto* ipc = loop->enqueue([callback](DeviceLoop* loop, volatile request::Request* req) {
         callback(loop, req->u.result.result);
     });
-    readImpl(loop, req->u.read, fd, offset, size, buffer);
+    readImpl(loop, ipc, ipc->request()->u.read, fd, offset, size, buffer);
 }
 
 } }  // namespace gloop::fs

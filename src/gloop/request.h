@@ -21,8 +21,8 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_REQUEST_CU_H_
-#define GLOOP_REQUEST_CU_H_
+#ifndef GLOOP_REQUEST_H_
+#define GLOOP_REQUEST_H_
 namespace gloop {
 namespace request {
 
@@ -65,7 +65,7 @@ struct Read {
 };
 
 struct Request {
-    uint32_t code;
+    int32_t code;
     union {
         Open open;
         Write write;
@@ -77,4 +77,4 @@ struct Request {
 };
 
 } }  // namespace gloop::request
-#endif  // GLOOP_REQUEST_CU_H_
+#endif  // GLOOP_REQUEST_H_

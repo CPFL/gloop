@@ -1,5 +1,7 @@
 /*
   Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+  Copyright (C) 2008 Apple Inc. All Rights Reserved.
+  Copyright (C) 2013 Patrick Gansterer <paroga@paroga.com>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -21,28 +23,21 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_COMMAND_H_
-#define GLOOP_COMMAND_H_
-#include "request.h"
+#ifndef GLOOP_BITWISE_CAST_H_
+#define GLOOP_BITWISE_CAST_H_
 namespace gloop {
 
-struct Command {
-    enum class Type : uint32_t {
-        Initialize,
-        Operation,
-        IO
-    };
-
-    enum Operation : uint32_t {
-        HostBack,
-        DeviceLoopComplete,
-        Complete
-    };
-
-    Type type;
-    uintptr_t payload;
-    request::Request request;
-};
+template<typename ToType, typename FromType>
+inline ToType bitwise_cast(FromType from)
+{
+    static_assert(sizeof(FromType) == sizeof(ToType), "bitwise_cast size of FromType and ToType must be equal!");
+    union {
+        FromType from;
+        ToType to;
+    } u;
+    u.from = from;
+    return u.to;
+}
 
 }  // namespace gloop
-#endif  // GLOOP_COMMAND_H_
+#endif  // GLOOP_BITWISE_CAST_H_

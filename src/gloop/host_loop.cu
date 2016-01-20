@@ -29,17 +29,22 @@
 #include <gpufs/libgpufs/fs_initializer.cu.h>
 #include <gpufs/libgpufs/host_loop.h>
 #include <memory>
+#include "bitwise_cast.h"
 #include "command.h"
 #include "config.h"
 #include "helper.cuh"
 #include "host_loop.cuh"
+#include "io.cuh"
+#include "ipc.cuh"
 #include "make_unique.h"
+#include "memcpy_io.cuh"
 #include "monitor_session.h"
+#include "request.h"
 #include "system_initialize.h"
 #include "utility.h"
 namespace gloop {
 
-__device__ gipc::Channel* g_channel;
+__device__ IPC* g_channel;
 
 HostLoop::HostLoop(int deviceNumber)
     : m_deviceNumber(deviceNumber)
@@ -124,21 +129,31 @@ void HostLoop::pollerMain()
 {
     bool done = false;
     while (!done) {
-        if (m_stop.load(std::memory_order_acquire)) {
-            m_channel->stop();
-            while (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream));
-            m_stop.store(false, std::memory_order_acquire);
-            break;
+        // if (m_stop.load(std::memory_order_acquire)) {
+        //     m_channel->stop();
+        //     while (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream));
+        //     m_stop.store(false, std::memory_order_acquire);
+        //     break;
+        // }
+
+        if (IPC* ipc = m_currentContext->tryPeekRequest()) {
+            request::Request req { };
+            memcpyIO(&req, ipc->request(), sizeof(request::Request));
+            ipc->emit(Code::None);
+            send({
+                .type = Command::Type::IO,
+                .payload = bitwise_cast<uintptr_t>(ipc),
+                .request = req,
+            });
         }
 
-        open_loop(this, m_deviceNumber);
-        rw_loop(this);
-
+        // open_loop(this, m_deviceNumber);
+        // rw_loop(this);
         if (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream)) {
             logGPUfsDone();
             break;
         }
-        async_close_loop(this);
+        // async_close_loop(this);
     }
     send({
         .type = Command::Type::Operation,
@@ -146,14 +161,14 @@ void HostLoop::pollerMain()
     });
 }
 
-__global__ static void initializeDevice(gipc::Channel* channel)
+__global__ static void initializeDevice(IPC* channel)
 {
     g_channel = channel;
 }
 
 void HostLoop::initialize()
 {
-    m_channel = make_unique<gipc::Channel>();
+    m_channel = make_unique<IPC>();
     // this must be done from a single thread!
 	init_fs<<<1,1>>>(
             cpu_ipcOpenQueue,
@@ -168,7 +183,9 @@ void HostLoop::initialize()
 			_preclose_table);
 
     // FIXME: This is not efficient.
-    initializeDevice<<<1, 1>>>(m_channel.get());
+    IPC* deviceChannel = nullptr;
+    GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&deviceChannel, m_channel.get(), 0));
+    initializeDevice<<<1, 1>>>(deviceChannel);
 
 	cudaThreadSynchronize();
 	CUDA_SAFE_CALL(cudaPeekAtLastError());
@@ -216,6 +233,49 @@ bool HostLoop::handle(Command command)
             return true;
         }
         break;
+    }
+
+    case Command::Type::IO: {
+        const request::Request& req = command.request;
+        IPC* ipc = bitwise_cast<IPC*>(command.payload);
+        switch (static_cast<Code>(req.code)) {
+        case Code::Open: {
+            auto iter = m_fds.find(req.u.open.filename.data);
+            int fd = 0;
+            if (iter != m_fds.end()) {
+                fd = iter->second;
+            } else {
+                fd = open(req.u.open.filename.data, req.u.open.mode);
+                m_fds.insert(iter, std::make_pair(std::string(req.u.open.filename.data), fd));
+            }
+            printf("Open %s %d\n", req.u.open.filename.data, fd);
+            ipc->request()->u.result.result = fd;
+            ipc->emit(Code::Complete);
+            break;
+        }
+
+        case Code::Write: {
+            break;
+        }
+
+        case Code::Read: {
+            break;
+        }
+
+        case Code::Fstat: {
+            struct stat buf { };
+            ::fstat(req.u.fstat.fd, &buf);
+            printf("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
+            ipc->request()->u.result.result = buf.st_size;
+            ipc->emit(Code::Complete);
+            break;
+        }
+
+        case Code::Close: {
+            break;
+        }
+        }
+        return false;
     }
     }
     return false;

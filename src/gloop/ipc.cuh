@@ -21,28 +21,37 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_COMMAND_H_
-#define GLOOP_COMMAND_H_
+#ifndef GLOOP_IPC_CU_H_
+#define GLOOP_IPC_CU_H_
+#include <cstdint>
+#include <gipc/mapped.cuh>
+#include "code.cuh"
+#include "noncopyable.h"
 #include "request.h"
+#include "utility.h"
+
 namespace gloop {
 
-struct Command {
-    enum class Type : uint32_t {
-        Initialize,
-        Operation,
-        IO
-    };
+class IPC : public gipc::Mapped {
+GLOOP_NONCOPYABLE(IPC)
+public:
+    __host__ IPC() : m_request { 0 } { }
+    __host__ __device__ void emit(Code code);
+    __device__ __host__ Code peek();
 
-    enum Operation : uint32_t {
-        HostBack,
-        DeviceLoopComplete,
-        Complete
-    };
+    __device__ __host__ GLOOP_ALWAYS_INLINE volatile request::Request* request()
+    {
+        return &m_request;
+    }
 
-    Type type;
-    uintptr_t payload;
-    request::Request request;
+private:
+#if 0
+    __device__ void lock();
+    __device__ void unlock();
+#endif
+
+    volatile request::Request m_request { 0 };
 };
 
 }  // namespace gloop
-#endif  // GLOOP_COMMAND_H_
+#endif  // GLOOP_IPC_CU_H_

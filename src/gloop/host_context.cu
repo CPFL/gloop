@@ -22,7 +22,9 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "device_context.cuh"
+#include "ipc.cuh"
 #include "host_context.cuh"
+#include "make_unique.h"
 
 namespace gloop {
 
@@ -40,11 +42,45 @@ HostContext::HostContext(dim3 blocks)
 {
 }
 
+HostContext::~HostContext()
+{
+    if (m_context.context) {
+        cudaFree(m_context.context);
+    }
+}
+
 bool HostContext::initialize()
 {
+    m_ipc = make_unique<IPC[]>(m_blocks.x * m_blocks.y * GLOOP_SHARED_SLOT_SIZE);
+    GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.channels, m_ipc.get(), 0));
     GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceLoop::PerBlockContext) * m_blocks.x * m_blocks.y));
-    GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&m_context.channels, sizeof(DeviceLoop::PerBlockIPC) * m_blocks.x * m_blocks.y, cudaHostAllocMapped));
     return true;
+}
+
+template<typename T, typename U>
+T readNoCache(volatile const U* ptr)
+{
+    return *reinterpret_cast<volatile const T*>(ptr);
+}
+
+IPC* HostContext::tryPeekRequest()
+{
+    IPC* result = nullptr;
+    __sync_synchronize();
+    int blocks = m_blocks.x * m_blocks.y;
+    for (int i = 0; i < blocks; ++i) {
+        for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
+            auto& channel = m_ipc[i * GLOOP_SHARED_SLOT_SIZE + j];
+            // printf("channel[%d][%d] = %d\n", (int)i, (int)j, (int)channel.peek());
+            Code code = channel.peek();
+            if (IsOperationCode(code)) {
+                result = &channel;
+                break;
+            }
+        }
+    }
+    __sync_synchronize();
+    return result;
 }
 
 }  // namespace gloop

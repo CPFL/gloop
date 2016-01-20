@@ -21,28 +21,41 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_COMMAND_H_
-#define GLOOP_COMMAND_H_
-#include "request.h"
+
+#include <cassert>
+#include <gpufs/libgpufs/util.cu.h>
+#include "ipc.cuh"
+
 namespace gloop {
 
-struct Command {
-    enum class Type : uint32_t {
-        Initialize,
-        Operation,
-        IO
-    };
+__host__ __device__ void IPC::emit(Code code)
+{
+#if defined(__CUDA_ARCH__)
+    __threadfence_system();
+    m_request.code = static_cast<int32_t>(code);
+    __threadfence_system();
+#else
+    __sync_synchronize();
+    m_request.code = static_cast<int32_t>(code);
+    __sync_synchronize();
+#endif
+}
 
-    enum Operation : uint32_t {
-        HostBack,
-        DeviceLoopComplete,
-        Complete
-    };
+__device__ __host__ Code IPC::peek()
+{
+    return static_cast<Code>(m_request.code);
+}
 
-    Type type;
-    uintptr_t payload;
-    request::Request request;
-};
+#if 0
+__device__ void IPC::lock()
+{
+    MUTEX_LOCK(m_lock);
+}
+
+__device__ void IPC::unlock()
+{
+    MUTEX_UNLOCK(m_lock);
+}
+#endif
 
 }  // namespace gloop
-#endif  // GLOOP_COMMAND_H_
