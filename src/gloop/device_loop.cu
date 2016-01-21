@@ -16,7 +16,7 @@
   ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
   DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAfree AND
   ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -46,21 +46,32 @@ static inline __device__ void copyCallback(const DeviceLoop::Callback* src, Devi
     }
 }
 
-__device__ IPC* DeviceLoop::enqueue(Callback lambda)
+__device__ IPC* DeviceLoop::enqueueIPC(Callback lambda)
 {
     __shared__ IPC* result;
-    static_assert(sizeof(Callback) % sizeof(uint64_t) == 0, "OK.");
     BEGIN_SINGLE_THREAD
     {
-        uint32_t pos = allocate();
+        uint32_t pos = allocate(&lambda);
         m_control.queue[m_control.put++ % GLOOP_SHARED_SLOT_SIZE] = pos;
         result = channel() + pos;
         GPU_ASSERT(m_control.put != m_control.get);
         GPU_ASSERT(pos < GLOOP_SHARED_SLOT_SIZE);
-        copyCallback(&lambda, m_slots + pos);
     }
     END_SINGLE_THREAD
     return result;
+}
+
+__device__ void DeviceLoop::enqueueLater(Callback lambda)
+{
+    BEGIN_SINGLE_THREAD
+    {
+        uint32_t pos = allocate(&lambda);
+        uint64_t bit = 1ULL << pos;
+        m_control.queue[m_control.put++ % GLOOP_SHARED_SLOT_SIZE] = pos;
+        m_control.sleep |= bit;
+        m_control.wakeup |= bit;
+    }
+    END_SINGLE_THREAD
 }
 
 __device__ auto DeviceLoop::dequeue() -> Callback*
@@ -70,13 +81,24 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
     {
         result = nullptr;
         for (uint32_t i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
-            if (!(m_control.used & (1ULL << i))) {
-                IPC* ipc = channel() + i;
-                if (ipc->peek() == Code::Complete) {
-                    ipc->emit(Code::None);
-                    GPU_ASSERT(ipc->peek() != Code::Complete);
+            // Look into ICP status to run callbacks.
+            uint64_t bit = 1ULL << i;
+            if (m_control.sleep & bit) {
+                if (m_control.wakeup & bit) {
+                    m_control.sleep &= ~bit;
+                    m_control.wakeup &= ~bit;
                     result = m_slots + i;
                     break;
+                }
+            } else {
+                if (!(m_control.free & bit)) {
+                    IPC* ipc = channel() + i;
+                    if (ipc->peek() == Code::Complete) {
+                        ipc->emit(Code::None);
+                        GPU_ASSERT(ipc->peek() != Code::Complete);
+                        result = m_slots + i;
+                        break;
+                    }
                 }
             }
         }
@@ -113,13 +135,14 @@ __device__ bool DeviceLoop::drain()
     return true;
 }
 
-__device__ uint32_t DeviceLoop::allocate()
+__device__ uint32_t DeviceLoop::allocate(Callback* lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    int pos = __ffsll(m_control.used) - 1;
+    int pos = __ffsll(m_control.free) - 1;
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
-    GPU_ASSERT(m_control.used & (1ULL << pos));
-    m_control.used &= ~(1ULL << pos);
+    GPU_ASSERT(m_control.free & (1ULL << pos));
+    m_control.free &= ~(1ULL << pos);
+    copyCallback(lambda, m_slots + pos);
     return pos;
 }
 
@@ -129,8 +152,8 @@ __device__ void DeviceLoop::deallocate(Callback* callback)
     {
         uint32_t pos = position(callback);
         GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
-        GPU_ASSERT(!(m_control.used & (1ULL << pos)));
-        m_control.used |= (1ULL << pos);
+        GPU_ASSERT(!(m_control.free & (1ULL << pos)));
+        m_control.free |= (1ULL << pos);
         m_control.pending -= 1;
     }
     END_SINGLE_THREAD

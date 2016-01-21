@@ -136,6 +136,9 @@ void HostLoop::pollerMain()
         //     break;
         // }
 
+        if (!m_currentContext)
+            continue;
+
         if (IPC* ipc = m_currentContext->tryPeekRequest()) {
             request::Request req { };
             memcpyIO(&req, ipc->request(), sizeof(request::Request));
@@ -243,7 +246,7 @@ bool HostLoop::handle(Command command)
         case Code::Open: {
             int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
             printf("Open %s %d\n", req.u.open.filename.data, fd);
-            ipc->request()->u.result.result = fd;
+            ipc->request()->u.openResult.fd = fd;
             ipc->emit(Code::Complete);
             break;
         }
@@ -255,8 +258,8 @@ bool HostLoop::handle(Command command)
             size_t count = req.u.write.count;
             std::vector<char> buffer(count);
             GLOOP_CUDA_SAFE_CALL(cudaMemcpy(buffer.data(), req.u.write.buffer, count, cudaMemcpyDeviceToHost));
-            ssize_t writtenSize = pwrite(req.u.write.fd, buffer.data(), count, req.u.write.offset);
-            ipc->request()->u.result.result = writtenSize;
+            ssize_t writtenCount = pwrite(req.u.write.fd, buffer.data(), count, req.u.write.offset);
+            ipc->request()->u.writeResult.writtenCount = writtenCount;
             ipc->emit(Code::Complete);
             break;
         }
@@ -266,9 +269,9 @@ bool HostLoop::handle(Command command)
             // We should integrate implementation with GPUfs's buffer cache.
             printf("Read %d\n", req.u.read.fd);
             std::vector<char> buffer(req.u.read.count);
-            ssize_t readSize = pread(req.u.read.fd, buffer.data(), req.u.read.count, req.u.read.offset);
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpy(req.u.read.buffer, buffer.data(), readSize, cudaMemcpyHostToDevice));
-            ipc->request()->u.result.result = readSize;
+            ssize_t readCount = pread(req.u.read.fd, buffer.data(), req.u.read.count, req.u.read.offset);
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpy(req.u.read.buffer, buffer.data(), readCount, cudaMemcpyHostToDevice));
+            ipc->request()->u.readResult.readCount = readCount;
             ipc->emit(Code::Complete);
             break;
         }
@@ -277,14 +280,14 @@ bool HostLoop::handle(Command command)
             struct stat buf { };
             ::fstat(req.u.fstat.fd, &buf);
             printf("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
-            ipc->request()->u.result.result = buf.st_size;
+            ipc->request()->u.fstatResult.size = buf.st_size;
             ipc->emit(Code::Complete);
             break;
         }
 
         case Code::Close: {
             m_currentContext->table().close(req.u.close.fd);
-            ipc->request()->u.result.result = 0;
+            ipc->request()->u.closeResult.error = 0;
             ipc->emit(Code::Complete);
             break;
         }

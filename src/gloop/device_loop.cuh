@@ -33,6 +33,7 @@
 namespace gloop {
 
 #define GLOOP_SHARED_SLOT_SIZE 64
+#define GLOOP_SHARED_BUFFER_SIZE 4096
 
 __device__ extern IPC* g_channel;
 
@@ -45,8 +46,9 @@ public:
         uint32_t put { 0 };
         uint32_t get { 0 };
         uint32_t pending { 0 };
-        uint32_t devicePending { 0 };
-        uint64_t used { static_cast<decltype(used)>(-1) };
+        uint64_t free { static_cast<decltype(free)>(-1) };
+        uint64_t sleep { 0 };
+        uint64_t wakeup { 0 };
         uint8_t queue[GLOOP_SHARED_SLOT_SIZE];
     };
 
@@ -64,7 +66,8 @@ public:
 
     __device__ DeviceLoop(DeviceContext, UninitializedStorage* buffer, size_t size);
 
-    __device__ IPC* enqueue(Callback lambda);
+    __device__ IPC* enqueueIPC(Callback lambda);
+    __device__ void enqueueLater(Callback lambda);
 
     __device__ void emit(Code code, IPC*);
 
@@ -77,7 +80,7 @@ public:
     __device__ void resume();
 
 private:
-    __device__ uint32_t allocate();
+    __device__ uint32_t allocate(Callback* lambda);
 
     __device__ void suspend();
 

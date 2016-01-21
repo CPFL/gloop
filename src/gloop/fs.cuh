@@ -41,8 +41,8 @@ __device__ void readImpl(DeviceLoop*, IPC*, volatile request::Read&, int fd, siz
 template<typename Lambda>
 inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Lambda callback) -> void
 {
-    auto* ipc = loop->enqueue([callback](DeviceLoop* loop, volatile request::Request* req) {
-        callback(loop, req->u.result.result);
+    auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        callback(loop, req->u.openResult.fd);
     });
     openImpl(loop, ipc, ipc->request()->u.open, filename, mode);
 }
@@ -50,8 +50,8 @@ inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Lambda c
 template<typename Lambda>
 inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
-    auto* ipc = loop->enqueue([callback](DeviceLoop* loop, volatile request::Request* req) {
-        callback(loop, req->u.result.result);
+    auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        callback(loop, req->u.writeResult.writtenCount);
     });
     writeImpl(loop, ipc, ipc->request()->u.write, fd, offset, count, buffer);
 }
@@ -59,8 +59,8 @@ inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t cou
 template<typename Lambda>
 inline __device__ auto fstat(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
-    auto* ipc = loop->enqueue([callback](DeviceLoop* loop, volatile request::Request* req) {
-        callback(loop, req->u.result.result);
+    auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        callback(loop, req->u.fstatResult.size);
     });
     fstatImpl(loop, ipc, ipc->request()->u.fstat, fd);
 }
@@ -68,8 +68,8 @@ inline __device__ auto fstat(DeviceLoop* loop, int fd, Lambda callback) -> void
 template<typename Lambda>
 inline __device__ auto close(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
-    auto* ipc = loop->enqueue([callback](DeviceLoop* loop, volatile request::Request* req) {
-        callback(loop, req->u.result.result);
+    auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        callback(loop, req->u.closeResult.error);
     });
     closeImpl(loop, ipc, ipc->request()->u.close, fd);
 }
@@ -77,9 +77,23 @@ inline __device__ auto close(DeviceLoop* loop, int fd, Lambda callback) -> void
 template<typename Lambda>
 inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
-    auto* ipc = loop->enqueue([callback](DeviceLoop* loop, volatile request::Request* req) {
-        callback(loop, req->u.result.result);
-    });
+    auto continuation = [=](DeviceLoop* loop, volatile request::Request* req) {
+#if 0
+        BEGIN_SINGLE_THREAD
+        {
+            const ReadResult& readResult = req->u.readResult;
+            if (!readResult.error) {
+                if (readResult.dataRead < count) {
+                    auto* ipc = loop->enqueueIPC(continuation);
+                    readImpl(loop, ipc, ipc->request()->u.read, fd, offset, count, buffer);
+                }
+            }
+        }
+        END_SINGLE_THREAD
+#endif
+        callback(loop, req->u.readResult.readCount);
+    };
+    auto* ipc = loop->enqueueIPC(continuation);
     readImpl(loop, ipc, ipc->request()->u.read, fd, offset, count, buffer);
 }
 

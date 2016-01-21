@@ -31,7 +31,7 @@ namespace loop {
 template<typename Lambda>
 inline __device__ auto async(DeviceLoop* loop, Lambda callback) -> void
 {
-    loop->enqueue([callback](DeviceLoop* loop, int) {
+    loop->enqueueLater([callback](DeviceLoop* loop, volatile request::Request* req) {
         callback(loop);
     });
 }

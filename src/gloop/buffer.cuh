@@ -21,84 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_REQUEST_H_
-#define GLOOP_REQUEST_H_
+#ifndef GLOOP_BUFFER_CU_H_
+#define GLOOP_BUFFER_CU_H_
 namespace gloop {
-namespace request {
 
-// Derived from GPUfs.
-#define GLOOP_FILENAME_SIZE 32
-
-struct Filename {
-    char data[GLOOP_FILENAME_SIZE];
-};
-
-struct Open {
-    Filename filename;
-    int mode;
-};
-
-struct OpenResult {
-    int fd;
-};
-
-struct Write {
-    int fd;
-    size_t offset;
-    size_t count;
-    unsigned char* buffer;
-};
-
-struct WriteResult {
-    ssize_t writtenCount;
-};
-
-struct Fstat {
-    int fd;
-};
-
-struct FstatResult {
-    off_t size;
-};
-
-struct Close {
-    int fd;
-};
-
-struct CloseResult {
-    int error;
-};
-
-struct Read {
-    int fd;
-    size_t offset;
-    size_t count;
-    unsigned char* buffer;
-};
-
-struct ReadResult {
-    ssize_t readCount;
-};
-
-struct Request {
-    int32_t code;
-    union {
-        Open open;
-        OpenResult openResult;
-
-        Write write;
-        WriteResult writeResult;
-
-        Fstat fstat;
-        FstatResult fstatResult;
-
-        Close close;
-        CloseResult closeResult;
-
-        Read read;
-        ReadResult readResult;
-    } u;
-};
-
-} }  // namespace gloop::request
-#endif  // GLOOP_REQUEST_H_
+}  // namespace gloop
+#endif  // GLOOP_BUFFER_CU_H_
