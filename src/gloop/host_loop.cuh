@@ -95,7 +95,7 @@ template<typename DeviceLambda, class... Args>
 inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
 {
     m_currentContext = &hostContext;
-    gloop::launch<<<hostContext.blocks(), threads, 0, this->streamMgr->kernelStream>>>(hostContext.deviceContext().context, hostContext.deviceContext().channels, callback, std::forward<Args>(args)...);
+    gloop::launch<<<hostContext.blocks(), threads, 0, this->streamMgr->kernelStream>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
     wait();
     m_currentContext = nullptr;
 }

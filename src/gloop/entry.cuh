@@ -31,18 +31,18 @@
 namespace gloop {
 
 template<typename DeviceLambda, class... Args>
-inline __global__ void launch(DeviceLoop::PerBlockContext* context, IPC* channels, const DeviceLambda& callback, Args... args)
+inline __global__ void launch(DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     __shared__ DeviceLoop::UninitializedStorage buffer[GLOOP_SHARED_SLOT_SIZE];
-    DeviceLoop loop({ context, channels }, buffer, GLOOP_SHARED_SLOT_SIZE);
+    DeviceLoop loop(context, buffer, GLOOP_SHARED_SLOT_SIZE);
     callback(&loop, std::forward<Args>(args)...);
     loop.drain();
 }
 
-inline __global__ void resume(DeviceLoop::PerBlockContext* context, IPC* channels)
+inline __global__ void resume(DeviceContext context)
 {
     __shared__ DeviceLoop::UninitializedStorage buffer[GLOOP_SHARED_SLOT_SIZE];
-    DeviceLoop loop({ context, channels }, buffer, GLOOP_SHARED_SLOT_SIZE);
+    DeviceLoop loop(context, buffer, GLOOP_SHARED_SLOT_SIZE);
     loop.resume();
     loop.drain();
 }
