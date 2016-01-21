@@ -140,6 +140,7 @@ __device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
     GPU_ASSERT(m_control.free & (1ULL << pos));
     m_control.free &= ~(1ULL << pos);
     copyCallback(lambda, m_slots + pos);
+    m_control.pending += 1;
     return pos;
 }
 
@@ -206,7 +207,6 @@ __device__ void DeviceLoop::emit(Code code, IPC* ipc)
     BEGIN_SINGLE_THREAD
     {
         ipc->emit(code);
-        m_control.pending += 1;
     }
     END_SINGLE_THREAD
 }
@@ -224,9 +224,9 @@ __device__ void DeviceLoop::freeOnePage(void* aPage)
 {
     BEGIN_SINGLE_THREAD
     {
-        OnePage* page = static_cast<OnePage*>(aPage);
-        uint32_t pos = page - m_deviceContext.pages + GLOOP_SHARED_PAGE_COUNT * GLOOP_BID();
-        m_control.m_freePages |= (1ULL << pos);
+        uint32_t pos = position(static_cast<OnePage*>(aPage));
+        m_control.freePages |= (1ULL << pos);
+        GPU_ASSERT(pos < GLOOP_SHARED_PAGE_COUNT);
         int freePageWaitingCallbackPlusOne = __ffsll(m_control.m_pageSleep);
         if (freePageWaitingCallbackPlusOne) {
             m_control.wakeup |= (1ULL << (freePageWaitingCallbackPlusOne - 1));

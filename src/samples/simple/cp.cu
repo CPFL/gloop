@@ -8,6 +8,12 @@ __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, i
 {
     if (me < filesize) {
         size_t toRead = min((size_t)FS_BLOCKSIZE, (size_t)(filesize-me));
+        // gloop::loop::async(loop, [=](gloop::DeviceLoop* loop) {
+        //     gloop::fs::close(loop, zfd, [=](gloop::DeviceLoop* loop, int err) {
+        //         gloop::fs::close(loop, zfd1, [=](gloop::DeviceLoop* loop, int err) {
+        //         });
+        //     });
+        // });
         gloop::fs::read(loop, zfd, me, toRead, scratch, [=](gloop::DeviceLoop* loop, int read) {
             if (toRead != read) {
                 assert(NULL);

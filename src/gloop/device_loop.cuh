@@ -56,7 +56,7 @@ public:
         uint64_t free { static_cast<decltype(free)>(-1) };
         uint64_t sleep { 0 };
         uint64_t wakeup { 0 };
-        uint64_t m_freePages { (1ULL << GLOOP_SHARED_PAGE_COUNT) - 1 };
+        uint64_t freePages { (1ULL << GLOOP_SHARED_PAGE_COUNT) - 1 };
         uint64_t m_pageSleep { 0 };
         uint8_t queue[GLOOP_SHARED_SLOT_SIZE];
     };
@@ -102,8 +102,10 @@ private:
 
     GLOOP_ALWAYS_INLINE __device__ IPC* channel() const;
     GLOOP_ALWAYS_INLINE __device__ PerBlockContext* context() const;
+    GLOOP_ALWAYS_INLINE __device__ OnePage* pages() const;
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(Callback*);
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(IPC*);
+    GLOOP_ALWAYS_INLINE __device__ uint32_t position(OnePage*);
 
 
     DeviceContext m_deviceContext;
@@ -121,6 +123,11 @@ __device__ uint32_t DeviceLoop::position(IPC* ipc)
     return ipc - channel();
 }
 
+GLOOP_ALWAYS_INLINE __device__ uint32_t DeviceLoop::position(OnePage* page)
+{
+    return page - pages();
+}
+
 __device__ auto DeviceLoop::channel() const -> IPC*
 {
     return m_deviceContext.channels + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
@@ -131,31 +138,35 @@ __device__ auto DeviceLoop::context() const -> PerBlockContext*
     return m_deviceContext.context + GLOOP_BID();
 }
 
+__device__ auto DeviceLoop::pages() const -> OnePage*
+{
+    return m_deviceContext.pages + (GLOOP_BID() * GLOOP_SHARED_PAGE_COUNT);
+}
+
 template<typename Lambda>
 inline __device__ void DeviceLoop::allocOnePageMaySync(Lambda lambda)
 {
-    __shared__ void* page;
     BEGIN_SINGLE_THREAD
     {
-        int freePagePosPlusOne = __ffsll(m_control.m_freePages);
+        int freePagePosPlusOne = __ffsll(m_control.freePages);
         if (freePagePosPlusOne == 0) {
-            page == nullptr;
+            void* page = nullptr;
             uint32_t pos = enqueueSleep([lambda](DeviceLoop* loop, volatile request::Request* req) {
                 loop->allocOnePageMaySync(lambda);
             });
             m_control.m_pageSleep |= (1ULL << pos);
         } else {
             int pagePos = freePagePosPlusOne - 1;
-            page = &m_deviceContext.pages[pagePos];
-            m_control.m_freePages &= ~(1ULL << pagePos);
+            void* page = pages() + pagePos;
+            m_control.freePages &= ~(1ULL << pagePos);
+            enqueueLater([lambda, page](DeviceLoop* loop, volatile request::Request* req) {
+                volatile request::Request request;
+                request.u.allocOnePageResult.page = page;
+                lambda(loop, &request);
+            });
         }
     }
     END_SINGLE_THREAD
-    if (page) {
-        volatile request::Request req;
-        req.u.allocOnePageResult.page = page;
-        lambda(this, &req);
-    }
 }
 
 }  // namespace gloop

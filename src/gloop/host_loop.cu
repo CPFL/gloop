@@ -257,7 +257,12 @@ bool HostLoop::handle(Command command)
             printf("Write %d\n", req.u.write.fd);
             size_t count = req.u.write.count;
             std::vector<char> buffer(count);
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpy(buffer.data(), req.u.write.buffer, count, cudaMemcpyDeviceToHost));
+
+            // FIXME: Should use multiple streams. And execute async.
+            // cudaStream_t stream = streamMgr->memStream[2];
+            // GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(buffer.data(), req.u.write.buffer, count, cudaMemcpyDeviceToHost, stream));
+            // cudaStreamSynchronize(stream);
+
             ssize_t writtenCount = pwrite(req.u.write.fd, buffer.data(), count, req.u.write.offset);
             ipc->request()->u.writeResult.writtenCount = writtenCount;
             ipc->emit(Code::Complete);
@@ -267,11 +272,15 @@ bool HostLoop::handle(Command command)
         case Code::Read: {
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
-            printf("Read %d\n", req.u.read.fd);
+            printf("Read fd:(%d),count:(%u),offset(%d)\n", req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset);
             std::vector<char> buffer(req.u.read.count);
             ssize_t readCount = pread(req.u.read.fd, buffer.data(), req.u.read.count, req.u.read.offset);
-            // FIXME: Execute CUDA API with Memcpy stream. Currently, since we invoke kernel, it stops forever.
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpy(req.u.read.buffer, buffer.data(), readCount, cudaMemcpyHostToDevice));
+
+            // FIXME: Should use multiple streams. And execute async.
+            // cudaStream_t stream = streamMgr->memStream[1];
+            // GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, buffer.data(), readCount, cudaMemcpyHostToDevice, stream));
+            // cudaStreamSynchronize(stream);
+
             ipc->request()->u.readResult.readCount = readCount;
             ipc->emit(Code::Complete);
             break;
@@ -288,6 +297,7 @@ bool HostLoop::handle(Command command)
 
         case Code::Close: {
             m_currentContext->table().close(req.u.close.fd);
+            printf("Close %d %u\n", req.u.close.fd);
             ipc->request()->u.closeResult.error = 0;
             ipc->emit(Code::Complete);
             break;

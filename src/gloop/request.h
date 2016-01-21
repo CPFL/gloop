@@ -77,7 +77,6 @@ struct Read {
 };
 
 struct ReadResult {
-    int error;
     ssize_t readCount;
 };
 
@@ -87,8 +86,7 @@ struct AllocOnePageResult {
 
 
 struct ReadOnePageResult {
-    int error;
-    size_t readCount;
+    ssize_t readCount;
     void* page;
 };
 

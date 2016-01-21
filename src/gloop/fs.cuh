@@ -81,7 +81,6 @@ inline __device__ auto readOnePage(DeviceLoop* loop, int fd, size_t offset, size
         void* page = req->u.allocOnePageResult.page;
         auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
             volatile request::Request oneTimeRequest;
-            oneTimeRequest.u.readOnePageResult.error = req->u.readResult.error;
             oneTimeRequest.u.readOnePageResult.page = page;
             oneTimeRequest.u.readOnePageResult.readCount = req->u.readResult.readCount;
             callback(loop, &oneTimeRequest);
@@ -93,17 +92,22 @@ inline __device__ auto readOnePage(DeviceLoop* loop, int fd, size_t offset, size
 template<typename Lambda>
 inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, size_t requestedOffset, volatile request::Request* req, Lambda callback) -> void
 {
-    int error = req->u.readOnePageResult.error;
-    size_t readCount = req->u.readOnePageResult.readCount;
+    ssize_t readCount = req->u.readOnePageResult.readCount;
     void* page = req->u.readOnePageResult.page;
-    size_t cursor = requestedOffset + readCount;
+    ssize_t cursor = requestedOffset + readCount;
+    ssize_t last = offset + count;
 
-    if (!error) {
-        if (cursor != count) {
-            readOnePage(loop, fd, cursor, min((count - cursor), GLOOP_SHARED_PAGE_SIZE), [=](DeviceLoop* loop, volatile request::Request* req) {
-                performOnePageRead(loop, fd, offset, count, buffer, cursor, req, callback);
-            });
-        }
+    GPU_ASSERT(readCount <= count);
+    GPU_ASSERT(cursor <= last);
+    if (readCount < 0) {
+        callback(loop, -1);
+        return;
+    }
+
+    if (cursor != last) {
+        readOnePage(loop, fd, cursor, min((last - cursor), GLOOP_SHARED_PAGE_SIZE), [=](DeviceLoop* loop, volatile request::Request* req) {
+            performOnePageRead(loop, fd, offset, count, buffer, cursor, req, callback);
+        });
     }
 
     BEGIN_SINGLE_THREAD
@@ -113,7 +117,7 @@ inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offse
     }
     END_SINGLE_THREAD
 
-    if (error || cursor == count) {
+    if (cursor == last) {
         callback(loop, count);
     }
 }
