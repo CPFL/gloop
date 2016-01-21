@@ -253,7 +253,7 @@ bool HostLoop::handle(Command command)
             // We should integrate implementation with GPUfs's buffer cache.
             size_t count = req.u.write.count;
             std::vector<char> buffer(count);
-            cudaMemcpy(buffer.data(), req.u.write.buffer, count, cudaMemcpyDeviceToHost);
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpy(buffer.data(), req.u.write.buffer, count, cudaMemcpyDeviceToHost));
             ssize_t writtenSize = pwrite(req.u.write.fd, buffer.data(), count, req.u.write.offset);
             ipc->request()->u.result.result = writtenSize;
             ipc->emit(Code::Complete);
@@ -265,7 +265,7 @@ bool HostLoop::handle(Command command)
             // We should integrate implementation with GPUfs's buffer cache.
             std::vector<char> buffer(req.u.read.count);
             ssize_t readSize = pread(req.u.read.fd, buffer.data(), req.u.read.count, req.u.read.offset);
-            cudaMemcpy(req.u.read.buffer, buffer.data(), readSize, cudaMemcpyHostToDevice);
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpy(req.u.read.buffer, buffer.data(), readSize, cudaMemcpyHostToDevice));
             ipc->request()->u.result.result = readSize;
             ipc->emit(Code::Complete);
             break;
