@@ -251,6 +251,7 @@ bool HostLoop::handle(Command command)
         case Code::Write: {
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
+            printf("Write %d\n", req.u.write.fd);
             size_t count = req.u.write.count;
             std::vector<char> buffer(count);
             GLOOP_CUDA_SAFE_CALL(cudaMemcpy(buffer.data(), req.u.write.buffer, count, cudaMemcpyDeviceToHost));
@@ -263,6 +264,7 @@ bool HostLoop::handle(Command command)
         case Code::Read: {
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
+            printf("Read %d\n", req.u.read.fd);
             std::vector<char> buffer(req.u.read.count);
             ssize_t readSize = pread(req.u.read.fd, buffer.data(), req.u.read.count, req.u.read.offset);
             GLOOP_CUDA_SAFE_CALL(cudaMemcpy(req.u.read.buffer, buffer.data(), readSize, cudaMemcpyHostToDevice));
