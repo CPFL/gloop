@@ -238,6 +238,7 @@ bool HostLoop::handle(Command command)
     case Command::Type::IO: {
         const request::Request& req = command.request;
         IPC* ipc = bitwise_cast<IPC*>(command.payload);
+
         switch (static_cast<Code>(req.code)) {
         case Code::Open: {
             int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
@@ -248,10 +249,25 @@ bool HostLoop::handle(Command command)
         }
 
         case Code::Write: {
+            // FIXME: Significant naive implementaion.
+            // We should integrate implementation with GPUfs's buffer cache.
+            size_t count = req.u.write.count;
+            std::vector<char> buffer(count);
+            cudaMemcpy(buffer.data(), req.u.write.buffer, count, cudaMemcpyDeviceToHost);
+            ssize_t writtenSize = pwrite(req.u.write.fd, buffer.data(), count, req.u.write.offset);
+            ipc->request()->u.result.result = writtenSize;
+            ipc->emit(Code::Complete);
             break;
         }
 
         case Code::Read: {
+            // FIXME: Significant naive implementaion.
+            // We should integrate implementation with GPUfs's buffer cache.
+            std::vector<char> buffer(req.u.read.count);
+            ssize_t readSize = pread(req.u.read.fd, buffer.data(), req.u.read.count, req.u.read.offset);
+            cudaMemcpy(req.u.read.buffer, buffer.data(), readSize, cudaMemcpyHostToDevice);
+            ipc->request()->u.result.result = readSize;
+            ipc->emit(Code::Complete);
             break;
         }
 

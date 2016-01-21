@@ -36,7 +36,7 @@ __device__ void openImpl(DeviceLoop*, IPC*, volatile request::Open&, char* filen
 __device__ void writeImpl(DeviceLoop*, IPC*, volatile request::Write&, int fd, size_t offset, size_t count, unsigned char* buffer);
 __device__ void fstatImpl(DeviceLoop*, IPC*, volatile request::Fstat&, int fd);
 __device__ void closeImpl(DeviceLoop*, IPC*, volatile request::Close&, int fd);
-__device__ void readImpl(DeviceLoop*, IPC*, volatile request::Read&, int fd, size_t offset, size_t size, unsigned char* buffer);
+__device__ void readImpl(DeviceLoop*, IPC*, volatile request::Read&, int fd, size_t offset, size_t count, unsigned char* buffer);
 
 template<typename Lambda>
 inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Lambda callback) -> void
@@ -75,12 +75,12 @@ inline __device__ auto close(DeviceLoop* loop, int fd, Lambda callback) -> void
 }
 
 template<typename Lambda>
-inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t size, unsigned char* buffer, Lambda callback) -> void
+inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     auto* ipc = loop->enqueue([callback](DeviceLoop* loop, volatile request::Request* req) {
         callback(loop, req->u.result.result);
     });
-    readImpl(loop, ipc, ipc->request()->u.read, fd, offset, size, buffer);
+    readImpl(loop, ipc, ipc->request()->u.read, fd, offset, count, buffer);
 }
 
 } }  // namespace gloop::fs

@@ -75,13 +75,13 @@ __device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::Close& r
     END_SINGLE_THREAD
 }
 
-__device__ void readImpl(DeviceLoop* loop, IPC* ipc, volatile request::Read& req, int fd, size_t offset, size_t size, unsigned char* buffer)
+__device__ void readImpl(DeviceLoop* loop, IPC* ipc, volatile request::Read& req, int fd, size_t offset, size_t count, unsigned char* buffer)
 {
     BEGIN_SINGLE_THREAD
     {
         req.fd = fd;
         req.offset = offset;
-        req.size = size;
+        req.count = count;
         req.buffer = buffer;
         loop->emit(Code::Read, ipc);
     }

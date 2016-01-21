@@ -60,7 +60,7 @@ struct Close {
 struct Read {
     int fd;
     size_t offset;
-    size_t size;
+    size_t count;
     unsigned char* buffer;
 };
 
