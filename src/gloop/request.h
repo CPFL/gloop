@@ -77,7 +77,19 @@ struct Read {
 };
 
 struct ReadResult {
+    int error;
     ssize_t readCount;
+};
+
+struct AllocOnePageResult {
+    void* page;
+};
+
+
+struct ReadOnePageResult {
+    int error;
+    size_t readCount;
+    void* page;
 };
 
 struct Request {
@@ -97,6 +109,10 @@ struct Request {
 
         Read read;
         ReadResult readResult;
+
+        AllocOnePageResult allocOnePageResult;
+
+        ReadOnePageResult readOnePageResult;
     } u;
 };
 

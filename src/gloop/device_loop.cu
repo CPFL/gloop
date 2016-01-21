@@ -65,11 +65,8 @@ __device__ void DeviceLoop::enqueueLater(Callback lambda)
 {
     BEGIN_SINGLE_THREAD
     {
-        uint32_t pos = allocate(&lambda);
-        uint64_t bit = 1ULL << pos;
-        m_control.queue[m_control.put++ % GLOOP_SHARED_SLOT_SIZE] = pos;
-        m_control.sleep |= bit;
-        m_control.wakeup |= bit;
+        uint32_t pos = enqueueSleep(lambda);
+        m_control.wakeup |= (1ULL << pos);
     }
     END_SINGLE_THREAD
 }
@@ -135,7 +132,7 @@ __device__ bool DeviceLoop::drain()
     return true;
 }
 
-__device__ uint32_t DeviceLoop::allocate(Callback* lambda)
+__device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     int pos = __ffsll(m_control.free) - 1;
@@ -210,6 +207,30 @@ __device__ void DeviceLoop::emit(Code code, IPC* ipc)
     {
         ipc->emit(code);
         m_control.pending += 1;
+    }
+    END_SINGLE_THREAD
+}
+
+__device__ uint32_t DeviceLoop::enqueueSleep(const Callback& lambda)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    uint32_t pos = allocate(&lambda);
+    m_control.queue[m_control.put++ % GLOOP_SHARED_SLOT_SIZE] = pos;
+    m_control.sleep |= (1ULL << pos);
+    return pos;
+}
+
+__device__ void DeviceLoop::freeOnePage(void* aPage)
+{
+    BEGIN_SINGLE_THREAD
+    {
+        OnePage* page = static_cast<OnePage*>(aPage);
+        uint32_t pos = page - m_control.m_pages;
+        m_control.m_freePages |= (1ULL << pos);
+        int freePageWaitingCallbackPlusOne = __ffsll(m_control.m_pageSleep);
+        if (freePageWaitingCallbackPlusOne) {
+            m_control.wakeup |= (1ULL << (freePageWaitingCallbackPlusOne - 1));
+        }
     }
     END_SINGLE_THREAD
 }

@@ -25,6 +25,7 @@
 #define GLOOP_DEVICE_LOOP_H_
 #include <cstdint>
 #include <gipc/gipc.cuh>
+#include <gpufs/libgpufs/util.cu.h>
 #include "code.cuh"
 #include "function.cuh"
 #include "ipc.cuh"
@@ -33,7 +34,8 @@
 namespace gloop {
 
 #define GLOOP_SHARED_SLOT_SIZE 64
-#define GLOOP_SHARED_BUFFER_SIZE 4096
+#define GLOOP_SHARED_PAGE_SIZE 4096UL
+#define GLOOP_SHARED_PAGE_COUNT 2
 
 __device__ extern IPC* g_channel;
 
@@ -42,6 +44,10 @@ public:
     typedef gloop::function<void(DeviceLoop*, volatile request::Request*)> Callback;
     typedef std::aligned_storage<sizeof(DeviceLoop::Callback), alignof(DeviceLoop::Callback)>::type UninitializedStorage;
 
+    struct OnePage {
+        unsigned char data[GLOOP_SHARED_PAGE_SIZE];
+    };
+
     struct DeviceLoopControl {
         uint32_t put { 0 };
         uint32_t get { 0 };
@@ -49,6 +55,10 @@ public:
         uint64_t free { static_cast<decltype(free)>(-1) };
         uint64_t sleep { 0 };
         uint64_t wakeup { 0 };
+        uint64_t m_freePages { (1ULL << GLOOP_SHARED_PAGE_COUNT) - 1 };
+        uint64_t m_pageSleep { 0 };
+        static_assert(GLOOP_SHARED_PAGE_COUNT != 64, "Should not be 64");
+        OnePage* m_pages;
         uint8_t queue[GLOOP_SHARED_SLOT_SIZE];
     };
 
@@ -69,6 +79,10 @@ public:
     __device__ IPC* enqueueIPC(Callback lambda);
     __device__ void enqueueLater(Callback lambda);
 
+    template<typename Lambda>
+    __device__ void allocOnePageMaySync(Lambda lambda);
+    __device__ void freeOnePage(void* page);
+
     __device__ void emit(Code code, IPC*);
 
     __device__ Callback* dequeue();
@@ -80,7 +94,9 @@ public:
     __device__ void resume();
 
 private:
-    __device__ uint32_t allocate(Callback* lambda);
+    __device__ uint32_t enqueueSleep(const Callback& lambda);
+
+    __device__ uint32_t allocate(const Callback* lambda);
 
     __device__ void suspend();
 
@@ -113,6 +129,33 @@ __device__ auto DeviceLoop::channel() const -> IPC*
 __device__ auto DeviceLoop::context() const -> PerBlockContext*
 {
     return m_deviceContext.context + GLOOP_BID();
+}
+
+template<typename Lambda>
+inline __device__ void DeviceLoop::allocOnePageMaySync(Lambda lambda)
+{
+    __shared__ void* page;
+    BEGIN_SINGLE_THREAD
+    {
+        int freePagePosPlusOne = __ffsll(m_control.m_freePages);
+        if (freePagePosPlusOne == 0) {
+            page == nullptr;
+            uint32_t pos = enqueueSleep([lambda](DeviceLoop* loop, volatile request::Request* req) {
+                loop->allocOnePageMaySync(lambda);
+            });
+            m_control.m_pageSleep |= (1ULL << pos);
+        } else {
+            int pagePos = freePagePosPlusOne - 1;
+            page = &m_control.m_pages[pagePos];
+            m_control.m_freePages &= ~(1ULL << pagePos);
+        }
+    }
+    END_SINGLE_THREAD
+    if (page) {
+        volatile request::Request req;
+        req.u.allocOnePageResult.page = page;
+        lambda(this, &req);
+    }
 }
 
 }  // namespace gloop
