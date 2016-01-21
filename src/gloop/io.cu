@@ -21,44 +21,44 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HOST_CONTEXT_CU_H_
-#define GLOOP_HOST_CONTEXT_CU_H_
-#include <cuda.h>
-#include <memory>
-#include <utility>
-#include "device_context.cuh"
+#include <algorithm>
+#include <cstdio>
+#include <fcntl.h>
+#include <unistd.h>
 #include "io.cuh"
-#include "noncopyable.h"
 namespace gloop {
 
-class HostLoop;
+FileDescriptorTable::~FileDescriptorTable()
+{
+    for (auto& pair : m_fileNameToFile) {
+        ::close(pair.second->fd);
+    }
+}
 
-class HostContext {
-GLOOP_NONCOPYABLE(HostContext);
-public:
-    __host__ ~HostContext();
+int FileDescriptorTable::open(std::string fileName, int mode)
+{
+    // TODO: Check mode.
+    auto iter = m_fileNameToFile.find(fileName);
+    if (iter != m_fileNameToFile.end()) {
+        iter->second->refCount++;
+        return iter->second->fd;
+    }
+    int fd = ::open(fileName.c_str(), mode);
+    m_fileNameToFile.insert(iter, std::make_pair(fileName, std::make_shared<File>(fd)));
+    return fd;
+}
 
-    __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 blocks);
-
-    __host__ DeviceContext deviceContext() { return m_context; }
-
-    dim3 blocks() const { return m_blocks; }
-
-    __host__ IPC* tryPeekRequest();
-
-    FileDescriptorTable& table() { return m_table; }
-
-private:
-    HostContext(dim3 blocks);
-    bool initialize();
-
-    FileDescriptorTable m_table { };
-    std::unique_ptr<IPC[]> m_ipc { nullptr };
-    DeviceContext m_context { nullptr };
-    dim3 m_blocks { };
-    bool m_resumed { false };
-};
-
+void FileDescriptorTable::close(int fd)
+{
+    auto iter = std::find_if(m_fileNameToFile.begin(), m_fileNameToFile.end(), [&](const FileNameToFileMap::value_type& pair) {
+        return pair.second->fd == fd;
+    });
+    if (iter == m_fileNameToFile.end())
+        return;
+    if (--iter->second->refCount == 0) {
+        ::close(iter->second->fd);
+        m_fileNameToFile.erase(iter);
+    }
+}
 
 }  // namespace gloop
-#endif  // GLOOP_HOST_CONTEXT_CU_H_

@@ -23,7 +23,38 @@
 */
 #ifndef GLOOP_IO_CU_H_
 #define GLOOP_IO_CU_H_
+#include <memory>
+#include <unordered_map>
+#include "noncopyable.h"
 namespace gloop {
+
+struct File {
+    File(int fd);
+
+    int fd;
+    int refCount;
+};
+
+inline File::File(int fd)
+    : fd(fd)
+    , refCount(1)
+{
+}
+
+class FileDescriptorTable {
+GLOOP_NONCOPYABLE(FileDescriptorTable)
+public:
+    FileDescriptorTable() { };
+    ~FileDescriptorTable();
+
+    int open(std::string fileName, int mode);
+    void close(int fd);
+
+private:
+    // This merges file open requests from the blocks.
+    typedef std::unordered_map<std::string, std::shared_ptr<File>> FileNameToFileMap;
+    FileNameToFileMap m_fileNameToFile;
+};
 
 }  // namespace gloop
 #endif  // GLOOP_IO_CU_H_

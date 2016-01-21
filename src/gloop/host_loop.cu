@@ -240,14 +240,7 @@ bool HostLoop::handle(Command command)
         IPC* ipc = bitwise_cast<IPC*>(command.payload);
         switch (static_cast<Code>(req.code)) {
         case Code::Open: {
-            auto iter = m_fds.find(req.u.open.filename.data);
-            int fd = 0;
-            if (iter != m_fds.end()) {
-                fd = iter->second;
-            } else {
-                fd = open(req.u.open.filename.data, req.u.open.mode);
-                m_fds.insert(iter, std::make_pair(std::string(req.u.open.filename.data), fd));
-            }
+            int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
             printf("Open %s %d\n", req.u.open.filename.data, fd);
             ipc->request()->u.result.result = fd;
             ipc->emit(Code::Complete);
@@ -272,6 +265,9 @@ bool HostLoop::handle(Command command)
         }
 
         case Code::Close: {
+            m_currentContext->table().close(req.u.close.fd);
+            ipc->request()->u.result.result = 0;
+            ipc->emit(Code::Complete);
             break;
         }
         }

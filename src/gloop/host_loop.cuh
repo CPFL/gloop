@@ -88,7 +88,7 @@ private:
     boost::asio::local::stream_protocol::socket m_socket;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
-    std::unordered_map<std::string, int> m_fds { };
+    std::unordered_map<std::string, File> m_fds { };
 };
 
 template<typename DeviceLambda, class... Args>

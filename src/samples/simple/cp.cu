@@ -42,6 +42,10 @@ __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
     gloop::fs::open(loop, src, O_GRDONLY, [=](gloop::DeviceLoop* loop, int zfd) {
         gloop::fs::open(loop, dst, O_GWRONCE, [=](gloop::DeviceLoop* loop, int zfd1) {
             gloop::fs::fstat(loop, zfd, [=](gloop::DeviceLoop* loop, int filesize) {
+                gloop::fs::close(loop, zfd, [=](gloop::DeviceLoop* loop, int err) {
+                    gloop::fs::close(loop, zfd1, [=](gloop::DeviceLoop* loop, int err) {
+                    });
+                });
 #if 0
                 size_t me = blockIdx.x * FS_BLOCKSIZE;
                 perform_copy(loop, scratch, zfd, zfd1, me, filesize);
