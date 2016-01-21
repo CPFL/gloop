@@ -273,13 +273,18 @@ bool HostLoop::handle(Command command)
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
             printf("Read fd:(%d),count:(%u),offset(%d)\n", req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset);
-            std::vector<char> buffer(req.u.read.count);
-            ssize_t readCount = pread(req.u.read.fd, buffer.data(), req.u.read.count, req.u.read.offset);
+            void* host = nullptr;
+
+            // We should implement 
+            GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&host, req.u.read.count, cudaHostAllocPortable));
+            ssize_t readCount = pread(req.u.read.fd, host, req.u.read.count, req.u.read.offset);
 
             // FIXME: Should use multiple streams. And execute async.
-            // cudaStream_t stream = streamMgr->memStream[1];
-            // GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, buffer.data(), readCount, cudaMemcpyHostToDevice, stream));
-            // cudaStreamSynchronize(stream);
+            cudaStream_t stream = streamMgr->memStream[1];
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, host, readCount, cudaMemcpyHostToDevice, stream));
+            cudaStreamSynchronize(stream);
+
+            // GLOOP_CUDA_SAFE_CALL(cudaFreeHost(host));
 
             ipc->request()->u.readResult.readCount = readCount;
             ipc->emit(Code::Complete);
