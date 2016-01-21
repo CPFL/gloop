@@ -225,7 +225,7 @@ __device__ void DeviceLoop::freeOnePage(void* aPage)
     BEGIN_SINGLE_THREAD
     {
         OnePage* page = static_cast<OnePage*>(aPage);
-        uint32_t pos = page - m_control.m_pages;
+        uint32_t pos = page - m_deviceContext.pages + GLOOP_SHARED_PAGE_COUNT * GLOOP_BID();
         m_control.m_freePages |= (1ULL << pos);
         int freePageWaitingCallbackPlusOne = __ffsll(m_control.m_pageSleep);
         if (freePageWaitingCallbackPlusOne) {

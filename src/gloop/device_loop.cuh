@@ -48,6 +48,7 @@ public:
         unsigned char data[GLOOP_SHARED_PAGE_SIZE];
     };
 
+    static_assert(GLOOP_SHARED_PAGE_COUNT != 64, "Should not be 64");
     struct DeviceLoopControl {
         uint32_t put { 0 };
         uint32_t get { 0 };
@@ -57,8 +58,6 @@ public:
         uint64_t wakeup { 0 };
         uint64_t m_freePages { (1ULL << GLOOP_SHARED_PAGE_COUNT) - 1 };
         uint64_t m_pageSleep { 0 };
-        static_assert(GLOOP_SHARED_PAGE_COUNT != 64, "Should not be 64");
-        OnePage* m_pages;
         uint8_t queue[GLOOP_SHARED_SLOT_SIZE];
     };
 
@@ -72,6 +71,7 @@ public:
     struct DeviceContext {
         PerBlockContext* context;
         IPC* channels;
+        OnePage* pages;
     };
 
     __device__ DeviceLoop(DeviceContext, UninitializedStorage* buffer, size_t size);
@@ -146,7 +146,7 @@ inline __device__ void DeviceLoop::allocOnePageMaySync(Lambda lambda)
             m_control.m_pageSleep |= (1ULL << pos);
         } else {
             int pagePos = freePagePosPlusOne - 1;
-            page = &m_control.m_pages[pagePos];
+            page = &m_deviceContext.pages[pagePos];
             m_control.m_freePages &= ~(1ULL << pagePos);
         }
     }

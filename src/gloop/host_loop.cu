@@ -270,6 +270,7 @@ bool HostLoop::handle(Command command)
             printf("Read %d\n", req.u.read.fd);
             std::vector<char> buffer(req.u.read.count);
             ssize_t readCount = pread(req.u.read.fd, buffer.data(), req.u.read.count, req.u.read.offset);
+            // FIXME: Execute CUDA API with Memcpy stream. Currently, since we invoke kernel, it stops forever.
             GLOOP_CUDA_SAFE_CALL(cudaMemcpy(req.u.read.buffer, buffer.data(), readCount, cudaMemcpyHostToDevice));
             ipc->request()->u.readResult.readCount = readCount;
             ipc->emit(Code::Complete);
