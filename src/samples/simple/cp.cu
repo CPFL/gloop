@@ -13,14 +13,12 @@ __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, i
                 assert(NULL);
             }
 
-#if 0
             gloop::fs::write(loop, zfd1, me, toRead, scratch, [=](gloop::DeviceLoop* loop, int written) {
                 if (toRead != written) {
                     assert(NULL);
                 }
                 perform_copy(loop, scratch, zfd, zfd1, me + FS_BLOCKSIZE * gridDim.x, filesize);
             });
-#endif
         });
         return;
     }

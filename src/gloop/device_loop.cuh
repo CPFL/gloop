@@ -146,27 +146,37 @@ __device__ auto DeviceLoop::pages() const -> OnePage*
 template<typename Lambda>
 inline __device__ void DeviceLoop::allocOnePageMaySync(Lambda lambda)
 {
+    __shared__ void* page;
     BEGIN_SINGLE_THREAD
     {
+        page = nullptr;
         int freePagePosPlusOne = __ffsll(m_control.freePages);
         if (freePagePosPlusOne == 0) {
-            void* page = nullptr;
             uint32_t pos = enqueueSleep([lambda](DeviceLoop* loop, volatile request::Request* req) {
                 loop->allocOnePageMaySync(lambda);
             });
             m_control.m_pageSleep |= (1ULL << pos);
         } else {
             int pagePos = freePagePosPlusOne - 1;
-            void* page = pages() + pagePos;
+            page = pages() + pagePos;
             m_control.freePages &= ~(1ULL << pagePos);
+#if 0
             enqueueLater([lambda, page](DeviceLoop* loop, volatile request::Request* req) {
                 volatile request::Request request;
                 request.u.allocOnePageResult.page = page;
                 lambda(loop, &request);
             });
+#endif
         }
     }
     END_SINGLE_THREAD
+#if 1
+    if (page) {
+        volatile request::Request request;
+        request.u.allocOnePageResult.page = page;
+        lambda(this, &request);
+    }
+#endif
 }
 
 }  // namespace gloop

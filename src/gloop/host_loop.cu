@@ -255,15 +255,20 @@ bool HostLoop::handle(Command command)
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
             printf("Write %d\n", req.u.write.fd);
-            size_t count = req.u.write.count;
-            std::vector<char> buffer(count);
+            void* host = nullptr;
+
+            GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&host, req.u.write.count, cudaHostAllocPortable));
 
             // FIXME: Should use multiple streams. And execute async.
             // cudaStream_t stream = streamMgr->memStream[2];
             // GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(buffer.data(), req.u.write.buffer, count, cudaMemcpyDeviceToHost, stream));
             // cudaStreamSynchronize(stream);
+            cudaStream_t stream = streamMgr->memStream[2];
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(host, req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, stream));
+            cudaStreamSynchronize(stream);
 
-            ssize_t writtenCount = pwrite(req.u.write.fd, buffer.data(), count, req.u.write.offset);
+            ssize_t writtenCount = pwrite(req.u.write.fd, host, req.u.write.count, req.u.write.offset);
+
             ipc->request()->u.writeResult.writtenCount = writtenCount;
             ipc->emit(Code::Complete);
             break;
@@ -275,7 +280,7 @@ bool HostLoop::handle(Command command)
             printf("Read fd:(%d),count:(%u),offset(%d)\n", req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset);
             void* host = nullptr;
 
-            // We should implement 
+            // We should implement
             GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&host, req.u.read.count, cudaHostAllocPortable));
             ssize_t readCount = pread(req.u.read.fd, host, req.u.read.count, req.u.read.offset);
 

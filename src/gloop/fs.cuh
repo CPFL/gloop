@@ -48,15 +48,6 @@ inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Lambda c
 }
 
 template<typename Lambda>
-inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
-{
-    auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
-        callback(loop, req->u.writeResult.writtenCount);
-    });
-    writeImpl(loop, ipc, ipc->request()->u.write, fd, offset, count, buffer);
-}
-
-template<typename Lambda>
 inline __device__ auto fstat(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
     auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
@@ -127,6 +118,58 @@ inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t coun
 {
     readOnePage(loop, fd, offset, min(count, GLOOP_SHARED_PAGE_SIZE), [=](DeviceLoop* loop, volatile request::Request* req) {
         performOnePageRead(loop, fd, offset, count, buffer, offset, req, callback);
+    });
+}
+
+template<typename Lambda>
+inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, size_t transferringSize, unsigned char* buffer, Lambda callback) -> void
+{
+    loop->allocOnePageMaySync([=](DeviceLoop* loop, volatile request::Request* req) {
+        unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
+        BEGIN_SINGLE_THREAD
+        {
+            memcpy(page, buffer + offset, transferringSize);
+        }
+        END_SINGLE_THREAD
+        auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+            loop->freeOnePage(page);
+            volatile request::Request oneTimeRequest;
+            oneTimeRequest.u.writeOnePageResult.writtenCount = req->u.writeResult.writtenCount;
+            callback(loop, &oneTimeRequest);
+        });
+        writeImpl(loop, ipc, ipc->request()->u.write, fd, offset, transferringSize, page);
+    });
+}
+
+template<typename Lambda>
+inline __device__ auto performOnePageWrite(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, size_t requestedOffset, volatile request::Request* req, Lambda callback) -> void
+{
+    ssize_t writtenCount = req->u.writeOnePageResult.writtenCount;
+    ssize_t cursor = requestedOffset + writtenCount;
+    ssize_t last = offset + count;
+
+    GPU_ASSERT(writtenCount <= count);
+    GPU_ASSERT(cursor <= last);
+    if (writtenCount < 0) {
+        callback(loop, -1);
+        return;
+    }
+
+    if (cursor != last) {
+        writeOnePage(loop, fd, cursor, min((last - cursor), GLOOP_SHARED_PAGE_SIZE), buffer, [=](DeviceLoop* loop, volatile request::Request* req) {
+            performOnePageWrite(loop, fd, offset, count, buffer, cursor, req, callback);
+        });
+    } else {
+        callback(loop, count);
+    }
+}
+
+
+template<typename Lambda>
+inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
+{
+    writeOnePage(loop, fd, offset, min(count, GLOOP_SHARED_PAGE_SIZE), buffer, [=](DeviceLoop* loop, volatile request::Request* req) {
+        performOnePageWrite(loop, fd, offset, count, buffer, offset, req, callback);
     });
 }
 
