@@ -21,28 +21,44 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_COMMAND_H_
-#define GLOOP_COMMAND_H_
-#include "request.h"
+#include <algorithm>
+#include <cstdio>
+#include <fcntl.h>
+#include <unistd.h>
+#include "io.cuh"
 namespace gloop {
 
-struct Command {
-    enum class Type : uint32_t {
-        Initialize,
-        Operation,
-        IO
-    };
+FileDescriptorTable::~FileDescriptorTable()
+{
+    for (auto& pair : m_fileNameToFile) {
+        ::close(pair.second->fd);
+    }
+}
 
-    enum Operation : uint32_t {
-        HostBack,
-        DeviceLoopComplete,
-        Complete
-    };
+int FileDescriptorTable::open(std::string fileName, int mode)
+{
+    // TODO: Check mode.
+    auto iter = m_fileNameToFile.find(fileName);
+    if (iter != m_fileNameToFile.end()) {
+        iter->second->refCount++;
+        return iter->second->fd;
+    }
+    int fd = ::open(fileName.c_str(), mode);
+    m_fileNameToFile.insert(iter, std::make_pair(fileName, std::make_shared<File>(fd)));
+    return fd;
+}
 
-    Type type;
-    uintptr_t payload;
-    request::Request request;
-};
+void FileDescriptorTable::close(int fd)
+{
+    auto iter = std::find_if(m_fileNameToFile.begin(), m_fileNameToFile.end(), [&](const FileNameToFileMap::value_type& pair) {
+        return pair.second->fd == fd;
+    });
+    if (iter == m_fileNameToFile.end())
+        return;
+    if (--iter->second->refCount == 0) {
+        ::close(iter->second->fd);
+        m_fileNameToFile.erase(iter);
+    }
+}
 
 }  // namespace gloop
-#endif  // GLOOP_COMMAND_H_

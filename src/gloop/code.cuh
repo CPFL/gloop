@@ -21,28 +21,27 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_COMMAND_H_
-#define GLOOP_COMMAND_H_
-#include "request.h"
+#ifndef GLOOP_CODE_CU_H_
+#define GLOOP_CODE_CU_H_
+#include <cstdint>
 namespace gloop {
 
-struct Command {
-    enum class Type : uint32_t {
-        Initialize,
-        Operation,
-        IO
-    };
+enum class Code : int32_t {
+    Complete = -1,
+    None = 0,
 
-    enum Operation : uint32_t {
-        HostBack,
-        DeviceLoopComplete,
-        Complete
-    };
+    Open = 1,
+    Write,
+    Fstat,
+    Close,
+    Read,
 
-    Type type;
-    uintptr_t payload;
-    request::Request request;
 };
 
+inline bool IsOperationCode(Code code)
+{
+    return static_cast<int32_t>(code) > 0;
+}
+
 }  // namespace gloop
-#endif  // GLOOP_COMMAND_H_
+#endif  // GLOOP_CODE_CU_H_

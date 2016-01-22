@@ -39,6 +39,9 @@ add_library(gloop STATIC
     host_context.cu
     host_loop.cu
     device_loop.cu
+    fs.cu
+    io.cu
+    ipc.cu
     system_initialize.cu
     monitor_session.cc
 )

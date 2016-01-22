@@ -38,7 +38,19 @@ public:
         return result;
     }
 
+    inline void* operator new[](std::size_t size)
+    {
+        void* result = nullptr;
+        GIPC_CUDA_SAFE_CALL(cudaHostAlloc(&result, size, cudaHostAllocMapped));
+        return result;
+    }
+
     inline void operator delete(void* ptr)
+    {
+        GIPC_CUDA_SAFE_CALL(cudaFreeHost(ptr));
+    }
+
+    inline void operator delete[](void* ptr)
     {
         GIPC_CUDA_SAFE_CALL(cudaFreeHost(ptr));
     }

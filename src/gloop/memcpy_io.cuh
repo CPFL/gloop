@@ -21,28 +21,18 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_COMMAND_H_
-#define GLOOP_COMMAND_H_
-#include "request.h"
+#ifndef GLOOP_MEMCPY_IO_CU_H_
+#define GLOOP_MEMCPY_IO_CU_H_
 namespace gloop {
 
-struct Command {
-    enum class Type : uint32_t {
-        Initialize,
-        Operation,
-        IO
-    };
-
-    enum Operation : uint32_t {
-        HostBack,
-        DeviceLoopComplete,
-        Complete
-    };
-
-    Type type;
-    uintptr_t payload;
-    request::Request request;
-};
+__host__ __device__ static inline void* memcpyIO(volatile void* s1, volatile const void* s2, size_t n)
+{
+    volatile char* out = (volatile char*)s1;
+    const volatile char* in = (const volatile char*)s2;
+    size_t i;
+    for (i = 0; i < n; ++i) out[i] = in[i];
+    return (void*)s1;
+}
 
 }  // namespace gloop
-#endif  // GLOOP_COMMAND_H_
+#endif  // GLOOP_MEMCPY_IO_CU_H_

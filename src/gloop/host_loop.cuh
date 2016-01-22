@@ -29,11 +29,14 @@
 #include <gpufs/libgpufs/fs_initializer.cu.h>
 #include <gipc/gipc.cuh>
 #include <memory>
+#include <string>
 #include <thread>
+#include <unordered_map>
 #include <uv.h>
 #include "command.h"
 #include "entry.cuh"
 #include "host_context.cuh"
+#include "ipc.cuh"
 #include "noncopyable.h"
 
 namespace boost {
@@ -78,13 +81,14 @@ private:
 
     HostContext* m_currentContext { nullptr };
 
-    std::unique_ptr<gipc::Channel> m_channel;
+    std::unique_ptr<IPC> m_channel;
 
     uint32_t m_id { 0 };
     boost::asio::io_service m_ioService;
     boost::asio::local::stream_protocol::socket m_socket;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
+    std::unordered_map<std::string, File> m_fds { };
 };
 
 template<typename DeviceLambda, class... Args>

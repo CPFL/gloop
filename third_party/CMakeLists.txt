@@ -21,3 +21,5 @@ set_target_properties(uv
     IMPORTED_LOCATION ${LIBUV_LOCATION}
 )
 add_dependencies(uv ${EP_TARGET_NAME})
+
+add_subdirectory(backward-cpp)

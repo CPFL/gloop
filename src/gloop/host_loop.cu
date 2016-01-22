@@ -29,17 +29,22 @@
 #include <gpufs/libgpufs/fs_initializer.cu.h>
 #include <gpufs/libgpufs/host_loop.h>
 #include <memory>
+#include "bitwise_cast.h"
 #include "command.h"
 #include "config.h"
 #include "helper.cuh"
 #include "host_loop.cuh"
+#include "io.cuh"
+#include "ipc.cuh"
 #include "make_unique.h"
+#include "memcpy_io.cuh"
 #include "monitor_session.h"
+#include "request.h"
 #include "system_initialize.h"
 #include "utility.h"
 namespace gloop {
 
-__device__ gipc::Channel* g_channel;
+__device__ IPC* g_channel;
 
 HostLoop::HostLoop(int deviceNumber)
     : m_deviceNumber(deviceNumber)
@@ -124,21 +129,34 @@ void HostLoop::pollerMain()
 {
     bool done = false;
     while (!done) {
-        if (m_stop.load(std::memory_order_acquire)) {
-            m_channel->stop();
-            while (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream));
-            m_stop.store(false, std::memory_order_acquire);
-            break;
+        // if (m_stop.load(std::memory_order_acquire)) {
+        //     m_channel->stop();
+        //     while (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream));
+        //     m_stop.store(false, std::memory_order_acquire);
+        //     break;
+        // }
+
+        if (!m_currentContext)
+            continue;
+
+        if (IPC* ipc = m_currentContext->tryPeekRequest()) {
+            request::Request req { };
+            memcpyIO(&req, ipc->request(), sizeof(request::Request));
+            ipc->emit(Code::None);
+            send({
+                .type = Command::Type::IO,
+                .payload = bitwise_cast<uintptr_t>(ipc),
+                .request = req,
+            });
         }
 
-        open_loop(this, m_deviceNumber);
-        rw_loop(this);
-
+        // open_loop(this, m_deviceNumber);
+        // rw_loop(this);
         if (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream)) {
             logGPUfsDone();
             break;
         }
-        async_close_loop(this);
+        // async_close_loop(this);
     }
     send({
         .type = Command::Type::Operation,
@@ -146,14 +164,14 @@ void HostLoop::pollerMain()
     });
 }
 
-__global__ static void initializeDevice(gipc::Channel* channel)
+__global__ static void initializeDevice(IPC* channel)
 {
     g_channel = channel;
 }
 
 void HostLoop::initialize()
 {
-    m_channel = make_unique<gipc::Channel>();
+    m_channel = make_unique<IPC>();
     // this must be done from a single thread!
 	init_fs<<<1,1>>>(
             cpu_ipcOpenQueue,
@@ -168,7 +186,9 @@ void HostLoop::initialize()
 			_preclose_table);
 
     // FIXME: This is not efficient.
-    initializeDevice<<<1, 1>>>(m_channel.get());
+    IPC* deviceChannel = nullptr;
+    GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&deviceChannel, m_channel.get(), 0));
+    initializeDevice<<<1, 1>>>(deviceChannel);
 
 	cudaThreadSynchronize();
 	CUDA_SAFE_CALL(cudaPeekAtLastError());
@@ -216,6 +236,82 @@ bool HostLoop::handle(Command command)
             return true;
         }
         break;
+    }
+
+    case Command::Type::IO: {
+        const request::Request& req = command.request;
+        IPC* ipc = bitwise_cast<IPC*>(command.payload);
+
+        switch (static_cast<Code>(req.code)) {
+        case Code::Open: {
+            int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
+            printf("Open %s %d\n", req.u.open.filename.data, fd);
+            ipc->request()->u.openResult.fd = fd;
+            ipc->emit(Code::Complete);
+            break;
+        }
+
+        case Code::Write: {
+            // FIXME: Significant naive implementaion.
+            // We should integrate implementation with GPUfs's buffer cache.
+            printf("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
+            void* host = nullptr;
+
+            GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&host, req.u.write.count, cudaHostAllocPortable));
+
+            cudaStream_t stream = streamMgr->memStream[2];
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(host, req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, stream));
+            cudaStreamSynchronize(stream);
+            __sync_synchronize();
+
+            ssize_t writtenCount = pwrite(req.u.write.fd, host, req.u.write.count, req.u.write.offset);
+
+            ipc->request()->u.writeResult.writtenCount = writtenCount;
+            ipc->emit(Code::Complete);
+            break;
+        }
+
+        case Code::Read: {
+            // FIXME: Significant naive implementaion.
+            // We should integrate implementation with GPUfs's buffer cache.
+            printf("Read fd:(%d),count:(%u),offset(%d),page:(%p)\n", req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
+            void* host = nullptr;
+
+            // We should implement
+            GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&host, req.u.read.count, cudaHostAllocPortable));
+            ssize_t readCount = pread(req.u.read.fd, host, req.u.read.count, req.u.read.offset);
+            __sync_synchronize();
+
+            // FIXME: Should use multiple streams. And execute async.
+            cudaStream_t stream = streamMgr->memStream[1];
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, host, readCount, cudaMemcpyHostToDevice, stream));
+            cudaStreamSynchronize(stream);
+
+            // GLOOP_CUDA_SAFE_CALL(cudaFreeHost(host));
+
+            ipc->request()->u.readResult.readCount = readCount;
+            ipc->emit(Code::Complete);
+            break;
+        }
+
+        case Code::Fstat: {
+            struct stat buf { };
+            ::fstat(req.u.fstat.fd, &buf);
+            printf("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
+            ipc->request()->u.fstatResult.size = buf.st_size;
+            ipc->emit(Code::Complete);
+            break;
+        }
+
+        case Code::Close: {
+            m_currentContext->table().close(req.u.close.fd);
+            printf("Close %d\n", req.u.close.fd);
+            ipc->request()->u.closeResult.error = 0;
+            ipc->emit(Code::Complete);
+            break;
+        }
+        }
+        return false;
     }
     }
     return false;
