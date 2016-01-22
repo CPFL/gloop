@@ -174,9 +174,7 @@ inline __device__ void DeviceLoop::allocOnePageMaySync(Lambda lambda)
     if (page) {
         volatile request::Request request;
         request.u.allocOnePageResult.page = page;
-        __threadfence_system();
         lambda(this, &request);
-        __threadfence_system();
     }
 #endif
 }

@@ -222,7 +222,6 @@ __device__ uint32_t DeviceLoop::enqueueSleep(const Callback& lambda)
 
 __device__ void DeviceLoop::freeOnePage(void* aPage)
 {
-    __threadfence_system();
     BEGIN_SINGLE_THREAD
     {
         uint32_t pos = position(static_cast<OnePage*>(aPage));
@@ -234,7 +233,6 @@ __device__ void DeviceLoop::freeOnePage(void* aPage)
         }
     }
     END_SINGLE_THREAD
-    __threadfence_system();
 }
 
 }  // namespace gloop

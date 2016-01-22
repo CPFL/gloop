@@ -75,6 +75,7 @@ inline __device__ auto readOnePage(DeviceLoop* loop, int fd, size_t offset, size
             volatile request::Request oneTimeRequest;
             oneTimeRequest.u.readOnePageResult.page = page;
             oneTimeRequest.u.readOnePageResult.readCount = req->u.readResult.readCount;
+            __threadfence();
             callback(loop, &oneTimeRequest);
         });
         readImpl(loop, ipc, ipc->request()->u.read, fd, offset, count, static_cast<unsigned char*>(page));
@@ -104,15 +105,15 @@ inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offse
 
     BEGIN_SINGLE_THREAD
     {
-        __threadfence_system();
         memcpyIO(buffer + (requestedOffset - offset), page, readCount);
-        __threadfence_system();
         // printf("READ offset:(%u),count:(%u),buffer:(%p)\n", (unsigned)(requestedOffset - offset), (unsigned)readCount, (void*)buffer + (requestedOffset - offset));
         loop->freeOnePage(page);
     }
     END_SINGLE_THREAD
 
     if (cursor == last) {
+        // Ensure buffer's modification is flushed.
+        __threadfence_system();
         callback(loop, count);
     }
 }
@@ -132,14 +133,12 @@ inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, siz
         unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
         BEGIN_SINGLE_THREAD
         {
-            // Sync cudaMemcpyAsync-ed memory modification.
-            // FIXME: If allocOnePageMaySync ensures page flush is already done, this is not necessary.
-            __threadfence_system();
             memcpyIO(page, buffer, transferringSize);
-            __threadfence_system();
             // printf("WRITE offset:(%p),count:(%u)\n", (void*)(buffer), (unsigned)transferringSize);
         }
         END_SINGLE_THREAD
+        __threadfence();
+
         auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
             loop->freeOnePage(page);
             volatile request::Request oneTimeRequest;
@@ -177,6 +176,8 @@ inline __device__ auto performOnePageWrite(DeviceLoop* loop, int fd, size_t offs
 template<typename Lambda>
 inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
+    // Ensure buffer's modification is flushed.
+    __threadfence_system();
     writeOnePage(loop, fd, offset, min(count, GLOOP_SHARED_PAGE_SIZE), buffer, [=](DeviceLoop* loop, volatile request::Request* req) {
         performOnePageWrite(loop, fd, offset, count, buffer, offset, req, callback);
     });

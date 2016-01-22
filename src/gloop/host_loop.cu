@@ -259,11 +259,6 @@ bool HostLoop::handle(Command command)
 
             GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&host, req.u.write.count, cudaHostAllocPortable));
 
-            // FIXME: Should use multiple streams. And execute async.
-            // cudaStream_t stream = streamMgr->memStream[2];
-            // GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(buffer.data(), req.u.write.buffer, count, cudaMemcpyDeviceToHost, stream));
-            // cudaStreamSynchronize(stream);
-            __sync_synchronize();
             cudaStream_t stream = streamMgr->memStream[2];
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(host, req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, stream));
             cudaStreamSynchronize(stream);
@@ -285,13 +280,12 @@ bool HostLoop::handle(Command command)
             // We should implement
             GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&host, req.u.read.count, cudaHostAllocPortable));
             ssize_t readCount = pread(req.u.read.fd, host, req.u.read.count, req.u.read.offset);
+            __sync_synchronize();
 
             // FIXME: Should use multiple streams. And execute async.
-            __sync_synchronize();
             cudaStream_t stream = streamMgr->memStream[1];
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, host, readCount, cudaMemcpyHostToDevice, stream));
             cudaStreamSynchronize(stream);
-            __sync_synchronize();
 
             // GLOOP_CUDA_SAFE_CALL(cudaFreeHost(host));
 
