@@ -254,7 +254,7 @@ bool HostLoop::handle(Command command)
         case Code::Write: {
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
-            printf("Write %d\n", req.u.write.fd);
+            printf("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
             void* host = nullptr;
 
             GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&host, req.u.write.count, cudaHostAllocPortable));
@@ -263,9 +263,11 @@ bool HostLoop::handle(Command command)
             // cudaStream_t stream = streamMgr->memStream[2];
             // GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(buffer.data(), req.u.write.buffer, count, cudaMemcpyDeviceToHost, stream));
             // cudaStreamSynchronize(stream);
+            __sync_synchronize();
             cudaStream_t stream = streamMgr->memStream[2];
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(host, req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, stream));
             cudaStreamSynchronize(stream);
+            __sync_synchronize();
 
             ssize_t writtenCount = pwrite(req.u.write.fd, host, req.u.write.count, req.u.write.offset);
 
@@ -277,7 +279,7 @@ bool HostLoop::handle(Command command)
         case Code::Read: {
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
-            printf("Read fd:(%d),count:(%u),offset(%d)\n", req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset);
+            printf("Read fd:(%d),count:(%u),offset(%d),page:(%p)\n", req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
             void* host = nullptr;
 
             // We should implement
@@ -285,9 +287,11 @@ bool HostLoop::handle(Command command)
             ssize_t readCount = pread(req.u.read.fd, host, req.u.read.count, req.u.read.offset);
 
             // FIXME: Should use multiple streams. And execute async.
+            __sync_synchronize();
             cudaStream_t stream = streamMgr->memStream[1];
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, host, readCount, cudaMemcpyHostToDevice, stream));
             cudaStreamSynchronize(stream);
+            __sync_synchronize();
 
             // GLOOP_CUDA_SAFE_CALL(cudaFreeHost(host));
 
@@ -307,7 +311,7 @@ bool HostLoop::handle(Command command)
 
         case Code::Close: {
             m_currentContext->table().close(req.u.close.fd);
-            printf("Close %d %u\n", req.u.close.fd);
+            printf("Close %d\n", req.u.close.fd);
             ipc->request()->u.closeResult.error = 0;
             ipc->emit(Code::Complete);
             break;

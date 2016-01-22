@@ -27,6 +27,7 @@
 #include <type_traits>
 #include <utility>
 #include "device_loop.cuh"
+#include "memcpy_io.cuh"
 #include "request.h"
 
 namespace gloop {
@@ -103,7 +104,10 @@ inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offse
 
     BEGIN_SINGLE_THREAD
     {
-        memcpy(buffer + requestedOffset, page, readCount);
+        __threadfence_system();
+        memcpyIO(buffer + (requestedOffset - offset), page, readCount);
+        __threadfence_system();
+        // printf("READ offset:(%u),count:(%u),buffer:(%p)\n", (unsigned)(requestedOffset - offset), (unsigned)readCount, (void*)buffer + (requestedOffset - offset));
         loop->freeOnePage(page);
     }
     END_SINGLE_THREAD
@@ -128,7 +132,12 @@ inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, siz
         unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
         BEGIN_SINGLE_THREAD
         {
-            memcpy(page, buffer + offset, transferringSize);
+            // Sync cudaMemcpyAsync-ed memory modification.
+            // FIXME: If allocOnePageMaySync ensures page flush is already done, this is not necessary.
+            __threadfence_system();
+            memcpyIO(page, buffer, transferringSize);
+            __threadfence_system();
+            // printf("WRITE offset:(%p),count:(%u)\n", (void*)(buffer), (unsigned)transferringSize);
         }
         END_SINGLE_THREAD
         auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
@@ -156,7 +165,7 @@ inline __device__ auto performOnePageWrite(DeviceLoop* loop, int fd, size_t offs
     }
 
     if (cursor != last) {
-        writeOnePage(loop, fd, cursor, min((last - cursor), GLOOP_SHARED_PAGE_SIZE), buffer, [=](DeviceLoop* loop, volatile request::Request* req) {
+        writeOnePage(loop, fd, cursor, min((last - cursor), GLOOP_SHARED_PAGE_SIZE), buffer + (cursor - offset), [=](DeviceLoop* loop, volatile request::Request* req) {
             performOnePageWrite(loop, fd, offset, count, buffer, cursor, req, callback);
         });
     } else {
