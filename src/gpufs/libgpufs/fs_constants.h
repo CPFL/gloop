@@ -61,7 +61,9 @@
 
 
 
-#define PPOOL_SIZE (1024*1024*1024*2L)
+// #define PPOOL_SIZE (1024*1024*1024*2L)
+// Too large for our GPU.
+#define PPOOL_SIZE (1024*1024*512L)
 //#define PPOOL_SIZE (1024*1024*1024)
 #define PPOOL_FRAMES (PPOOL_SIZE>>FS_LOGBLOCKSIZE)
 
