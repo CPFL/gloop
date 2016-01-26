@@ -127,15 +127,7 @@ void HostLoop::send(Command command)
 
 void HostLoop::pollerMain()
 {
-    bool done = false;
-    while (!done) {
-        // if (m_stop.load(std::memory_order_acquire)) {
-        //     m_channel->stop();
-        //     while (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream));
-        //     m_stop.store(false, std::memory_order_acquire);
-        //     break;
-        // }
-
+    while (true) {
         if (!m_currentContext)
             continue;
 
@@ -148,20 +140,21 @@ void HostLoop::pollerMain()
                 .payload = bitwise_cast<uintptr_t>(ipc),
                 .request = req,
             });
+            continue;
+        }
+
+        if (m_stop.load(std::memory_order_acquire)) {
+            break;
         }
 
         // open_loop(this, m_deviceNumber);
         // rw_loop(this);
-        if (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream)) {
-            logGPUfsDone();
-            break;
-        }
+        // if (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream)) {
+        //     logGPUfsDone();
+        //     break;
+        // }
         // async_close_loop(this);
     }
-    send({
-        .type = Command::Type::Operation,
-        .payload = Command::Operation::Complete,
-    });
 }
 
 __global__ static void initializeDevice(IPC* channel)
@@ -196,6 +189,14 @@ void HostLoop::initialize()
 
 void HostLoop::wait()
 {
+    GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(this->streamMgr->kernelStream, [](cudaStream_t stream, cudaError_t error, void* userData) {
+        GLOOP_CUDA_SAFE_CALL(error);
+        HostLoop* hostLoop = static_cast<HostLoop*>(userData);
+        hostLoop->send({
+            .type = Command::Type::Operation,
+            .payload = Command::Operation::Complete,
+        });
+    }, this, 0));
     runPoller();
 
     while (true) {
@@ -207,6 +208,8 @@ void HostLoop::wait()
             break;
         }
     }
+    stopPoller();
+    logGPUfsDone();
 }
 
 bool HostLoop::hostBack()

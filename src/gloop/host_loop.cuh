@@ -95,7 +95,10 @@ template<typename DeviceLambda, class... Args>
 inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
 {
     m_currentContext = &hostContext;
-    gloop::launch<<<hostContext.blocks(), threads, 0, this->streamMgr->kernelStream>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
+    __sync_synchronize();
+    do {
+        gloop::launch<<<hostContext.blocks(), threads, 0, this->streamMgr->kernelStream>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
+    } while (cudaErrorLaunchOutOfResources == cudaGetLastError());
     wait();
     m_currentContext = nullptr;
 }
