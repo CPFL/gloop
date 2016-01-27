@@ -114,7 +114,7 @@ API%s m_%s;
         template = """
 %s %s(%s)
 {
-    return gloop::hooks::HostLoop::instance().%s(%s);
+    return gloop::Process::instance().%s(%s);
 }
 """
 
@@ -148,7 +148,7 @@ class Generator(object):
 
     def generate_redirector_header(self):
         sys.stdout.write("""/*
-  Copyright (C) 2015 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -174,7 +174,6 @@ class Generator(object):
 #define GLOOP_REDIRECTOR_H_
 #include <cuda_runtime_api.h>
 namespace gloop {
-namespace hooks {
 
 class Redirector {
 public:
@@ -192,13 +191,15 @@ protected:
 Redirector();
 """
         print """};
-} }  // namespace gloop::hooks
+}  // namespace gloop
 """
 
         print 'extern "C" {'
+        print '#if 0'
         for api in self.api:
             sys.stdout.write(api.generate_redirector_header_api())
 
+        print "#endif"
         print """}
 #endif  // GLOOP_REDIRECTOR_H_
 """
@@ -227,12 +228,11 @@ Redirector();
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "redirector.h"
-#include <host_loop.h>
 #include <cuda_runtime_api.h>
 #include <dlfcn.h>
+#include "redirector.cuh"
+#include "process.cuh"
 namespace gloop {
-namespace hooks {
 
 """)
         for api in self.api:
@@ -246,13 +246,15 @@ Redirector::Redirector()
         for api in self.api:
             sys.stdout.write(api.generate_dlsym())
         print """}
-} }  // namespace gloop::hooks
+}  // namespace gloop
 """
 
         print 'extern "C" {'
+        print '#if 0'
         for api in self.api:
             sys.stdout.write(api.generate_redirector_implementation_api())
 
+        print "#endif"
         print """}
 """
 

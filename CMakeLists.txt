@@ -6,6 +6,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 cmake_minimum_required(VERSION 2.8)
 project(gloop C CXX CUDA)
 
+find_package(CUDARuntime)
 find_package(Threads)
 
 macro(gloop_cuda_include_directories)
