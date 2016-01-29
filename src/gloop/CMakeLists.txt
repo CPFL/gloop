@@ -40,7 +40,7 @@ add_library(gloop STATIC
     host_memory.cu
     device_loop.cu
     fs.cu
-    gpu_memory.cu
+    device_memory.cu
     io.cu
     ipc.cu
     process.cu

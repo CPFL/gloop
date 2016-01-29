@@ -21,21 +21,21 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GPU_MEMORY_CU_H_
-#define GPU_MEMORY_CU_H_
+#ifndef DEVICE_MEMORY_CU_H_
+#define DEVICE_MEMORY_CU_H_
 #include <memory>
 #include "noncopyable.h"
 namespace gloop {
 
-class GPUMemory {
-GLOOP_NONCOPYABLE(GPUMemory)
+class DeviceMemory {
+GLOOP_NONCOPYABLE(DeviceMemory)
 public:
-    static std::shared_ptr<GPUMemory> create(std::size_t size)
+    static std::shared_ptr<DeviceMemory> create(std::size_t size)
     {
-        return std::shared_ptr<GPUMemory>(new GPUMemory(size));
+        return std::shared_ptr<DeviceMemory>(new DeviceMemory(size));
     }
 
-    ~GPUMemory();
+    ~DeviceMemory();
 
     void* devicePointer() { return m_devicePointer; }
     const void* devicePointer() const { return m_devicePointer; }
@@ -43,11 +43,11 @@ public:
     std::size_t size() const { return m_size; }
 
 private:
-    GPUMemory(std::size_t size);
+    DeviceMemory(std::size_t size);
 
     void* m_devicePointer { nullptr };
     std::size_t m_size;
 };
 
 }  // namespace gloop
-#endif  // GPU_MEMORY_CU_H_
+#endif  // DEVICE_MEMORY_CU_H_

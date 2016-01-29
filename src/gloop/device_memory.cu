@@ -23,17 +23,17 @@
 */
 
 #include <cuda_runtime.h>
-#include "gpu_memory.cuh"
+#include "device_memory.cuh"
 #include "utility.h"
 namespace gloop {
 
-GPUMemory::GPUMemory(std::size_t size)
+DeviceMemory::DeviceMemory(std::size_t size)
     : m_size(size)
 {
     GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_devicePointer, size));
 }
 
-GPUMemory::~GPUMemory()
+DeviceMemory::~DeviceMemory()
 {
     GLOOP_CUDA_SAFE_CALL(cudaFree(m_devicePointer));
 }
