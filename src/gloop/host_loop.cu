@@ -174,7 +174,9 @@ void HostLoop::initialize()
     }
 
     m_channel = make_unique<IPC>();
+
 #if 0
+    // GPUfs initialization. This is no longer used.
     // this must be done from a single thread!
 	init_fs<<<1,1>>>(
             cpu_ipcOpenQueue,
