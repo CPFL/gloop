@@ -37,8 +37,10 @@ add_library(gloop STATIC
     ${CMAKE_CURRENT_BINARY_DIR}/redirector.cu
     host_context.cu
     host_loop.cu
+    host_memory.cu
     device_loop.cu
     fs.cu
+    gpu_memory.cu
     io.cu
     ipc.cu
     process.cu

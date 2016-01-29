@@ -27,6 +27,7 @@
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/sync/named_mutex.hpp>
+#include <deque>
 #include <gpufs/libgpufs/fs_initializer.cu.h>
 #include <gipc/gipc.cuh>
 #include <memory>
@@ -38,6 +39,7 @@
 #include "command.h"
 #include "entry.cuh"
 #include "host_context.cuh"
+#include "host_memory.cuh"
 #include "ipc.cuh"
 #include "noncopyable.h"
 
@@ -95,6 +97,7 @@ private:
     cudaStream_t m_pgraph;
     cudaStream_t m_pcopy0;
     cudaStream_t m_pcopy1;
+    std::deque<std::shared_ptr<HostMemory>> m_pool;
 };
 
 template<typename DeviceLambda, class... Args>

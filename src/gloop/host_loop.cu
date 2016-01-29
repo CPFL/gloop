@@ -194,6 +194,10 @@ void HostLoop::initialize()
     // FIXME: This is not efficient.
     IPC* deviceChannel = nullptr;
     GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&deviceChannel, m_channel.get(), 0));
+
+    for (int i = 0; i < 10; ++i) {
+        m_pool.push_back(HostMemory::create(GLOOP_SHARED_PAGE_SIZE, cudaHostAllocPortable));
+    }
     // initializeDevice<<<1, 1>>>(deviceChannel);
 
 	cudaThreadSynchronize();
@@ -272,16 +276,19 @@ bool HostLoop::handle(Command command)
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
             printf("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
-            void* host = nullptr;
 
-            GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&host, req.u.write.count, cudaHostAllocPortable));
+            std::shared_ptr<HostMemory> hostMemory = m_pool.front();
+            m_pool.pop_front();
+            assert(req.u.write.count <= hostMemory->size());
 
             cudaStream_t stream = m_pcopy0;
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(host, req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, stream));
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(hostMemory->hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, stream));
             cudaStreamSynchronize(stream);
             __sync_synchronize();
 
-            ssize_t writtenCount = pwrite(req.u.write.fd, host, req.u.write.count, req.u.write.offset);
+            ssize_t writtenCount = pwrite(req.u.write.fd, hostMemory->hostPointer(), req.u.write.count, req.u.write.offset);
+
+            m_pool.push_back(hostMemory);
 
             ipc->request()->u.writeResult.writtenCount = writtenCount;
             ipc->emit(Code::Complete);
@@ -292,19 +299,19 @@ bool HostLoop::handle(Command command)
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
             printf("Read fd:(%d),count:(%u),offset(%d),page:(%p)\n", req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
-            void* host = nullptr;
 
-            // We should implement
-            GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&host, req.u.read.count, cudaHostAllocPortable));
-            ssize_t readCount = pread(req.u.read.fd, host, req.u.read.count, req.u.read.offset);
+            std::shared_ptr<HostMemory> hostMemory = m_pool.front();
+            m_pool.pop_front();
+            assert(req.u.read.count <= hostMemory->size());
+            ssize_t readCount = pread(req.u.read.fd, hostMemory->hostPointer(), req.u.read.count, req.u.read.offset);
             __sync_synchronize();
 
             // FIXME: Should use multiple streams. And execute async.
             cudaStream_t stream = m_pcopy1;
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, host, readCount, cudaMemcpyHostToDevice, stream));
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, hostMemory->hostPointer(), readCount, cudaMemcpyHostToDevice, stream));
             cudaStreamSynchronize(stream);
 
-            // GLOOP_CUDA_SAFE_CALL(cudaFreeHost(host));
+            m_pool.push_back(hostMemory);
 
             ipc->request()->u.readResult.readCount = readCount;
             ipc->emit(Code::Complete);
