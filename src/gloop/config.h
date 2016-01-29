@@ -28,6 +28,7 @@
 #define GLOOP_ENDPOINT "/tmp/gloop_endpoint"
 #define GLOOP_SHARED_REQUEST_QUEUE "gloop_shared_req_queue_"
 #define GLOOP_SHARED_RESPONSE_QUEUE "gloop_shared_res_queue_"
+#define GLOOP_SHARED_LAUNCH_MUTEX "gloop_shared_launch_mutex_"
 
 namespace gloop {
 }  // namespace gloop

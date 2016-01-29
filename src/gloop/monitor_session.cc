@@ -86,6 +86,7 @@ bool Session::initialize(Command& command)
 {
     m_requestQueue = Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, id(), true);
     m_responseQueue = Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, id(), true);
+    m_launchMutex = Session::createMutex(GLOOP_SHARED_LAUNCH_MUTEX, id(), true);
     m_thread = make_unique<boost::thread>(&Session::main, this);
 
     command = (Command) {
@@ -95,7 +96,7 @@ bool Session::initialize(Command& command)
     return true;
 }
 
-std::unique_ptr<boost::interprocess::message_queue> Session::createQueue(const char* prefix, uint32_t id, bool create)
+std::string Session::createName(const char* prefix, uint32_t id)
 {
     std::vector<char> name(200);
     const int ret = std::snprintf(name.data(), name.size() - 1, "%s%u", prefix, id);
@@ -104,11 +105,27 @@ std::unique_ptr<boost::interprocess::message_queue> Session::createQueue(const c
         std::exit(1);
     }
     name[ret] = '\0';
+    return std::string(name.data(), ret);
+}
+
+std::unique_ptr<boost::interprocess::message_queue> Session::createQueue(const char* prefix, uint32_t id, bool create)
+{
+    std::string name = createName(prefix, id);
     if (create) {
-        boost::interprocess::message_queue::remove(name.data());
-        return make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only, name.data(), 0x100000, sizeof(Command));
+        boost::interprocess::message_queue::remove(name.c_str());
+        return make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only, name.c_str(), 0x100000, sizeof(Command));
     }
-    return make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, name.data());
+    return make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, name.c_str());
+}
+
+std::unique_ptr<boost::interprocess::named_mutex> Session::createMutex(const char* prefix, uint32_t id, bool create)
+{
+    std::string name = createName(prefix, id);
+    if (create) {
+        boost::interprocess::named_mutex::remove(name.c_str());
+        return make_unique<boost::interprocess::named_mutex>(boost::interprocess::create_only, name.c_str());
+    }
+    return make_unique<boost::interprocess::named_mutex>(boost::interprocess::open_only, name.c_str());
 }
 
 void Session::main()

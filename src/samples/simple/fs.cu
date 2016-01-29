@@ -102,7 +102,8 @@ int main( int argc, char** argv)
     if (gpudev!=NULL) global_devicenum=atoi(gpudev);
 
     fprintf(stderr,"GPU device chosen %d\n",global_devicenum);
-    CUDA_SAFE_CALL(cudaSetDevice(global_devicenum));
+    // FIXME
+    // CUDA_SAFE_CALL(cudaSetDevice(global_devicenum));
 
 
     if(argc<5) {

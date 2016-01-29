@@ -119,7 +119,7 @@ typedef volatile GPUGlobals* GPUGlobals_ptr;
 
 void initializer(GPUGlobals_ptr* globals)
 {
-	CUDA_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceMapHost));
+	// CUDA_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceMapHost));
 	*globals=new GPUGlobals();
 
 // this must be done from a single thread!

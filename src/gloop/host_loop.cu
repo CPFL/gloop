@@ -85,6 +85,7 @@ HostLoop::HostLoop(int deviceNumber)
     }
     m_requestQueue = monitor::Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, m_id, false);
     m_responseQueue = monitor::Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, m_id, false);
+    m_launchMutex = monitor::Session::createMutex(GLOOP_SHARED_LAUNCH_MUTEX, m_id, false);
 }
 
 HostLoop::~HostLoop()
@@ -164,7 +165,16 @@ __global__ static void initializeDevice(IPC* channel)
 
 void HostLoop::initialize()
 {
+    {
+        std::lock_guard<decltype(*m_launchMutex)> lock(*m_launchMutex);
+        // This ensures that primary GPU context is initialized.
+        GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pgraph));
+        GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pcopy0));
+        GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pcopy1));
+    }
+
     m_channel = make_unique<IPC>();
+#if 0
     // this must be done from a single thread!
 	init_fs<<<1,1>>>(
             cpu_ipcOpenQueue,
@@ -177,11 +187,12 @@ void HostLoop::initialize()
 			rtree_pool,
 		 	rtree_array,
 			_preclose_table);
+#endif
 
     // FIXME: This is not efficient.
     IPC* deviceChannel = nullptr;
     GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&deviceChannel, m_channel.get(), 0));
-    initializeDevice<<<1, 1>>>(deviceChannel);
+    // initializeDevice<<<1, 1>>>(deviceChannel);
 
 	cudaThreadSynchronize();
 	CUDA_SAFE_CALL(cudaPeekAtLastError());
@@ -189,9 +200,10 @@ void HostLoop::initialize()
 
 void HostLoop::wait()
 {
-    GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(this->streamMgr->kernelStream, [](cudaStream_t stream, cudaError_t error, void* userData) {
+    GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(m_pgraph, [](cudaStream_t stream, cudaError_t error, void* userData) {
         GLOOP_CUDA_SAFE_CALL(error);
         HostLoop* hostLoop = static_cast<HostLoop*>(userData);
+        hostLoop->m_launchMutex->unlock();
         hostLoop->send({
             .type = Command::Type::Operation,
             .payload = Command::Operation::Complete,
@@ -262,7 +274,7 @@ bool HostLoop::handle(Command command)
 
             GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&host, req.u.write.count, cudaHostAllocPortable));
 
-            cudaStream_t stream = streamMgr->memStream[2];
+            cudaStream_t stream = m_pcopy0;
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(host, req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, stream));
             cudaStreamSynchronize(stream);
             __sync_synchronize();
@@ -286,7 +298,7 @@ bool HostLoop::handle(Command command)
             __sync_synchronize();
 
             // FIXME: Should use multiple streams. And execute async.
-            cudaStream_t stream = streamMgr->memStream[1];
+            cudaStream_t stream = m_pcopy1;
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, host, readCount, cudaMemcpyHostToDevice, stream));
             cudaStreamSynchronize(stream);
 

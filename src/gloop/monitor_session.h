@@ -25,6 +25,7 @@
 #define GLOOP_MONITOR_SESSION_H_
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
+#include <boost/interprocess/sync/named_mutex.hpp>
 #include <boost/thread.hpp>
 #include <type_traits>
 #include <memory>
@@ -48,7 +49,9 @@ public:
     void send(Command command);
 
     void handShake();
+    static std::string createName(const char* prefix, uint32_t id);
     static std::unique_ptr<boost::interprocess::message_queue> createQueue(const char* prefix, uint32_t id, bool create);
+    static std::unique_ptr<boost::interprocess::named_mutex> createMutex(const char* prefix, uint32_t id, bool create);
 
 private:
     Command* buffer() { return reinterpret_cast<Command*>(&m_buffer); }
@@ -66,6 +69,7 @@ private:
     std::unique_ptr<boost::thread> m_thread;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
+    std::unique_ptr<boost::interprocess::named_mutex> m_launchMutex;
 };
 
 } }  // namsepace gloop::monitor

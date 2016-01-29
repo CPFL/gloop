@@ -26,9 +26,11 @@
 #include <atomic>
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
+#include <boost/interprocess/sync/named_mutex.hpp>
 #include <gpufs/libgpufs/fs_initializer.cu.h>
 #include <gipc/gipc.cuh>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -45,7 +47,7 @@ class thread;
 
 namespace gloop {
 
-class HostLoop : public GPUGlobals {
+class HostLoop {
 GLOOP_NONCOPYABLE(HostLoop);
 public:
     ~HostLoop();
@@ -88,17 +90,24 @@ private:
     boost::asio::local::stream_protocol::socket m_socket;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
+    std::unique_ptr<boost::interprocess::named_mutex> m_launchMutex;
     std::unordered_map<std::string, File> m_fds { };
+    cudaStream_t m_pgraph;
+    cudaStream_t m_pcopy0;
+    cudaStream_t m_pcopy1;
 };
 
 template<typename DeviceLambda, class... Args>
 inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
 {
     m_currentContext = &hostContext;
-    __sync_synchronize();
-    do {
-        gloop::launch<<<hostContext.blocks(), threads, 0, this->streamMgr->kernelStream>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
-    } while (cudaErrorLaunchOutOfResources == cudaGetLastError());
+    {
+        m_launchMutex->lock();
+        __sync_synchronize();
+        do {
+            gloop::launch<<<hostContext.blocks(), threads, 0, m_pgraph>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
+        } while (cudaErrorLaunchOutOfResources == cudaGetLastError());
+    }
     wait();
     m_currentContext = nullptr;
 }
