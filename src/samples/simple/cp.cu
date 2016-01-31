@@ -58,7 +58,7 @@ void init_app()
     void* d_OK;
     CUDA_SAFE_CALL(cudaGetSymbolAddress(&d_OK,OK));
     CUDA_SAFE_CALL(cudaMemset(d_OK,0,sizeof(int)));
-    // INITI LOCK
+    // INIT LOCK
     void* inited;
 
     CUDA_SAFE_CALL(cudaGetSymbolAddress(&inited,sync_sem));

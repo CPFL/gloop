@@ -112,9 +112,15 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
     {
         m_launchMutex->lock();
         m_currentContext->prepareForLaunch();
-        do {
+        while (true) {
             gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
-        } while (cudaErrorLaunchOutOfResources == cudaGetLastError());
+            cudaError_t error = cudaGetLastError();
+            if (cudaErrorLaunchOutOfResources == error) {
+                continue;
+            }
+            GLOOP_CUDA_SAFE_CALL(error);
+            break;
+        }
         registerKernelCompletionCallback(m_pgraph);
     }
     drain();

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -21,45 +21,29 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_ENTRY_H_
-#define GLOOP_ENTRY_H_
-#include <type_traits>
-#include <utility>
-#include "device_context.cuh"
-#include "device_loop.cuh"
 
+#include <cstdio>
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <gpufs/libgpufs/util.cu.h>
+#include "dump_memory.cuh"
+#include "utility.h"
 namespace gloop {
 
-template<typename Lambda>
-inline void tryLaunch(const Lambda& lambda)
+__device__ void dumpMemoryInternal(const void* ptr, std::size_t size)
 {
-    while (true) {
-        lambda();
-        cudaError_t error = cudaGetLastError();
-        if (cudaErrorLaunchOutOfResources == error) {
-            continue;
+    BEGIN_SINGLE_THREAD
+    {
+        const unsigned char* cursor = reinterpret_cast<const unsigned char*>(ptr);
+        for (std::size_t i = 0; i < size; ++i) {
+            if ((i + 1) == size) {
+                printf("%02x\n", (unsigned)(cursor[i]));
+            } else {
+                printf("%02x ", (unsigned)(cursor[i]));
+            }
         }
-        GLOOP_CUDA_SAFE_CALL(error);
-        break;
     }
-}
-
-template<typename DeviceLambda, class... Args>
-inline __global__ void launch(DeviceContext context, const DeviceLambda& callback, Args... args)
-{
-    __shared__ DeviceLoop::UninitializedStorage buffer[GLOOP_SHARED_SLOT_SIZE];
-    DeviceLoop loop(context, buffer, GLOOP_SHARED_SLOT_SIZE);
-    callback(&loop, std::forward<Args>(args)...);
-    loop.drain();
-}
-
-inline __global__ void resume(DeviceContext context)
-{
-    __shared__ DeviceLoop::UninitializedStorage buffer[GLOOP_SHARED_SLOT_SIZE];
-    DeviceLoop loop(context, buffer, GLOOP_SHARED_SLOT_SIZE);
-    loop.resume();
-    loop.drain();
+    END_SINGLE_THREAD
 }
 
 }  // namespace gloop
-#endif  // GLOOP_ENTRY_H_

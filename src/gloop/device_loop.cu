@@ -24,12 +24,15 @@
 #include <gpufs/libgpufs/fs_calls.cu.h>
 #include "device_context.cuh"
 #include "device_loop.cuh"
+#include "dump_memory.cuh"
 #include "function.cuh"
+#include "memcpy_io.cuh"
 namespace gloop {
 
 __device__ DeviceLoop::DeviceLoop(DeviceContext deviceContext, UninitializedStorage* buffer, size_t size)
     : m_deviceContext(deviceContext)
-    , m_slots(reinterpret_cast<Callback*>(buffer))
+    // , m_slots(reinterpret_cast<Callback*>(buffer))
+    , m_slots(reinterpret_cast<Callback*>(&context()->slots))
     , m_control()
 {
     GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
@@ -38,6 +41,7 @@ __device__ DeviceLoop::DeviceLoop(DeviceContext deviceContext, UninitializedStor
 // TODO: Callback should be treated as destructible.
 static inline __device__ void copyCallback(const DeviceLoop::Callback* src, DeviceLoop::Callback* dst)
 {
+    memset(dst, sizeof(DeviceLoop::Callback), 0);
     uint64_t* pointer = (uint64_t*)(src);
     uint64_t* put = (uint64_t*)(dst);
     static_assert(sizeof(DeviceLoop::Callback) % sizeof(uint64_t) == 0, "Callback size should be n * sizeof(uint64_t)");
@@ -119,14 +123,14 @@ __device__ bool DeviceLoop::drain()
             (*callback)(this, ipc->request());
             deallocate(callback);
         }
-        // FIXME
         break;
     }
     if (m_control.pending) {
         // Flush pending jobs to global pending status.
         suspend();
     }
-    return true;
+    __syncthreads();
+    return !m_control.pending;
 }
 
 __device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
@@ -136,7 +140,12 @@ __device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
     GPU_ASSERT(m_control.free & (1ULL << pos));
     m_control.free &= ~(1ULL << pos);
-    copyCallback(lambda, m_slots + pos);
+    __threadfence_system();
+
+    new (m_slots + pos) Callback(*lambda);
+
+    __threadfence_system();
+
     m_control.pending += 1;
     return pos;
 }
@@ -148,6 +157,9 @@ __device__ void DeviceLoop::deallocate(Callback* callback)
         uint32_t pos = position(callback);
         GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
         GPU_ASSERT(!(m_control.free & (1ULL << pos)));
+
+        callback->~Callback();
+
         m_control.free |= (1ULL << pos);
         m_control.pending -= 1;
     }
@@ -179,25 +191,33 @@ static GLOOP_ALWAYS_INLINE __device__ void copyContext(void* src, void* dst)
 
 __device__ void DeviceLoop::suspend()
 {
+    __threadfence_system();
     PerBlockContext* blockContext = context();
-    copyContext(m_slots, &blockContext->slots);
+    // FIXME: currently buggy.
+    // copyContext(m_slots, &blockContext->slots);
     BEGIN_SINGLE_THREAD
     {
+        // memcpyIO(&blockContext->slots, m_slots, sizeof(UninitializedStorage) * GLOOP_SHARED_SLOT_SIZE);
         blockContext->control = m_control;
         atomicAdd(m_deviceContext.pending, 1);
     }
     END_SINGLE_THREAD
+    __threadfence_system();
 }
 
 __device__ void DeviceLoop::resume()
 {
+    __threadfence_system();
     PerBlockContext* blockContext = context();
-    copyContext(&blockContext->slots, m_slots);
+    // FIXME: currently buggy.
+    // copyContext(&blockContext->slots, m_slots);
     BEGIN_SINGLE_THREAD
     {
+        // memcpyIO(m_slots, &blockContext->slots, sizeof(UninitializedStorage) * GLOOP_SHARED_SLOT_SIZE);
         m_control = blockContext->control;
     }
     END_SINGLE_THREAD
+    __threadfence_system();
 }
 
 __device__ void DeviceLoop::emit(Code code, IPC* ipc)

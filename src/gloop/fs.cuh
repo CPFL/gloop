@@ -33,14 +33,14 @@
 namespace gloop {
 namespace fs {
 
-__device__ void openImpl(DeviceLoop*, IPC*, volatile request::Open&, char* filename, int mode);
+__device__ void openImpl(DeviceLoop*, IPC*, volatile request::Open&, const char* filename, int mode);
 __device__ void writeImpl(DeviceLoop*, IPC*, volatile request::Write&, int fd, size_t offset, size_t count, unsigned char* buffer);
 __device__ void fstatImpl(DeviceLoop*, IPC*, volatile request::Fstat&, int fd);
 __device__ void closeImpl(DeviceLoop*, IPC*, volatile request::Close&, int fd);
 __device__ void readImpl(DeviceLoop*, IPC*, volatile request::Read&, int fd, size_t offset, size_t count, unsigned char* buffer);
 
 template<typename Lambda>
-inline __device__ auto open(DeviceLoop* loop, char* filename, int mode, Lambda callback) -> void
+inline __device__ auto open(DeviceLoop* loop, const char* filename, int mode, Lambda callback) -> void
 {
     auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
         callback(loop, req->u.openResult.fd);

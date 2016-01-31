@@ -31,7 +31,7 @@
 namespace gloop {
 namespace fs {
 
-__device__ void openImpl(DeviceLoop* loop, IPC* ipc, volatile request::Open& req, char* filename, int mode)
+__device__ void openImpl(DeviceLoop* loop, IPC* ipc, volatile request::Open& req, const char* filename, int mode)
 {
     BEGIN_SINGLE_THREAD
     {

@@ -109,7 +109,6 @@ private:
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(IPC*);
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(OnePage*);
 
-
     DeviceContext m_deviceContext;
     Callback* m_slots;
     DeviceLoopControl m_control;

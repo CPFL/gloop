@@ -207,7 +207,6 @@ void HostLoop::initialize()
 void HostLoop::registerKernelCompletionCallback(cudaStream_t stream)
 {
     GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(stream, [](cudaStream_t stream, cudaError_t error, void* userData) {
-        GLOOP_CUDA_SAFE_CALL(error);
         HostLoop* hostLoop = static_cast<HostLoop*>(userData);
         hostLoop->m_launchMutex->unlock();
         hostLoop->send({
@@ -219,7 +218,6 @@ void HostLoop::registerKernelCompletionCallback(cudaStream_t stream)
 
 void HostLoop::drain()
 {
-    registerKernelCompletionCallback(m_pgraph);
     runPoller();
     while (true) {
         Command result = { };
@@ -243,11 +241,12 @@ bool HostLoop::hostBack()
 
 void HostLoop::resume()
 {
+    sleep(1);
     m_launchMutex->lock();
     m_currentContext->prepareForLaunch();
-    do {
+    tryLaunch([&] {
         gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_currentContext->deviceContext());
-    } while (cudaErrorLaunchOutOfResources == cudaGetLastError());
+    });
     registerKernelCompletionCallback(m_pgraph);
 }
 
@@ -269,6 +268,8 @@ bool HostLoop::handle(Command command)
 
         case Command::Operation::Complete:
             // Still pending callbacks are queued.
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
+            __sync_synchronize();
             printf("resume %u\n", m_currentContext->pending());
             if (m_currentContext->pending()) {
                 resume();
@@ -304,7 +305,7 @@ bool HostLoop::handle(Command command)
 
             cudaStream_t stream = m_pcopy0;
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(hostMemory->hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, stream));
-            cudaStreamSynchronize(stream);
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
             __sync_synchronize();
 
             ssize_t writtenCount = pwrite(req.u.write.fd, hostMemory->hostPointer(), req.u.write.count, req.u.write.offset);
@@ -330,7 +331,7 @@ bool HostLoop::handle(Command command)
             // FIXME: Should use multiple streams. And execute async.
             cudaStream_t stream = m_pcopy1;
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, hostMemory->hostPointer(), readCount, cudaMemcpyHostToDevice, stream));
-            cudaStreamSynchronize(stream);
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
             m_pool.push_back(hostMemory);
 

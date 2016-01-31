@@ -1,3 +1,5 @@
+cmake_policy(SET CMP0055 NEW)
+
 ExternalProject_Get_Property(LIBUV_LIB_EP SOURCE_DIR)
 include_directories("${SOURCE_DIR}/include")
 include_directories(".")
@@ -8,7 +10,6 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 set(CUDA_RUNTIME_API_HEADER)
 if(EXISTS "${CUDA_RUNTIME_INCLUDE_DIR}/cuda_runtime_api.h")
     set(CUDA_RUNTIME_API_HEADER "${CUDA_RUNTIME_INCLUDE_DIR}/cuda_runtime_api.h")
-    break()
 endif()
 
 add_custom_command(
@@ -40,6 +41,7 @@ add_library(gloop STATIC
     host_memory.cu
     device_loop.cu
     device_memory.cu
+    dump_memory.cu
     fs.cu
     io.cu
     ipc.cu
