@@ -99,15 +99,6 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
                 }
             }
         }
-#if 0
-        if (m_control.put == m_control.get) {
-            result = nullptr;
-        } else {
-            GPU_ASSERT(m_control.get != m_control.put);
-            uint32_t pos = m_control.queue[m_control.get++ % GLOOP_SHARED_SLOT_SIZE];
-            result = m_slots + pos;
-        }
-#endif
     }
     END_SINGLE_THREAD
     return result;
@@ -128,6 +119,12 @@ __device__ bool DeviceLoop::drain()
             (*callback)(this, ipc->request());
             deallocate(callback);
         }
+        // FIXME
+        break;
+    }
+    if (m_control.pending) {
+        // Flush pending jobs to global pending status.
+        suspend();
     }
     return true;
 }
@@ -187,6 +184,7 @@ __device__ void DeviceLoop::suspend()
     BEGIN_SINGLE_THREAD
     {
         blockContext->control = m_control;
+        atomicAdd(m_deviceContext.pending, 1);
     }
     END_SINGLE_THREAD
 }

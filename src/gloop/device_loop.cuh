@@ -72,6 +72,8 @@ public:
         PerBlockContext* context;
         IPC* channels;
         OnePage* pages;
+        IPC* globalChannel;
+        uint32_t* pending;
     };
 
     __device__ DeviceLoop(DeviceContext, UninitializedStorage* buffer, size_t size);

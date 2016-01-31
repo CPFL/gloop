@@ -56,7 +56,7 @@ public:
 
     uint32_t id() const { return m_id; }
 
-    void wait();
+    void drain();
 
     static std::unique_ptr<HostLoop> create(int deviceNumber);
 
@@ -77,12 +77,16 @@ private:
 
     bool hostBack();
 
+    void resume();
+    void registerKernelCompletionCallback(cudaStream_t);
+
     int m_deviceNumber;
     uv_loop_t* m_loop;
     std::atomic<bool> m_stop { false };
     std::atomic<bool> m_hostBack { false };
     std::unique_ptr<boost::thread> m_poller;
 
+    dim3 m_threads { };
     HostContext* m_currentContext { nullptr };
 
     std::unique_ptr<IPC> m_channel;
@@ -103,15 +107,17 @@ private:
 template<typename DeviceLambda, class... Args>
 inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
 {
+    m_threads = threads;
     m_currentContext = &hostContext;
     {
         m_launchMutex->lock();
-        __sync_synchronize();
+        m_currentContext->prepareForLaunch();
         do {
-            gloop::launch<<<hostContext.blocks(), threads, 0, m_pgraph>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
+            gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
         } while (cudaErrorLaunchOutOfResources == cudaGetLastError());
+        registerKernelCompletionCallback(m_pgraph);
     }
-    wait();
+    drain();
     m_currentContext = nullptr;
 }
 

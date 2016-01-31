@@ -52,16 +52,40 @@ HostContext::~HostContext()
 bool HostContext::initialize()
 {
     m_ipc = make_unique<IPC[]>(m_blocks.x * m_blocks.y * GLOOP_SHARED_SLOT_SIZE);
+    m_globalIPC = make_unique<IPC>();
+    m_pending = MappedMemory::create(sizeof(uint32_t));
+
     GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.channels, m_ipc.get(), 0));
+    GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.globalChannel, m_globalIPC.get(), 0));
+
+    GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.pending, m_pending->mappedPointer(), 0));
+
     GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceLoop::PerBlockContext) * m_blocks.x * m_blocks.y));
     GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceLoop::OnePage) * GLOOP_SHARED_PAGE_COUNT * m_blocks.x * m_blocks.y));
     return true;
 }
 
 template<typename T, typename U>
-T readNoCache(volatile const U* ptr)
+inline T readNoCache(volatile const U* ptr)
 {
     return *reinterpret_cast<volatile const T*>(ptr);
+}
+
+template<typename T, typename U>
+inline void writeNoCache(volatile U* ptr, T value)
+{
+    *reinterpret_cast<volatile T*>(ptr) = value;
+}
+
+uint32_t HostContext::pending() const
+{
+    return readNoCache<uint32_t>(m_pending->mappedPointer());
+}
+
+void HostContext::prepareForLaunch()
+{
+    writeNoCache<uint32_t>(m_pending->mappedPointer(), 0);
+    __sync_synchronize();
 }
 
 IPC* HostContext::tryPeekRequest()

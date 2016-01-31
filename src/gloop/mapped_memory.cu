@@ -21,34 +21,14 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef HOST_MEMORY_CU_H_
-#define HOST_MEMORY_CU_H_
-#include <memory>
-#include "noncopyable.h"
+
+#include <cuda_runtime.h>
+#include "mapped_memory.cuh"
 namespace gloop {
 
-class HostMemory {
-GLOOP_NONCOPYABLE(HostMemory)
-public:
-    static std::shared_ptr<HostMemory> create(std::size_t size, unsigned flags)
-    {
-        return std::shared_ptr<HostMemory>(new HostMemory(size, flags));
-    }
-
-    ~HostMemory();
-
-    void* hostPointer() { return m_hostPointer; }
-    const void* hostPointer() const { return m_hostPointer; }
-
-    std::size_t size() const { return m_size; }
-
-protected:
-    HostMemory(std::size_t size, unsigned flags);
-
-    void* m_hostPointer { nullptr };
-    std::size_t m_size;
-    unsigned m_flags;
-};
+MappedMemory::MappedMemory(std::size_t size)
+    : HostMemory(size, cudaHostAllocMapped)
+{
+}
 
 }  // namespace gloop
-#endif  // HOST_MEMORY_CU_H_

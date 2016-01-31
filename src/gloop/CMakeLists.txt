@@ -39,13 +39,14 @@ add_library(gloop STATIC
     host_loop.cu
     host_memory.cu
     device_loop.cu
-    fs.cu
     device_memory.cu
+    fs.cu
     io.cu
     ipc.cu
+    mapped_memory.cu
+    monitor_session.cc
     process.cu
     system_initialize.cu
-    monitor_session.cc
 )
 target_link_libraries(gloop
     dl

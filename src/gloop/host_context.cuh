@@ -28,6 +28,7 @@
 #include <utility>
 #include "device_context.cuh"
 #include "io.cuh"
+#include "mapped_memory.cuh"
 #include "noncopyable.h"
 namespace gloop {
 
@@ -48,12 +49,18 @@ public:
 
     FileDescriptorTable& table() { return m_table; }
 
+    void prepareForLaunch();
+
+    uint32_t pending() const;
+
 private:
     HostContext(dim3 blocks);
     bool initialize();
 
     FileDescriptorTable m_table { };
     std::unique_ptr<IPC[]> m_ipc { nullptr };
+    std::unique_ptr<IPC> m_globalIPC { nullptr };
+    std::shared_ptr<MappedMemory> m_pending { nullptr };
     DeviceContext m_context { nullptr };
     dim3 m_blocks { };
     bool m_resumed { false };

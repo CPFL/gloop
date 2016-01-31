@@ -21,34 +21,29 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef HOST_MEMORY_CU_H_
-#define HOST_MEMORY_CU_H_
+#ifndef MAPPED_MEMORY_CU_H_
+#define MAPPED_MEMORY_CU_H_
 #include <memory>
+#include "host_memory.cuh"
 #include "noncopyable.h"
 namespace gloop {
 
-class HostMemory {
-GLOOP_NONCOPYABLE(HostMemory)
+class MappedMemory : private HostMemory {
+GLOOP_NONCOPYABLE(MappedMemory)
 public:
-    static std::shared_ptr<HostMemory> create(std::size_t size, unsigned flags)
+    static std::shared_ptr<MappedMemory> create(std::size_t size)
     {
-        return std::shared_ptr<HostMemory>(new HostMemory(size, flags));
+        return std::shared_ptr<MappedMemory>(new MappedMemory(size));
     }
 
-    ~HostMemory();
+    void* mappedPointer() { return HostMemory::hostPointer(); }
+    const void* mappedPointer() const { return HostMemory::hostPointer(); }
 
-    void* hostPointer() { return m_hostPointer; }
-    const void* hostPointer() const { return m_hostPointer; }
+    using HostMemory::size;
 
-    std::size_t size() const { return m_size; }
-
-protected:
-    HostMemory(std::size_t size, unsigned flags);
-
-    void* m_hostPointer { nullptr };
-    std::size_t m_size;
-    unsigned m_flags;
+private:
+    MappedMemory(std::size_t size);
 };
 
 }  // namespace gloop
-#endif  // HOST_MEMORY_CU_H_
+#endif  // MAPPED_MEMORY_CU_H_

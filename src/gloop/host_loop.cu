@@ -204,9 +204,9 @@ void HostLoop::initialize()
 	CUDA_SAFE_CALL(cudaPeekAtLastError());
 }
 
-void HostLoop::wait()
+void HostLoop::registerKernelCompletionCallback(cudaStream_t stream)
 {
-    GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(m_pgraph, [](cudaStream_t stream, cudaError_t error, void* userData) {
+    GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(stream, [](cudaStream_t stream, cudaError_t error, void* userData) {
         GLOOP_CUDA_SAFE_CALL(error);
         HostLoop* hostLoop = static_cast<HostLoop*>(userData);
         hostLoop->m_launchMutex->unlock();
@@ -214,9 +214,13 @@ void HostLoop::wait()
             .type = Command::Type::Operation,
             .payload = Command::Operation::Complete,
         });
-    }, this, 0));
-    runPoller();
+    }, this, /* Must be 0. */ 0));
+}
 
+void HostLoop::drain()
+{
+    registerKernelCompletionCallback(m_pgraph);
+    runPoller();
     while (true) {
         Command result = { };
         unsigned int priority { };
@@ -237,6 +241,16 @@ bool HostLoop::hostBack()
     return true;
 }
 
+void HostLoop::resume()
+{
+    m_launchMutex->lock();
+    m_currentContext->prepareForLaunch();
+    do {
+        gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_currentContext->deviceContext());
+    } while (cudaErrorLaunchOutOfResources == cudaGetLastError());
+    registerKernelCompletionCallback(m_pgraph);
+}
+
 bool HostLoop::handle(Command command)
 {
     switch (command.type) {
@@ -254,6 +268,13 @@ bool HostLoop::handle(Command command)
             return true;
 
         case Command::Operation::Complete:
+            // Still pending callbacks are queued.
+            printf("resume %u\n", m_currentContext->pending());
+            if (m_currentContext->pending()) {
+                resume();
+                return false;
+            }
+            // There is no callbacks.
             return true;
         }
         break;
