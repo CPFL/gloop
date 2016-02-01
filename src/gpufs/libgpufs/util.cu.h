@@ -250,8 +250,11 @@ struct INIT_LOCK
 };
 
 
-
-#define ERROR(str) __assert_fail(str,__FILE__,__LINE__,__func__);
+#if defined(NDEBUG)
+	#define ERROR(str) do { } while (0);
+#else
+	#define ERROR(str) __assert_fail(str,__FILE__,__LINE__,__func__);
+#endif
 
 __device__ int getNewFileId();
 #endif
