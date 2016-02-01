@@ -97,6 +97,7 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
                     if (ipc->peek() == Code::Complete) {
                         ipc->emit(Code::None);
                         GPU_ASSERT(ipc->peek() != Code::Complete);
+                        GPU_ASSERT(ipc->peek() == Code::None);
                         result = m_slots + i;
                         break;
                     }
@@ -125,14 +126,6 @@ __device__ bool DeviceLoop::drain()
             __threadfence_system();
             uint32_t pos = position(callback);
             IPC* ipc = channel() + pos;
-#if !defined(NDEBUG)
-            BEGIN_SINGLE_THREAD
-            {
-                GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
-                GPU_ASSERT(ipc->peek() == Code::None);
-            }
-            END_SINGLE_THREAD
-#endif
             (*callback)(this, ipc->request());
             deallocate(callback);
         }
