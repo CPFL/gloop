@@ -243,7 +243,7 @@ bool HostLoop::handle(Command command)
 
         case Command::Operation::Complete:
             // Still pending callbacks are queued.
-            GLOOP_DEBUG("resume %u\n", m_currentContext->pending());
+            // GLOOP_DEBUG("resume %u\n", m_currentContext->pending());
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             __sync_synchronize();
             if (m_currentContext->pending()) {
