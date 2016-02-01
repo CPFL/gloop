@@ -105,6 +105,7 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
         }
     }
     END_SINGLE_THREAD
+    // __threadfence_system();
     return result;
 }
 
