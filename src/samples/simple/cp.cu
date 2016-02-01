@@ -50,7 +50,7 @@ __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
 }
 
 void init_device_app(){
-    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,1<<30));
+    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, FS_BLOCKSIZE * 64));
 }
 
 void init_app()

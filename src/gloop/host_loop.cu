@@ -32,6 +32,7 @@
 #include "bitwise_cast.h"
 #include "command.h"
 #include "config.h"
+#include "data_log.h"
 #include "helper.cuh"
 #include "host_loop.cuh"
 #include "io.cuh"
@@ -86,6 +87,7 @@ HostLoop::HostLoop(int deviceNumber)
     m_requestQueue = monitor::Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, m_id, false);
     m_responseQueue = monitor::Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, m_id, false);
     m_launchMutex = monitor::Session::createMutex(GLOOP_SHARED_LAUNCH_MUTEX, m_id, false);
+    GLOOP_DEBUG("id:(%u)\n", m_id);
 }
 
 HostLoop::~HostLoop()
@@ -147,14 +149,6 @@ void HostLoop::pollerMain()
         if (m_stop.load(std::memory_order_acquire)) {
             break;
         }
-
-        // open_loop(this, m_deviceNumber);
-        // rw_loop(this);
-        // if (cudaErrorNotReady != cudaStreamQuery(streamMgr->kernelStream)) {
-        //     logGPUfsDone();
-        //     break;
-        // }
-        // async_close_loop(this);
     }
 }
 
@@ -175,30 +169,12 @@ void HostLoop::initialize()
 
     m_channel = make_unique<IPC>();
 
-#if 0
-    // GPUfs initialization. This is no longer used.
-    // this must be done from a single thread!
-	init_fs<<<1,1>>>(
-            cpu_ipcOpenQueue,
-            cpu_ipcRWQueue,
-            ipcRWManager,
-            otable,
-            ppool,
-            rawStorage,
-            ftable,
-			rtree_pool,
-		 	rtree_array,
-			_preclose_table);
-#endif
-
-    // FIXME: This is not efficient.
     IPC* deviceChannel = nullptr;
     GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&deviceChannel, m_channel.get(), 0));
 
     for (int i = 0; i < 10; ++i) {
         m_pool.push_back(HostMemory::create(GLOOP_SHARED_PAGE_SIZE, cudaHostAllocPortable));
     }
-    // initializeDevice<<<1, 1>>>(deviceChannel);
 
 	cudaThreadSynchronize();
 	CUDA_SAFE_CALL(cudaPeekAtLastError());
@@ -241,7 +217,6 @@ bool HostLoop::hostBack()
 
 void HostLoop::resume()
 {
-    sleep(1);
     m_launchMutex->lock();
     m_currentContext->prepareForLaunch();
     tryLaunch([&] {
@@ -270,7 +245,6 @@ bool HostLoop::handle(Command command)
             // Still pending callbacks are queued.
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             __sync_synchronize();
-            printf("resume %u\n", m_currentContext->pending());
             if (m_currentContext->pending()) {
                 resume();
                 return false;
@@ -288,7 +262,7 @@ bool HostLoop::handle(Command command)
         switch (static_cast<Code>(req.code)) {
         case Code::Open: {
             int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
-            printf("Open %s %d\n", req.u.open.filename.data, fd);
+            GLOOP_DEBUG("Open %s %d\n", req.u.open.filename.data, fd);
             ipc->request()->u.openResult.fd = fd;
             ipc->emit(Code::Complete);
             break;
@@ -297,7 +271,7 @@ bool HostLoop::handle(Command command)
         case Code::Write: {
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
-            printf("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
+            GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
 
             std::shared_ptr<HostMemory> hostMemory = m_pool.front();
             m_pool.pop_front();
@@ -320,7 +294,7 @@ bool HostLoop::handle(Command command)
         case Code::Read: {
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
-            printf("Read fd:(%d),count:(%u),offset(%d),page:(%p)\n", req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
+            GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
 
             std::shared_ptr<HostMemory> hostMemory = m_pool.front();
             m_pool.pop_front();
@@ -343,7 +317,7 @@ bool HostLoop::handle(Command command)
         case Code::Fstat: {
             struct stat buf { };
             ::fstat(req.u.fstat.fd, &buf);
-            printf("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
+            GLOOP_DEBUG("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
             ipc->request()->u.fstatResult.size = buf.st_size;
             ipc->emit(Code::Complete);
             break;
@@ -351,7 +325,7 @@ bool HostLoop::handle(Command command)
 
         case Code::Close: {
             m_currentContext->table().close(req.u.close.fd);
-            printf("Close %d\n", req.u.close.fd);
+            GLOOP_DEBUG("Close %d\n", req.u.close.fd);
             ipc->request()->u.closeResult.error = 0;
             ipc->emit(Code::Complete);
             break;

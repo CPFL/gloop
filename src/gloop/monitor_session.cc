@@ -58,7 +58,7 @@ void Session::handleRead(const boost::system::error_code& error)
     Command command(*buffer());
     this->handle(command);
     // handle command
-    boost::asio::async_write(m_socket, boost::asio::buffer(&m_buffer, sizeof(Command)), boost::bind(&Session::handleWrite, this, boost::asio::placeholders::error));
+    boost::asio::async_write(m_socket, boost::asio::buffer(&command, sizeof(Command)), boost::bind(&Session::handleWrite, this, boost::asio::placeholders::error));
 }
 
 void Session::handleWrite(const boost::system::error_code& error)

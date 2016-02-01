@@ -140,11 +140,8 @@ __device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
     GPU_ASSERT(m_control.free & (1ULL << pos));
     m_control.free &= ~(1ULL << pos);
-    __threadfence_system();
 
     new (m_slots + pos) Callback(*lambda);
-
-    __threadfence_system();
 
     m_control.pending += 1;
     return pos;
@@ -166,58 +163,29 @@ __device__ void DeviceLoop::deallocate(Callback* callback)
     END_SINGLE_THREAD
 }
 
-static GLOOP_ALWAYS_INLINE __device__ void copyContext(void* src, void* dst)
-{
-    typedef DeviceLoop::UninitializedStorage UninitializedStorage;
-    UninitializedStorage* storage = reinterpret_cast<UninitializedStorage*>(dst);
-    if (GLOOP_TMAX() >= GLOOP_SHARED_SLOT_SIZE) {
-        int target = GLOOP_TID();
-        if (target < GLOOP_SHARED_SLOT_SIZE) {
-            *(storage + target) = *(reinterpret_cast<UninitializedStorage*>(src) + target);
-        }
-    } else {
-        int count = GLOOP_SHARED_SLOT_SIZE / GLOOP_TMAX();
-        if (GLOOP_SHARED_SLOT_SIZE % GLOOP_TMAX()) {
-            ++count;
-        }
-        for (int i = 0; i < count; ++i) {
-            int target = i * GLOOP_TMAX() + GLOOP_TID();
-            if (target < GLOOP_SHARED_SLOT_SIZE) {
-                *(storage + target) = *(reinterpret_cast<UninitializedStorage*>(src) + target);
-            }
-        }
-    }
-}
-
 __device__ void DeviceLoop::suspend()
 {
     __threadfence_system();
     PerBlockContext* blockContext = context();
-    // FIXME: currently buggy.
-    // copyContext(m_slots, &blockContext->slots);
     BEGIN_SINGLE_THREAD
     {
-        // memcpyIO(&blockContext->slots, m_slots, sizeof(UninitializedStorage) * GLOOP_SHARED_SLOT_SIZE);
         blockContext->control = m_control;
         atomicAdd(m_deviceContext.pending, 1);
+        __threadfence_system();
     }
     END_SINGLE_THREAD
-    __threadfence_system();
 }
 
 __device__ void DeviceLoop::resume()
 {
     __threadfence_system();
     PerBlockContext* blockContext = context();
-    // FIXME: currently buggy.
-    // copyContext(&blockContext->slots, m_slots);
     BEGIN_SINGLE_THREAD
     {
-        // memcpyIO(m_slots, &blockContext->slots, sizeof(UninitializedStorage) * GLOOP_SHARED_SLOT_SIZE);
         m_control = blockContext->control;
+        __threadfence_system();
     }
     END_SINGLE_THREAD
-    __threadfence_system();
 }
 
 __device__ void DeviceLoop::emit(Code code, IPC* ipc)
