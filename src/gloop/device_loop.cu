@@ -110,8 +110,14 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
 
 __device__ bool DeviceLoop::drain()
 {
+    __shared__ uint32_t pending;
     while (true) {
-        if (!m_control.pending) {
+        BEGIN_SINGLE_THREAD
+        {
+            pending = m_control.pending;
+        }
+        END_SINGLE_THREAD
+        if (!pending) {
             break;
         }
 
@@ -125,12 +131,12 @@ __device__ bool DeviceLoop::drain()
         }
         break;
     }
-    if (m_control.pending) {
+    if (pending) {
         // Flush pending jobs to global pending status.
         suspend();
     }
     __syncthreads();
-    return !m_control.pending;
+    return !pending;
 }
 
 __device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
