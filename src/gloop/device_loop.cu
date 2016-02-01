@@ -105,7 +105,6 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
         }
     }
     END_SINGLE_THREAD
-    // __threadfence_system();
     return result;
 }
 
@@ -123,10 +122,17 @@ __device__ bool DeviceLoop::drain()
         }
 
         if (Callback* callback = dequeue()) {
+            __threadfence_system();
             uint32_t pos = position(callback);
-            GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
             IPC* ipc = channel() + pos;
-            GPU_ASSERT(ipc->peek() == Code::None);
+#if !defined(NDEBUG)
+            BEGIN_SINGLE_THREAD
+            {
+                GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
+                GPU_ASSERT(ipc->peek() == Code::None);
+            }
+            END_SINGLE_THREAD
+#endif
             (*callback)(this, ipc->request());
             deallocate(callback);
         }
@@ -172,25 +178,21 @@ __device__ void DeviceLoop::deallocate(Callback* callback)
 
 __device__ void DeviceLoop::suspend()
 {
-    __threadfence_system();
-    PerBlockContext* blockContext = context();
     BEGIN_SINGLE_THREAD
     {
+        PerBlockContext* blockContext = context();
         blockContext->control = m_control;
         atomicAdd(m_deviceContext.pending, 1);
-        __threadfence_system();
     }
     END_SINGLE_THREAD
 }
 
 __device__ void DeviceLoop::resume()
 {
-    __threadfence_system();
-    PerBlockContext* blockContext = context();
     BEGIN_SINGLE_THREAD
     {
+        PerBlockContext* blockContext = context();
         m_control = blockContext->control;
-        __threadfence_system();
     }
     END_SINGLE_THREAD
 }
