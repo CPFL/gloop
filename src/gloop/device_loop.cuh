@@ -76,7 +76,7 @@ public:
         uint32_t* pending;
     };
 
-    __device__ DeviceLoop(DeviceContext, UninitializedStorage* buffer, size_t size);
+    __device__ DeviceLoop(DeviceContext, size_t size);
 
     __device__ IPC* enqueueIPC(Callback lambda);
     __device__ void enqueueLater(Callback lambda);

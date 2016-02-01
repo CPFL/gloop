@@ -29,9 +29,8 @@
 #include "memcpy_io.cuh"
 namespace gloop {
 
-__device__ DeviceLoop::DeviceLoop(DeviceContext deviceContext, UninitializedStorage* buffer, size_t size)
+__device__ DeviceLoop::DeviceLoop(DeviceContext deviceContext, size_t size)
     : m_deviceContext(deviceContext)
-    // , m_slots(reinterpret_cast<Callback*>(buffer))
     , m_slots(reinterpret_cast<Callback*>(&context()->slots))
     , m_control()
 {
@@ -122,7 +121,14 @@ __device__ bool DeviceLoop::drain()
             break;
         }
 
-        if (Callback* callback = dequeue()) {
+        __shared__ Callback* callback;
+        callback = nullptr;
+        BEGIN_SINGLE_THREAD
+        {
+            callback = dequeue();
+        }
+        END_SINGLE_THREAD
+        if (callback) {
             __threadfence_system();
             uint32_t pos = position(callback);
             IPC* ipc = channel() + pos;
@@ -135,7 +141,6 @@ __device__ bool DeviceLoop::drain()
         // Flush pending jobs to global pending status.
         suspend();
     }
-    __syncthreads();
     return !pending;
 }
 
@@ -148,8 +153,8 @@ __device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
     m_control.free &= ~(1ULL << pos);
 
     new (m_slots + pos) Callback(*lambda);
-
     m_control.pending += 1;
+
     return pos;
 }
 

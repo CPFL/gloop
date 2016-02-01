@@ -4,6 +4,9 @@
 #include <gloop/gloop.h>
 __device__ int OK;
 
+#undef FS_BLOCKSIZE
+#define FS_BLOCKSIZE 4096
+
 __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize)
 {
     if (me < filesize) {
@@ -50,7 +53,7 @@ __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
 }
 
 void init_device_app(){
-    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, FS_BLOCKSIZE * 64));
+    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (2 << 20) * 256));
 }
 
 void init_app()

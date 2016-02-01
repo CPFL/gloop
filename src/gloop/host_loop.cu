@@ -172,7 +172,7 @@ void HostLoop::initialize()
     IPC* deviceChannel = nullptr;
     GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&deviceChannel, m_channel.get(), 0));
 
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 16; ++i) {
         m_pool.push_back(HostMemory::create(GLOOP_SHARED_PAGE_SIZE, cudaHostAllocPortable));
     }
 
@@ -243,6 +243,7 @@ bool HostLoop::handle(Command command)
 
         case Command::Operation::Complete:
             // Still pending callbacks are queued.
+            GLOOP_DEBUG("resume %u\n", m_currentContext->pending());
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             __sync_synchronize();
             if (m_currentContext->pending()) {
