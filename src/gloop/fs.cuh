@@ -106,7 +106,6 @@ inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offse
     BEGIN_SINGLE_THREAD
     {
         memcpyIO(buffer + (requestedOffset - offset), page, readCount);
-        // printf("READ offset:(%u),count:(%u),buffer:(%p)\n", (unsigned)(requestedOffset - offset), (unsigned)readCount, (void*)buffer + (requestedOffset - offset));
         loop->freeOnePage(page);
     }
     END_SINGLE_THREAD
@@ -134,7 +133,6 @@ inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, siz
         BEGIN_SINGLE_THREAD
         {
             memcpyIO(page, buffer, transferringSize);
-            // printf("WRITE offset:(%p),count:(%u)\n", (void*)(buffer), (unsigned)transferringSize);
         }
         END_SINGLE_THREAD
         __threadfence();

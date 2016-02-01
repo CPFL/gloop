@@ -96,7 +96,6 @@ IPC* HostContext::tryPeekRequest()
     for (int i = 0; i < blocks; ++i) {
         for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
             auto& channel = m_ipc[i * GLOOP_SHARED_SLOT_SIZE + j];
-            // printf("channel[%d][%d] = %d\n", (int)i, (int)j, (int)channel.peek());
             Code code = channel.peek();
             if (IsOperationCode(code)) {
                 result = &channel;
