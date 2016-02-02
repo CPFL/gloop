@@ -84,6 +84,7 @@ bool Session::handle(Command& command)
 
 bool Session::initialize(Command& command)
 {
+    m_mainQueue = Session::createQueue(GLOOP_SHARED_MAIN_QUEUE, id(), true);
     m_requestQueue = Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, id(), true);
     m_responseQueue = Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, id(), true);
     m_launchMutex = Session::createMutex(GLOOP_SHARED_LAUNCH_MUTEX, id(), true);

@@ -84,6 +84,7 @@ HostLoop::HostLoop(int deviceNumber)
         }
         m_id = result.payload;
     }
+    m_mainQueue = monitor::Session::createQueue(GLOOP_SHARED_MAIN_QUEUE, m_id, false);
     m_requestQueue = monitor::Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, m_id, false);
     m_responseQueue = monitor::Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, m_id, false);
     m_launchMutex = monitor::Session::createMutex(GLOOP_SHARED_LAUNCH_MUTEX, m_id, false);
@@ -125,7 +126,7 @@ void HostLoop::stopPoller()
 
 void HostLoop::send(Command command)
 {
-    m_responseQueue->send(&command, sizeof(Command), 0);
+    m_mainQueue->send(&command, sizeof(Command), 0);
 }
 
 void HostLoop::pollerMain()
@@ -184,7 +185,7 @@ void HostLoop::registerKernelCompletionCallback(cudaStream_t stream)
 {
     GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(stream, [](cudaStream_t stream, cudaError_t error, void* userData) {
         HostLoop* hostLoop = static_cast<HostLoop*>(userData);
-        hostLoop->m_launchMutex->unlock();
+        hostLoop->unlockLaunch();
         hostLoop->send({
             .type = Command::Type::Operation,
             .payload = Command::Operation::Complete,
@@ -199,7 +200,7 @@ void HostLoop::drain()
         Command result = { };
         unsigned int priority { };
         std::size_t size { };
-        m_responseQueue->receive(&result, sizeof(Command), size, priority);
+        m_mainQueue->receive(&result, sizeof(Command), size, priority);
         if (handle(result)) {
             break;
         }
@@ -217,7 +218,7 @@ bool HostLoop::hostBack()
 
 void HostLoop::resume()
 {
-    m_launchMutex->lock();
+    lockLaunch();
     m_currentContext->prepareForLaunch();
     tryLaunch([&] {
         gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_currentContext->deviceContext());

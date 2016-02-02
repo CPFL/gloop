@@ -80,6 +80,9 @@ private:
     void resume();
     void registerKernelCompletionCallback(cudaStream_t);
 
+    void lockLaunch();
+    void unlockLaunch();
+
     int m_deviceNumber;
     uv_loop_t* m_loop;
     std::atomic<bool> m_stop { false };
@@ -94,6 +97,7 @@ private:
     uint32_t m_id { 0 };
     boost::asio::io_service m_ioService;
     boost::asio::local::stream_protocol::socket m_socket;
+    std::unique_ptr<boost::interprocess::message_queue> m_mainQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
     std::unique_ptr<boost::interprocess::named_mutex> m_launchMutex;
@@ -104,13 +108,23 @@ private:
     std::deque<std::shared_ptr<HostMemory>> m_pool;
 };
 
+inline __host__ void HostLoop::lockLaunch()
+{
+        m_launchMutex->lock();
+}
+
+inline __host__ void HostLoop::unlockLaunch()
+{
+        m_launchMutex->unlock();
+}
+
 template<typename DeviceLambda, class... Args>
 inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
 {
     m_threads = threads;
     m_currentContext = &hostContext;
     {
-        m_launchMutex->lock();
+        lockLaunch();
         m_currentContext->prepareForLaunch();
         while (true) {
             gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
