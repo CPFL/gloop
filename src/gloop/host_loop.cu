@@ -301,7 +301,7 @@ bool HostLoop::handleIO(Command command)
 
 void HostLoop::onKernelComplete()
 {
-    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
+    // GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
     m_kernelLock.unlock();
     if (m_currentContext->pending()) {
         // GLOOP_DEBUG("resume %u\n", m_currentContext->pending());
