@@ -112,7 +112,6 @@ void Session::configureTick(boost::asio::high_resolution_timer& timer)
 
 bool Session::handle(Command& command)
 {
-    printf("Request...\n");
     switch (command.type) {
     case Command::Type::Initialize:
         return initialize(command);
