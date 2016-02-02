@@ -183,10 +183,11 @@ void HostLoop::registerKernelCompletionCallback(cudaStream_t stream)
     GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(stream, [](cudaStream_t stream, cudaError_t error, void* userData) {
         GLOOP_CUDA_SAFE_CALL(error);
         HostLoop* hostLoop = static_cast<HostLoop*>(userData);
-        hostLoop->send({
+        Command command = {
             .type = Command::Type::Operation,
             .payload = Command::Operation::Complete,
-        });
+        };
+        hostLoop->m_mainQueue->send(&command, sizeof(Command), 0);
     }, this, /* Must be 0. */ 0));
 }
 

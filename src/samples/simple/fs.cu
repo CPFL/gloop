@@ -159,7 +159,8 @@ int main( int argc, char** argv)
             }, d_filenames[0], d_filenames[1]);
         }
 
-        cudaError_t error = cudaDeviceSynchronize();
+        // Already synchronized in HostLoop.
+        // cudaError_t error = cudaDeviceSynchronize();
         double time_after=_timestamp();
         if(!i) time_after=0;
         total_time+=(time_after-time_before);
@@ -169,10 +170,10 @@ int main( int argc, char** argv)
         fprintf(stderr, "open: %.0f, rw %.0f, close %.0f usec\n",c_open,c_rw,c_close);
 
         //Check for errors and failed asserts in asynchronous kernel launch.
-        if(error != cudaSuccess )
-        {
-            printf("Device failed, CUDA error message is: %s\n\n", cudaGetErrorString(error));
-        }
+        // if(error != cudaSuccess )
+        // {
+        //     printf("Device failed, CUDA error message is: %s\n\n", cudaGetErrorString(error));
+        // }
 
 
         //PRINT_DEBUG;
