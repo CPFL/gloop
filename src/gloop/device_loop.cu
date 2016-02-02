@@ -130,16 +130,28 @@ __device__ bool DeviceLoop::drain()
             callback = dequeue();
         }
         END_SINGLE_THREAD
+
         if (callback) {
             __threadfence_system();
             uint32_t pos = position(callback);
             IPC* ipc = channel() + pos;
             (*callback)(this, ipc->request());
+            __syncthreads();  // FIXME
             deallocate(callback);
         }
 
-        // FIXME: Sometimes, we execute this.
-        if (gloop::readNoCache<uint32_t>(m_signal)) {
+        __shared__ bool signaled;
+        BEGIN_SINGLE_THREAD
+        {
+            // FIXME: Sometimes, we should execute this. Taking tick in GPU kernel is nice.
+            if (gloop::readNoCache<uint32_t>(m_signal)) {
+                signaled = true;
+            }
+        }
+        END_SINGLE_THREAD
+
+        if (signaled) {
+            break;
         }
 
         // NOTE: Always break.
@@ -171,6 +183,7 @@ __device__ void DeviceLoop::deallocate(Callback* callback)
     BEGIN_SINGLE_THREAD
     {
         uint32_t pos = position(callback);
+        // printf("pos:(%u)\n", (unsigned)pos);
         GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
         GPU_ASSERT(!(m_control.free & (1ULL << pos)));
 
@@ -186,9 +199,11 @@ __device__ void DeviceLoop::suspend()
 {
     BEGIN_SINGLE_THREAD
     {
+        __threadfence_system();  // FIXME
         PerBlockContext* blockContext = context();
         blockContext->control = m_control;
         atomicAdd(m_deviceContext.pending, 1);
+        __threadfence_system();  // FIXME
     }
     END_SINGLE_THREAD
 }
@@ -197,8 +212,10 @@ __device__ void DeviceLoop::resume()
 {
     BEGIN_SINGLE_THREAD
     {
+        __threadfence_system();  // FIXME
         PerBlockContext* blockContext = context();
         m_control = blockContext->control;
+        __threadfence_system();  // FIXME
     }
     END_SINGLE_THREAD
 }

@@ -85,11 +85,6 @@ private:
         HostLoop& m_hostLoop;
     };
 
-    volatile uint32_t* signal()
-    {
-        return static_cast<volatile uint32_t*>(m_signal->get_address());
-    }
-
     void initialize();
 
     void runPoller();
@@ -128,6 +123,7 @@ private:
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
     std::unique_ptr<boost::interprocess::shared_memory_object> m_sharedMemory;
     std::unique_ptr<boost::interprocess::mapped_region> m_signal;
+    volatile uint32_t* m_deviceSignal;
     std::unordered_map<std::string, File> m_fds { };
     cudaStream_t m_pgraph;
     cudaStream_t m_pcopy0;
@@ -145,7 +141,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
         m_kernelLock.lock();
         prepareForLaunch();
         while (true) {
-            gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(signal(), hostContext.deviceContext(), callback, std::forward<Args>(args)...);
+            gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, std::forward<Args>(args)...);
             cudaError_t error = cudaGetLastError();
             if (cudaErrorLaunchOutOfResources == error) {
                 continue;

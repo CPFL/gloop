@@ -171,6 +171,7 @@ void HostLoop::initialize()
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pcopy1));
 
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
+        GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_deviceSignal, m_signal->get_address(), 0));
 
         m_channel = make_unique<IPC>();
 
@@ -224,7 +225,7 @@ bool HostLoop::hostBack()
 void HostLoop::prepareForLaunch()
 {
     m_currentContext->prepareForLaunch();
-    syncWrite<uint32_t>(signal(), 0);
+    syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 0);
 }
 
 void HostLoop::resume()
@@ -232,7 +233,7 @@ void HostLoop::resume()
     m_kernelLock.lock();
     prepareForLaunch();
     tryLaunch([&] {
-        gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(signal(), m_currentContext->deviceContext());
+        gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext());
     });
     registerKernelCompletionCallback(m_pgraph);
 }
@@ -255,10 +256,10 @@ bool HostLoop::handle(Command command)
 
         case Command::Operation::Complete:
             // Still pending callbacks are queued.
-            // GLOOP_DEBUG("resume %u\n", m_currentContext->pending());
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             __sync_synchronize();
             if (m_currentContext->pending()) {
+                // GLOOP_DEBUG("resume %u\n", m_currentContext->pending());
                 resume();
                 return false;
             }
@@ -275,7 +276,7 @@ bool HostLoop::handle(Command command)
         switch (static_cast<Code>(req.code)) {
         case Code::Open: {
             int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
-            GLOOP_DEBUG("Open %s %d\n", req.u.open.filename.data, fd);
+            // GLOOP_DEBUG("Open %s %d\n", req.u.open.filename.data, fd);
             ipc->request()->u.openResult.fd = fd;
             ipc->emit(Code::Complete);
             break;
@@ -284,7 +285,7 @@ bool HostLoop::handle(Command command)
         case Code::Write: {
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
-            GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
+            // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
 
             std::shared_ptr<HostMemory> hostMemory = m_pool.front();
             m_pool.pop_front();
@@ -307,7 +308,7 @@ bool HostLoop::handle(Command command)
         case Code::Read: {
             // FIXME: Significant naive implementaion.
             // We should integrate implementation with GPUfs's buffer cache.
-            GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
+            // GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
 
             std::shared_ptr<HostMemory> hostMemory = m_pool.front();
             m_pool.pop_front();
@@ -330,7 +331,7 @@ bool HostLoop::handle(Command command)
         case Code::Fstat: {
             struct stat buf { };
             ::fstat(req.u.fstat.fd, &buf);
-            GLOOP_DEBUG("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
+            // GLOOP_DEBUG("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
             ipc->request()->u.fstatResult.size = buf.st_size;
             ipc->emit(Code::Complete);
             break;
@@ -338,7 +339,7 @@ bool HostLoop::handle(Command command)
 
         case Code::Close: {
             m_currentContext->table().close(req.u.close.fd);
-            GLOOP_DEBUG("Close %d\n", req.u.close.fd);
+            // GLOOP_DEBUG("Close %d\n", req.u.close.fd);
             ipc->request()->u.closeResult.error = 0;
             ipc->emit(Code::Complete);
             break;

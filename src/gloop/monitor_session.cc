@@ -100,7 +100,6 @@ void Session::configureTick(boost::asio::high_resolution_timer& timer)
                 if (&session != this) {
                     if (session.isAttemptingToLaunch()) {
                         // Found. Let's kill the current kernel executing.
-                        GLOOP_DEBUG("[%u] Let's kill this kernel.\n", m_id);
                         kill();
                         break;
                     }
