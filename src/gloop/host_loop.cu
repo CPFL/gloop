@@ -129,20 +129,19 @@ void HostLoop::stopPoller()
 void HostLoop::pollerMain()
 {
     while (true) {
-        if (!m_currentContext)
-            continue;
-
-        if (IPC* ipc = m_currentContext->tryPeekRequest()) {
-            request::Request req { };
-            memcpyIO(&req, ipc->request(), sizeof(request::Request));
-            ipc->emit(Code::None);
-            // FIXME: Should handle IO with libuv.
-            handleIO({
-                .type = Command::Type::IO,
-                .payload = bitwise_cast<uintptr_t>(ipc),
-                .request = req,
-            });
-            continue;
+        if (m_currentContext) {
+            if (IPC* ipc = m_currentContext->tryPeekRequest()) {
+                request::Request req { };
+                memcpyIO(&req, ipc->request(), sizeof(request::Request));
+                ipc->emit(Code::None);
+                // FIXME: Should handle IO with libuv.
+                handleIO({
+                    .type = Command::Type::IO,
+                    .payload = bitwise_cast<uintptr_t>(ipc),
+                    .request = req,
+                });
+                continue;
+            }
         }
         boost::this_thread::interruption_point();
     }
