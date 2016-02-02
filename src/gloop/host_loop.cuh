@@ -92,9 +92,8 @@ private:
     void pollerMain();
 
     bool handle(Command);
+    bool handleIO(Command);
     void send(Command);
-
-    bool hostBack();
 
     void resume();
     void registerKernelCompletionCallback(cudaStream_t);
@@ -106,8 +105,6 @@ private:
 
     int m_deviceNumber;
     uv_loop_t* m_loop;
-    std::atomic<bool> m_stop { false };
-    std::atomic<bool> m_hostBack { false };
     std::unique_ptr<boost::thread> m_poller;
 
     dim3 m_threads { };

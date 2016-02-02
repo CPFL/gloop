@@ -112,7 +112,6 @@ std::unique_ptr<HostLoop> HostLoop::create(int deviceNumber)
 void HostLoop::runPoller()
 {
     assert(!m_poller);
-    m_stop.store(false, std::memory_order_release);
     m_poller = make_unique<boost::thread>([this]() {
         pollerMain();
     });
@@ -120,16 +119,11 @@ void HostLoop::runPoller()
 
 void HostLoop::stopPoller()
 {
-    m_stop.store(true, std::memory_order_release);
     if (m_poller) {
+        m_poller->interrupt();
         m_poller->join();
         m_poller.reset();
     }
-}
-
-void HostLoop::send(Command command)
-{
-    m_mainQueue->send(&command, sizeof(Command), 0);
 }
 
 void HostLoop::pollerMain()
@@ -142,17 +136,15 @@ void HostLoop::pollerMain()
             request::Request req { };
             memcpyIO(&req, ipc->request(), sizeof(request::Request));
             ipc->emit(Code::None);
-            send({
+            // FIXME: Should handle IO with libuv.
+            handleIO({
                 .type = Command::Type::IO,
                 .payload = bitwise_cast<uintptr_t>(ipc),
                 .request = req,
             });
             continue;
         }
-
-        if (m_stop.load(std::memory_order_acquire)) {
-            break;
-        }
+        boost::this_thread::interruption_point();
     }
 }
 
@@ -214,13 +206,6 @@ void HostLoop::drain()
     logGPUfsDone();
 }
 
-bool HostLoop::hostBack()
-{
-    m_stop.store(true, std::memory_order_release);
-    while (m_stop.load(std::memory_order_acquire));
-    return true;
-}
-
 void HostLoop::prepareForLaunch()
 {
     m_currentContext->prepareForLaunch();
@@ -247,9 +232,6 @@ bool HostLoop::handle(Command command)
 
     case Command::Type::Operation: {
         switch (static_cast<Command::Operation>(command.payload)) {
-        case Command::Operation::HostBack:
-            return hostBack();
-
         case Command::Operation::DeviceLoopComplete:
             return true;
 
@@ -268,83 +250,88 @@ bool HostLoop::handle(Command command)
         break;
     }
 
-    case Command::Type::IO: {
-        const request::Request& req = command.request;
-        IPC* ipc = bitwise_cast<IPC*>(command.payload);
+    case Command::Type::IO:
+        return handleIO(command);
+    }
+    return false;
+}
 
-        switch (static_cast<Code>(req.code)) {
-        case Code::Open: {
-            int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
-            // GLOOP_DEBUG("Open %s %d\n", req.u.open.filename.data, fd);
-            ipc->request()->u.openResult.fd = fd;
-            ipc->emit(Code::Complete);
-            break;
-        }
+bool HostLoop::handleIO(Command command)
+{
+    assert(command.type == Command::Type::IO);
+    const request::Request& req = command.request;
+    IPC* ipc = bitwise_cast<IPC*>(command.payload);
 
-        case Code::Write: {
-            // FIXME: Significant naive implementaion.
-            // We should integrate implementation with GPUfs's buffer cache.
-            // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
+    switch (static_cast<Code>(req.code)) {
+    case Code::Open: {
+        int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
+        // GLOOP_DEBUG("Open %s %d\n", req.u.open.filename.data, fd);
+        ipc->request()->u.openResult.fd = fd;
+        ipc->emit(Code::Complete);
+        break;
+    }
 
-            std::shared_ptr<HostMemory> hostMemory = m_pool.front();
-            m_pool.pop_front();
-            assert(req.u.write.count <= hostMemory->size());
+    case Code::Write: {
+        // FIXME: Significant naive implementaion.
+        // We should integrate implementation with GPUfs's buffer cache.
+        // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
 
-            cudaStream_t stream = m_pcopy0;
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(hostMemory->hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, stream));
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
-            __sync_synchronize();
+        std::shared_ptr<HostMemory> hostMemory = m_pool.front();
+        m_pool.pop_front();
+        assert(req.u.write.count <= hostMemory->size());
 
-            ssize_t writtenCount = pwrite(req.u.write.fd, hostMemory->hostPointer(), req.u.write.count, req.u.write.offset);
+        cudaStream_t stream = m_pcopy0;
+        GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(hostMemory->hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, stream));
+        GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
+        __sync_synchronize();
 
-            m_pool.push_back(hostMemory);
+        ssize_t writtenCount = pwrite(req.u.write.fd, hostMemory->hostPointer(), req.u.write.count, req.u.write.offset);
 
-            ipc->request()->u.writeResult.writtenCount = writtenCount;
-            ipc->emit(Code::Complete);
-            break;
-        }
+        m_pool.push_back(hostMemory);
 
-        case Code::Read: {
-            // FIXME: Significant naive implementaion.
-            // We should integrate implementation with GPUfs's buffer cache.
-            // GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
+        ipc->request()->u.writeResult.writtenCount = writtenCount;
+        ipc->emit(Code::Complete);
+        break;
+    }
 
-            std::shared_ptr<HostMemory> hostMemory = m_pool.front();
-            m_pool.pop_front();
-            assert(req.u.read.count <= hostMemory->size());
-            ssize_t readCount = pread(req.u.read.fd, hostMemory->hostPointer(), req.u.read.count, req.u.read.offset);
-            __sync_synchronize();
+    case Code::Read: {
+        // FIXME: Significant naive implementaion.
+        // We should integrate implementation with GPUfs's buffer cache.
+        // GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
 
-            // FIXME: Should use multiple streams. And execute async.
-            cudaStream_t stream = m_pcopy1;
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, hostMemory->hostPointer(), readCount, cudaMemcpyHostToDevice, stream));
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
+        std::shared_ptr<HostMemory> hostMemory = m_pool.front();
+        m_pool.pop_front();
+        assert(req.u.read.count <= hostMemory->size());
+        ssize_t readCount = pread(req.u.read.fd, hostMemory->hostPointer(), req.u.read.count, req.u.read.offset);
+        __sync_synchronize();
 
-            m_pool.push_back(hostMemory);
+        // FIXME: Should use multiple streams. And execute async.
+        cudaStream_t stream = m_pcopy1;
+        GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, hostMemory->hostPointer(), readCount, cudaMemcpyHostToDevice, stream));
+        GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
 
-            ipc->request()->u.readResult.readCount = readCount;
-            ipc->emit(Code::Complete);
-            break;
-        }
+        m_pool.push_back(hostMemory);
 
-        case Code::Fstat: {
-            struct stat buf { };
-            ::fstat(req.u.fstat.fd, &buf);
-            // GLOOP_DEBUG("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
-            ipc->request()->u.fstatResult.size = buf.st_size;
-            ipc->emit(Code::Complete);
-            break;
-        }
+        ipc->request()->u.readResult.readCount = readCount;
+        ipc->emit(Code::Complete);
+        break;
+    }
 
-        case Code::Close: {
-            m_currentContext->table().close(req.u.close.fd);
-            // GLOOP_DEBUG("Close %d\n", req.u.close.fd);
-            ipc->request()->u.closeResult.error = 0;
-            ipc->emit(Code::Complete);
-            break;
-        }
-        }
-        return false;
+    case Code::Fstat: {
+        struct stat buf { };
+        ::fstat(req.u.fstat.fd, &buf);
+        // GLOOP_DEBUG("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
+        ipc->request()->u.fstatResult.size = buf.st_size;
+        ipc->emit(Code::Complete);
+        break;
+    }
+
+    case Code::Close: {
+        m_currentContext->table().close(req.u.close.fd);
+        // GLOOP_DEBUG("Close %d\n", req.u.close.fd);
+        ipc->request()->u.closeResult.error = 0;
+        ipc->emit(Code::Complete);
+        break;
     }
     }
     return false;
