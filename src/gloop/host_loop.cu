@@ -22,6 +22,7 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
 #include <boost/thread.hpp>
 #include <cassert>
 #include <cstdio>
@@ -86,7 +87,6 @@ HostLoop::HostLoop(int deviceNumber)
         }
         m_id = result.payload;
     }
-    m_mainQueue = monitor::Session::createQueue(GLOOP_SHARED_MAIN_QUEUE, m_id, false);
     m_requestQueue = monitor::Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, m_id, false);
     m_responseQueue = monitor::Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, m_id, false);
     m_sharedMemory = monitor::Session::createMemory(GLOOP_SHARED_MEMORY, m_id, GLOOP_SHARED_MEMORY_SIZE, false);
@@ -177,28 +177,14 @@ void HostLoop::registerKernelCompletionCallback(cudaStream_t stream)
     GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(stream, [](cudaStream_t stream, cudaError_t error, void* userData) {
         GLOOP_CUDA_SAFE_CALL(error);
         HostLoop* hostLoop = static_cast<HostLoop*>(userData);
-        Command command = {
-            .type = Command::Type::Operation,
-            .payload = Command::Operation::Complete,
-        };
-        hostLoop->m_mainQueue->send(&command, sizeof(Command), 0);
+        hostLoop->m_ioService.post(boost::bind(&HostLoop::onKernelComplete, hostLoop));
     }, this, /* Must be 0. */ 0));
 }
 
 void HostLoop::drain()
 {
-    runPoller();
-    while (true) {
-        Command result = { };
-        unsigned int priority { };
-        std::size_t size { };
-        m_mainQueue->receive(&result, sizeof(Command), size, priority);
-        if (handle(result)) {
-            break;
-        }
-    }
-    stopPoller();
-    logGPUfsDone();
+    // Host main loop.
+    m_ioService.run();
 }
 
 void HostLoop::prepareForLaunch()
@@ -217,38 +203,19 @@ void HostLoop::resume()
     registerKernelCompletionCallback(m_pgraph);
 }
 
-bool HostLoop::handle(Command command)
+void HostLoop::prologue(HostContext& hostContext, dim3 threads)
 {
-    switch (command.type) {
-    case Command::Type::Initialize: {
-        GLOOP_UNREACHABLE();
-        break;
-    }
+    m_threads = threads;
+    m_currentContext = &hostContext;
+    m_kernelWork = make_unique<boost::asio::io_service::work>(m_ioService);
+    runPoller();
+}
 
-    case Command::Type::Operation: {
-        switch (static_cast<Command::Operation>(command.payload)) {
-        case Command::Operation::DeviceLoopComplete:
-            return true;
-
-        case Command::Operation::Complete:
-            // Still pending callbacks are queued.
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
-            m_kernelLock.unlock();
-            if (m_currentContext->pending()) {
-                // GLOOP_DEBUG("resume %u\n", m_currentContext->pending());
-                resume();
-                return false;
-            }
-            // There is no callbacks.
-            return true;
-        }
-        break;
-    }
-
-    case Command::Type::IO:
-        return handleIO(command);
-    }
-    return false;
+void HostLoop::epilogue()
+{
+    stopPoller();
+    logGPUfsDone();
+    m_currentContext = nullptr;
 }
 
 bool HostLoop::handleIO(Command command)
@@ -330,6 +297,18 @@ bool HostLoop::handleIO(Command command)
     }
     }
     return false;
+}
+
+void HostLoop::onKernelComplete()
+{
+    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
+    m_kernelLock.unlock();
+    if (m_currentContext->pending()) {
+        // GLOOP_DEBUG("resume %u\n", m_currentContext->pending());
+        resume();
+        return;
+    }
+    m_kernelWork.reset();
 }
 
 }  // namespace gloop

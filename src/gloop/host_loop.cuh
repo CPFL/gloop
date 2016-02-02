@@ -41,6 +41,7 @@
 #include "host_context.cuh"
 #include "host_memory.cuh"
 #include "ipc.cuh"
+#include "make_unique.h"
 #include "noncopyable.h"
 
 namespace boost {
@@ -85,13 +86,15 @@ private:
         HostLoop& m_hostLoop;
     };
 
+    void prologue(HostContext&, dim3 threads);
+    void epilogue();
+
     void initialize();
 
     void runPoller();
     void stopPoller();
     void pollerMain();
 
-    bool handle(Command);
     bool handleIO(Command);
     void send(Command);
 
@@ -102,6 +105,8 @@ private:
     void unlockLaunch();
 
     void prepareForLaunch();
+
+    void onKernelComplete();
 
     int m_deviceNumber;
     uv_loop_t* m_loop;
@@ -115,12 +120,12 @@ private:
     uint32_t m_id { 0 };
     boost::asio::io_service m_ioService;
     boost::asio::local::stream_protocol::socket m_socket;
-    std::unique_ptr<boost::interprocess::message_queue> m_mainQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
     std::unique_ptr<boost::interprocess::shared_memory_object> m_sharedMemory;
     std::unique_ptr<boost::interprocess::mapped_region> m_signal;
     volatile uint32_t* m_deviceSignal;
+    std::unique_ptr<boost::asio::io_service::work> m_kernelWork;
     std::unordered_map<std::string, File> m_fds { };
     cudaStream_t m_pgraph;
     cudaStream_t m_pcopy0;
@@ -132,8 +137,7 @@ private:
 template<typename DeviceLambda, class... Args>
 inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
 {
-    m_threads = threads;
-    m_currentContext = &hostContext;
+    prologue(hostContext, threads);
     {
         m_kernelLock.lock();
         prepareForLaunch();
@@ -149,7 +153,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
         registerKernelCompletionCallback(m_pgraph);
     }
     drain();
-    m_currentContext = nullptr;
+    epilogue();
 }
 
 inline void HostLoop::lockLaunch()

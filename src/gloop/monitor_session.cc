@@ -140,13 +140,11 @@ bool Session::handle(Command& command)
 
 bool Session::initialize(Command& command)
 {
-    m_mainQueue = Session::createQueue(GLOOP_SHARED_MAIN_QUEUE, id(), true);
     m_requestQueue = Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, id(), true);
     m_responseQueue = Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, id(), true);
     m_sharedMemory = Session::createMemory(GLOOP_SHARED_MEMORY, id(), GLOOP_SHARED_MEMORY_SIZE, true);
     m_signal = make_unique<boost::interprocess::mapped_region>(*m_sharedMemory.get(), boost::interprocess::read_write, /* Offset. */ 0, GLOOP_SHARED_MEMORY_SIZE);
 
-    assert(m_mainQueue);
     assert(m_requestQueue);
     assert(m_responseQueue);
 

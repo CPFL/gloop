@@ -80,7 +80,6 @@ private:
     boost::asio::local::stream_protocol::socket m_socket;
     CommandBuffer m_buffer;
     std::unique_ptr<boost::thread> m_thread;
-    std::unique_ptr<boost::interprocess::message_queue> m_mainQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
     std::unique_ptr<boost::interprocess::shared_memory_object> m_sharedMemory;
