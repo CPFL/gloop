@@ -182,7 +182,6 @@ void HostLoop::initialize()
             m_pool.push_back(HostMemory::create(GLOOP_SHARED_PAGE_SIZE, cudaHostAllocPortable));
         }
 
-        cudaThreadSynchronize();
         CUDA_SAFE_CALL(cudaPeekAtLastError());
     }
 }
@@ -192,7 +191,6 @@ void HostLoop::registerKernelCompletionCallback(cudaStream_t stream)
     GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(stream, [](cudaStream_t stream, cudaError_t error, void* userData) {
         GLOOP_CUDA_SAFE_CALL(error);
         HostLoop* hostLoop = static_cast<HostLoop*>(userData);
-        hostLoop->m_kernelLock.unlock();
         hostLoop->send({
             .type = Command::Type::Operation,
             .payload = Command::Operation::Complete,
@@ -258,7 +256,7 @@ bool HostLoop::handle(Command command)
         case Command::Operation::Complete:
             // Still pending callbacks are queued.
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
-            __sync_synchronize();
+            m_kernelLock.unlock();
             if (m_currentContext->pending()) {
                 // GLOOP_DEBUG("resume %u\n", m_currentContext->pending());
                 resume();
