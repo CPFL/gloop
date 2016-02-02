@@ -120,7 +120,7 @@ __device__ bool DeviceLoop::drain()
         END_SINGLE_THREAD
 
         if (callback) {
-            __threadfence_system();
+            __threadfence_system();  // IPC and Callback.
             uint32_t pos = position(callback);
             IPC* ipc = channel() + pos;
             (*callback)(this, ipc->request());
