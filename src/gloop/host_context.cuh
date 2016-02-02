@@ -59,7 +59,6 @@ private:
 
     FileDescriptorTable m_table { };
     std::unique_ptr<IPC[]> m_ipc { nullptr };
-    std::unique_ptr<IPC> m_globalIPC { nullptr };
     std::shared_ptr<MappedMemory> m_pending { nullptr };
     DeviceContext m_context { nullptr };
     dim3 m_blocks { };

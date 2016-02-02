@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -21,45 +21,40 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_ENTRY_H_
-#define GLOOP_ENTRY_H_
-#include <type_traits>
-#include <utility>
-#include "device_context.cuh"
-#include "device_loop.cuh"
-
+#ifndef GLOOP_SYNC_READ_WRITE_H_
+#define GLOOP_SYNC_READ_WRITE_H_
+#include "utility.h"
 namespace gloop {
 
-template<typename Lambda>
-inline void tryLaunch(const Lambda& lambda)
+template<typename T, typename U>
+__host__ __device__ GLOOP_ALWAYS_INLINE T readNoCache(volatile const U* ptr)
 {
-    while (true) {
-        lambda();
-        cudaError_t error = cudaGetLastError();
-        if (cudaErrorLaunchOutOfResources == error) {
-            continue;
-        }
-        GLOOP_CUDA_SAFE_CALL(error);
-        break;
-    }
+    return *reinterpret_cast<volatile const T*>(ptr);
 }
 
-template<typename DeviceLambda, class... Args>
-inline __global__ void launch(volatile uint32_t* signal, DeviceContext context, const DeviceLambda& callback, Args... args)
+template<typename T, typename U>
+__host__ __device__ GLOOP_ALWAYS_INLINE void writeNoCache(volatile U* ptr, T value)
 {
-    DeviceLoop loop(signal, context, GLOOP_SHARED_SLOT_SIZE);
-    __threadfence_system();
-    callback(&loop, std::forward<Args>(args)...);
-    loop.drain();
+    *reinterpret_cast<volatile T*>(ptr) = value;
 }
 
-inline __global__ void resume(volatile uint32_t* signal, DeviceContext context)
+#if defined(__CUDA_ARCH__)
+template<typename T>
+GLOOP_ALWAYS_INLINE __device__ void syncWrite(volatile T* pointer, T value)
 {
-    DeviceLoop loop(signal, context, GLOOP_SHARED_SLOT_SIZE);
     __threadfence_system();
-    loop.resume();
-    loop.drain();
+    writeNoCache<T>(pointer, value);
+    __threadfence_system();
 }
+#else
+template<typename T>
+GLOOP_ALWAYS_INLINE __host__ void syncWrite(volatile T* pointer, T value)
+{
+    __sync_synchronize();
+    writeNoCache<T>(pointer, value);
+    __sync_synchronize();
+}
+#endif
 
 }  // namespace gloop
-#endif  // GLOOP_ENTRY_H_
+#endif  // GLOOP_SYNC_READ_WRITE_H_

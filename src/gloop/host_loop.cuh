@@ -85,6 +85,11 @@ private:
         HostLoop& m_hostLoop;
     };
 
+    volatile uint32_t* signal()
+    {
+        return static_cast<volatile uint32_t*>(m_signal->get_address());
+    }
+
     void initialize();
 
     void runPoller();
@@ -101,6 +106,8 @@ private:
 
     void lockLaunch();
     void unlockLaunch();
+
+    void prepareForLaunch();
 
     int m_deviceNumber;
     uv_loop_t* m_loop;
@@ -136,9 +143,9 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
     m_currentContext = &hostContext;
     {
         m_kernelLock.lock();
-        m_currentContext->prepareForLaunch();
+        prepareForLaunch();
         while (true) {
-            gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
+            gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(signal(), hostContext.deviceContext(), callback, std::forward<Args>(args)...);
             cudaError_t error = cudaGetLastError();
             if (cudaErrorLaunchOutOfResources == error) {
                 continue;

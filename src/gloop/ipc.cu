@@ -25,20 +25,13 @@
 #include <cassert>
 #include <gpufs/libgpufs/util.cu.h>
 #include "ipc.cuh"
+#include "sync_read_write.h"
 
 namespace gloop {
 
 __host__ __device__ void IPC::emit(Code code)
 {
-#if defined(__CUDA_ARCH__)
-    __threadfence_system();
-    m_request.code = static_cast<int32_t>(code);
-    __threadfence_system();
-#else
-    __sync_synchronize();
-    m_request.code = static_cast<int32_t>(code);
-    __sync_synchronize();
-#endif
+    syncWrite(&m_request.code, static_cast<int32_t>(code));
 }
 
 __device__ __host__ Code IPC::peek()

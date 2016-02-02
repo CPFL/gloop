@@ -41,6 +41,7 @@
 #include "memcpy_io.cuh"
 #include "monitor_session.h"
 #include "request.h"
+#include "sync_read_write.h"
 #include "system_initialize.h"
 #include "utility.h"
 namespace gloop {
@@ -169,6 +170,8 @@ void HostLoop::initialize()
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pcopy0));
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pcopy1));
 
+        GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
+
         m_channel = make_unique<IPC>();
 
         IPC* deviceChannel = nullptr;
@@ -218,12 +221,18 @@ bool HostLoop::hostBack()
     return true;
 }
 
+void HostLoop::prepareForLaunch()
+{
+    m_currentContext->prepareForLaunch();
+    syncWrite<uint32_t>(signal(), 0);
+}
+
 void HostLoop::resume()
 {
     m_kernelLock.lock();
-    m_currentContext->prepareForLaunch();
+    prepareForLaunch();
     tryLaunch([&] {
-        gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_currentContext->deviceContext());
+        gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(signal(), m_currentContext->deviceContext());
     });
     registerKernelCompletionCallback(m_pgraph);
 }

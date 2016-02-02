@@ -27,12 +27,14 @@
 #include "dump_memory.cuh"
 #include "function.cuh"
 #include "memcpy_io.cuh"
+#include "sync_read_write.h"
 namespace gloop {
 
-__device__ DeviceLoop::DeviceLoop(DeviceContext deviceContext, size_t size)
+__device__ DeviceLoop::DeviceLoop(volatile uint32_t* signal, DeviceContext deviceContext, size_t size)
     : m_deviceContext(deviceContext)
     , m_slots(reinterpret_cast<Callback*>(&context()->slots))
     , m_control()
+    , m_signal(signal)
 {
     GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
 }
@@ -134,6 +136,10 @@ __device__ bool DeviceLoop::drain()
             IPC* ipc = channel() + pos;
             (*callback)(this, ipc->request());
             deallocate(callback);
+        }
+
+        // FIXME: Sometimes, we execute this.
+        if (gloop::readNoCache<uint32_t>(m_signal)) {
         }
 
         // NOTE: Always break.

@@ -72,11 +72,10 @@ public:
         PerBlockContext* context;
         IPC* channels;
         OnePage* pages;
-        IPC* globalChannel;
         uint32_t* pending;
     };
 
-    __device__ DeviceLoop(DeviceContext, size_t size);
+    __device__ DeviceLoop(volatile uint32_t* signal, DeviceContext, size_t size);
 
     __device__ IPC* enqueueIPC(Callback lambda);
     __device__ void enqueueLater(Callback lambda);
@@ -112,6 +111,7 @@ private:
     DeviceContext m_deviceContext;
     Callback* m_slots;
     DeviceLoopControl m_control;
+    volatile uint32_t* m_signal;
 };
 
 __device__ uint32_t DeviceLoop::position(Callback* callback)
