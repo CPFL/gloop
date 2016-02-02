@@ -72,6 +72,8 @@ private:
 
     bool initialize(Command&);
 
+    void kill();
+
     std::atomic<bool> m_attemptToLaunch { false };
     uint32_t m_id;
     Server& m_server;

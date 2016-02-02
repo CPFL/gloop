@@ -67,7 +67,11 @@
         exit(-1);\
     }
 
-#define GLOOP_ALWAYS_INLINE __forceinline__  /* inline __attribute__((__always_inline__)) */
+#if defined(__CUDACC__)
+    #define GLOOP_ALWAYS_INLINE __forceinline__  /* inline __attribute__((__always_inline__)) */
+#else
+    #define GLOOP_ALWAYS_INLINE inline __attribute__((__always_inline__))
+#endif
 
 #define GLOOP_TID() (threadIdx.x + threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y)
 #define GLOOP_TMAX() (blockDim.x * blockDim.y * blockDim.z)

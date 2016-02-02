@@ -29,6 +29,7 @@
 #include "make_unique.h"
 #include "monitor_server.h"
 #include "monitor_session.h"
+#include "sync_read_write.h"
 
 namespace gloop {
 namespace monitor {
@@ -82,6 +83,11 @@ void Session::handleWrite(const boost::system::error_code& error)
     }
 
     boost::asio::async_read(m_socket, boost::asio::buffer(&m_buffer, sizeof(Command)), boost::bind(&Session::handleRead, this, boost::asio::placeholders::error));
+}
+
+void Session::kill()
+{
+    syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 1);
 }
 
 void Session::configureTick(boost::asio::high_resolution_timer& timer)

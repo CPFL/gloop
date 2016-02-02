@@ -27,13 +27,19 @@
 namespace gloop {
 
 template<typename T, typename U>
-__host__ __device__ GLOOP_ALWAYS_INLINE T readNoCache(volatile const U* ptr)
+#if defined(__CUDACC__)
+__device__
+#endif
+GLOOP_ALWAYS_INLINE T readNoCache(volatile const U* ptr)
 {
     return *reinterpret_cast<volatile const T*>(ptr);
 }
 
 template<typename T, typename U>
-__host__ __device__ GLOOP_ALWAYS_INLINE void writeNoCache(volatile U* ptr, T value)
+#if defined(__CUDACC__)
+__device__
+#endif
+GLOOP_ALWAYS_INLINE void writeNoCache(volatile U* ptr, T value)
 {
     *reinterpret_cast<volatile T*>(ptr) = value;
 }
@@ -48,7 +54,11 @@ GLOOP_ALWAYS_INLINE __device__ void syncWrite(volatile T* pointer, T value)
 }
 #else
 template<typename T>
-GLOOP_ALWAYS_INLINE __host__ void syncWrite(volatile T* pointer, T value)
+GLOOP_ALWAYS_INLINE
+#if defined(__CUDACC__)
+__host__
+#endif
+void syncWrite(volatile T* pointer, T value)
 {
     __sync_synchronize();
     writeNoCache<T>(pointer, value);
