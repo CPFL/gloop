@@ -39,18 +39,6 @@ __device__ DeviceLoop::DeviceLoop(volatile uint32_t* signal, DeviceContext devic
     GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
 }
 
-// TODO: Callback should be treated as destructible.
-static inline __device__ void copyCallback(const DeviceLoop::Callback* src, DeviceLoop::Callback* dst)
-{
-    memset(dst, sizeof(DeviceLoop::Callback), 0);
-    uint64_t* pointer = (uint64_t*)(src);
-    uint64_t* put = (uint64_t*)(dst);
-    static_assert(sizeof(DeviceLoop::Callback) % sizeof(uint64_t) == 0, "Callback size should be n * sizeof(uint64_t)");
-    for (size_t i = 0; i < (sizeof(DeviceLoop::Callback) / sizeof(uint64_t)); ++i) {
-        *put++ = *pointer++;
-    }
-}
-
 __device__ IPC* DeviceLoop::enqueueIPC(Callback lambda)
 {
     __shared__ IPC* result;
