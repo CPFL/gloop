@@ -190,6 +190,7 @@ void HostLoop::initialize()
 void HostLoop::registerKernelCompletionCallback(cudaStream_t stream)
 {
     GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(stream, [](cudaStream_t stream, cudaError_t error, void* userData) {
+        GLOOP_CUDA_SAFE_CALL(error);
         HostLoop* hostLoop = static_cast<HostLoop*>(userData);
         hostLoop->m_kernelLock.unlock();
         hostLoop->send({
