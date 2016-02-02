@@ -70,6 +70,7 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
     BEGIN_SINGLE_THREAD
     {
         result = nullptr;
+        __threadfence_system();
         for (uint32_t i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
             // Look into ICP status to run callbacks.
             uint64_t bit = 1ULL << i;
