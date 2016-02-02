@@ -45,7 +45,7 @@ public:
     }
 
 private:
-    std::atomic_flag m_locked = ATOMIC_FLAG_INIT;
+    std::atomic_flag m_locked { ATOMIC_FLAG_INIT };
 };
 
 }  // namespace gloop

@@ -27,20 +27,28 @@
 #include <vector>
 #include "data_log.h"
 #include "make_unique.h"
+#include "monitor_server.h"
 #include "monitor_session.h"
 
 namespace gloop {
 namespace monitor {
 
-Session::Session(boost::asio::io_service& ioService, uint32_t id)
+Session::Session(Server& server, uint32_t id)
     : m_id(id)
-    , m_socket(ioService)
+    , m_server(server)
+    , m_socket(server.ioService())
+    , m_lock(server.mutex(), std::defer_lock)
 {
 }
 
 Session::~Session()
 {
     GLOOP_DATA_LOG("close:(%u)\n", static_cast<unsigned>(id()));
+    if (m_thread) {
+        m_thread->interrupt();
+        m_thread->join();
+        m_thread.reset();
+    }
 }
 
 void Session::handShake()
@@ -73,11 +81,25 @@ void Session::handleWrite(const boost::system::error_code& error)
 
 bool Session::handle(Command& command)
 {
+    printf("Request...\n");
     switch (command.type) {
     case Command::Type::Initialize:
         return initialize(command);
+
     case Command::Type::Operation:
-        break;
+        return false;
+
+    case Command::Type::Lock: {
+        GLOOP_DEBUG("[%u] Lock kernel token.\n", m_id);
+        m_lock.lock();
+        return true;
+    }
+
+    case Command::Type::Unlock: {
+        GLOOP_DEBUG("[%u] Unlock kernel token.\n", m_id);
+        m_lock.unlock();
+        return false;
+    }
     }
     return false;
 }
@@ -87,7 +109,9 @@ bool Session::initialize(Command& command)
     m_mainQueue = Session::createQueue(GLOOP_SHARED_MAIN_QUEUE, id(), true);
     m_requestQueue = Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, id(), true);
     m_responseQueue = Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, id(), true);
-    m_launchMutex = Session::createMutex(GLOOP_SHARED_LAUNCH_MUTEX, id(), true);
+    assert(m_mainQueue);
+    assert(m_requestQueue);
+    assert(m_responseQueue);
     m_thread = make_unique<boost::thread>(&Session::main, this);
 
     command = (Command) {
@@ -112,21 +136,12 @@ std::string Session::createName(const char* prefix, uint32_t id)
 std::unique_ptr<boost::interprocess::message_queue> Session::createQueue(const char* prefix, uint32_t id, bool create)
 {
     std::string name = createName(prefix, id);
+    GLOOP_DEBUG("queue:(%s)\n", name.c_str());
     if (create) {
         boost::interprocess::message_queue::remove(name.c_str());
-        return make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only, name.c_str(), 0x100000, sizeof(Command));
+        return make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only, name.c_str(), 0x1000, sizeof(Command));
     }
     return make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, name.c_str());
-}
-
-std::unique_ptr<boost::interprocess::named_mutex> Session::createMutex(const char* prefix, uint32_t id, bool create)
-{
-    std::string name = createName(prefix, id);
-    if (create) {
-        boost::interprocess::named_mutex::remove(name.c_str());
-        return make_unique<boost::interprocess::named_mutex>(boost::interprocess::create_only, name.c_str());
-    }
-    return make_unique<boost::interprocess::named_mutex>(boost::interprocess::open_only, name.c_str());
 }
 
 void Session::main()
@@ -135,16 +150,15 @@ void Session::main()
         unsigned int priority { };
         std::size_t size { };
         Command command { };
-        m_requestQueue->receive(&command, sizeof(Command), size, priority);
-        if (handle(command)) {
-            send(command);
+        if (m_requestQueue->try_receive(&command, sizeof(Command), size, priority)) {
+            if (handle(command)) {
+                m_responseQueue->send(&command, sizeof(Command), 0);
+            }
+        } else {
+            // FIXME
+            boost::this_thread::interruption_point();
         }
     }
-}
-
-void Session::send(Command command)
-{
-    m_responseQueue->send(&command, sizeof(Command), 0);
 }
 
 } }  // namsepace gloop::monitor

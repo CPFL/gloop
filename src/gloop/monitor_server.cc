@@ -22,25 +22,29 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <atomic>
-#include <boost/asio.hpp>
-#include <unistd.h>
-#include "config.h"
-#include "data_log.h"
 #include "monitor_server.h"
 #include "monitor_session.h"
+namespace gloop {
+namespace monitor {
 
-int main(int argc, char** argv)
+Server::Server(boost::asio::io_service& ioService, const char* endpoint)
+    : m_ioService(ioService)
+    , m_acceptor(ioService, boost::asio::local::stream_protocol::endpoint(endpoint))
 {
-    ::unlink(GLOOP_ENDPOINT);
-    try {
-        GLOOP_DATA_LOG("monitor start\n");
-        boost::asio::io_service ioService;
-        gloop::monitor::Server server(ioService, GLOOP_ENDPOINT);
-        ioService.run();
-    } catch (std::exception& e) {
-        GLOOP_DATA_LOG("Exception: %s\n", e.what());
-    }
-
-    return 0;
+    accept();
 }
+
+void Server::accept()
+{
+    auto* session = new Session(*this, m_nextId++);
+    m_acceptor.async_accept(session->socket(), [=](const boost::system::error_code& error) {
+        if (!error) {
+            session->handShake();
+        } else {
+            delete session;
+        }
+        accept();
+    });
+}
+
+} }  // namsepace gloop::monitor

@@ -30,7 +30,9 @@ struct Command {
     enum class Type : uint32_t {
         Initialize,
         Operation,
-        IO
+        IO,
+        Lock,
+        Unlock
     };
 
     enum Operation : uint32_t {

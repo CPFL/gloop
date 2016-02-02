@@ -51,6 +51,7 @@ HostLoop::HostLoop(int deviceNumber)
     : m_deviceNumber(deviceNumber)
     , m_loop(uv_loop_new())
     , m_socket(m_ioService)
+    , m_kernelLock(*this)
 {
     // Connect to the gloop monitor.
     {
@@ -87,7 +88,6 @@ HostLoop::HostLoop(int deviceNumber)
     m_mainQueue = monitor::Session::createQueue(GLOOP_SHARED_MAIN_QUEUE, m_id, false);
     m_requestQueue = monitor::Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, m_id, false);
     m_responseQueue = monitor::Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, m_id, false);
-    m_launchMutex = monitor::Session::createMutex(GLOOP_SHARED_LAUNCH_MUTEX, m_id, false);
     GLOOP_DEBUG("id:(%u)\n", m_id);
 }
 
@@ -161,8 +161,8 @@ __global__ static void initializeDevice(IPC* channel)
 void HostLoop::initialize()
 {
     {
-        std::lock_guard<decltype(*m_launchMutex)> lock(*m_launchMutex);
         // This ensures that primary GPU context is initialized.
+        std::lock_guard<KernelLock> guard(m_kernelLock);
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pgraph));
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pcopy0));
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pcopy1));
@@ -185,7 +185,7 @@ void HostLoop::registerKernelCompletionCallback(cudaStream_t stream)
 {
     GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(stream, [](cudaStream_t stream, cudaError_t error, void* userData) {
         HostLoop* hostLoop = static_cast<HostLoop*>(userData);
-        hostLoop->unlockLaunch();
+        hostLoop->m_kernelLock.unlock();
         hostLoop->send({
             .type = Command::Type::Operation,
             .payload = Command::Operation::Complete,
@@ -218,7 +218,7 @@ bool HostLoop::hostBack()
 
 void HostLoop::resume()
 {
-    lockLaunch();
+    m_kernelLock.lock();
     m_currentContext->prepareForLaunch();
     tryLaunch([&] {
         gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_currentContext->deviceContext());

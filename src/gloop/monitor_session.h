@@ -25,12 +25,13 @@
 #define GLOOP_MONITOR_SESSION_H_
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
-#include <boost/interprocess/sync/named_mutex.hpp>
 #include <boost/thread.hpp>
 #include <type_traits>
 #include <memory>
+#include <mutex>
 #include "command.h"
 #include "config.h"
+#include "monitor_server.h"
 #include "noncopyable.h"
 namespace gloop {
 namespace monitor {
@@ -38,7 +39,7 @@ namespace monitor {
 class Session {
 GLOOP_NONCOPYABLE(Session);
 public:
-    Session(boost::asio::io_service&, uint32_t id);
+    Session(Server&, uint32_t id);
     ~Session();
 
     boost::asio::local::stream_protocol::socket& socket() { return m_socket; }
@@ -46,12 +47,9 @@ public:
 
     typedef std::aligned_storage<sizeof(Command), std::alignment_of<Command>::value>::type CommandBuffer;
 
-    void send(Command command);
-
     void handShake();
     static std::string createName(const char* prefix, uint32_t id);
     static std::unique_ptr<boost::interprocess::message_queue> createQueue(const char* prefix, uint32_t id, bool create);
-    static std::unique_ptr<boost::interprocess::named_mutex> createMutex(const char* prefix, uint32_t id, bool create);
 
 private:
     Command* buffer() { return reinterpret_cast<Command*>(&m_buffer); }
@@ -64,13 +62,14 @@ private:
     bool initialize(Command&);
 
     uint32_t m_id;
+    Server& m_server;
     boost::asio::local::stream_protocol::socket m_socket;
     CommandBuffer m_buffer;
     std::unique_ptr<boost::thread> m_thread;
     std::unique_ptr<boost::interprocess::message_queue> m_mainQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
-    std::unique_ptr<boost::interprocess::named_mutex> m_launchMutex;
+    std::unique_lock<Server::Lock> m_lock;
 };
 
 } }  // namsepace gloop::monitor

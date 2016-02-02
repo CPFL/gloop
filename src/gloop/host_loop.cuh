@@ -26,7 +26,6 @@
 #include <atomic>
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
-#include <boost/interprocess/sync/named_mutex.hpp>
 #include <deque>
 #include <gpufs/libgpufs/fs_initializer.cu.h>
 #include <gipc/gipc.cuh>
@@ -66,6 +65,25 @@ public:
 private:
     HostLoop(int deviceNumber);
 
+    class KernelLock {
+    GLOOP_NONCOPYABLE(KernelLock);
+    public:
+        KernelLock(HostLoop& hostLoop) : m_hostLoop(hostLoop) { }
+
+        void lock()
+        {
+            m_hostLoop.lockLaunch();
+        }
+
+        void unlock()
+        {
+            m_hostLoop.unlockLaunch();
+        }
+
+    private:
+        HostLoop& m_hostLoop;
+    };
+
     void initialize();
 
     void runPoller();
@@ -100,23 +118,13 @@ private:
     std::unique_ptr<boost::interprocess::message_queue> m_mainQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
-    std::unique_ptr<boost::interprocess::named_mutex> m_launchMutex;
     std::unordered_map<std::string, File> m_fds { };
     cudaStream_t m_pgraph;
     cudaStream_t m_pcopy0;
     cudaStream_t m_pcopy1;
     std::deque<std::shared_ptr<HostMemory>> m_pool;
+    KernelLock m_kernelLock;
 };
-
-inline __host__ void HostLoop::lockLaunch()
-{
-        m_launchMutex->lock();
-}
-
-inline __host__ void HostLoop::unlockLaunch()
-{
-        m_launchMutex->unlock();
-}
 
 template<typename DeviceLambda, class... Args>
 inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
@@ -124,7 +132,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
     m_threads = threads;
     m_currentContext = &hostContext;
     {
-        lockLaunch();
+        m_kernelLock.lock();
         m_currentContext->prepareForLaunch();
         while (true) {
             gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(hostContext.deviceContext(), callback, std::forward<Args>(args)...);
@@ -139,6 +147,26 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
     }
     drain();
     m_currentContext = nullptr;
+}
+
+inline void HostLoop::lockLaunch()
+{
+        unsigned int priority { };
+        std::size_t size { };
+        Command command {
+            .type = Command::Type::Lock,
+            .payload = 0
+        };
+        m_requestQueue->send(&command, sizeof(Command), 0);
+        m_responseQueue->receive(&command, sizeof(Command), size, priority);
+}
+
+inline void HostLoop::unlockLaunch()
+{
+        Command command {
+            .type = Command::Type::Unlock
+        };
+        m_requestQueue->send(&command, sizeof(Command), 0);
 }
 
 }  // namespace gloop

@@ -21,26 +21,37 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
+#ifndef GLOOP_MONITOR_SERVER_H_
+#define GLOOP_MONITOR_SERVER_H_
 #include <atomic>
 #include <boost/asio.hpp>
-#include <unistd.h>
-#include "config.h"
-#include "data_log.h"
-#include "monitor_server.h"
-#include "monitor_session.h"
+#include <boost/thread/mutex.hpp>
+#include "noncopyable.h"
+#include "spinlock.h"
+namespace gloop {
+namespace monitor {
 
-int main(int argc, char** argv)
-{
-    ::unlink(GLOOP_ENDPOINT);
-    try {
-        GLOOP_DATA_LOG("monitor start\n");
-        boost::asio::io_service ioService;
-        gloop::monitor::Server server(ioService, GLOOP_ENDPOINT);
-        ioService.run();
-    } catch (std::exception& e) {
-        GLOOP_DATA_LOG("Exception: %s\n", e.what());
-    }
+class Server {
+GLOOP_NONCOPYABLE(Server);
+public:
+    // typedef boost::mutex Lock;
+    typedef Spinlock Lock;
 
-    return 0;
-}
+    Server(boost::asio::io_service& ioService, const char* endpoint);
+
+    boost::asio::io_service& ioService() { return m_ioService; }
+    const boost::asio::io_service& ioService() const { return m_ioService; }
+
+    Lock& mutex() { return m_mutex; }
+
+private:
+    void accept();
+
+    std::atomic<uint32_t> m_nextId { 0 };
+    Lock m_mutex;
+    boost::asio::io_service& m_ioService;
+    boost::asio::local::stream_protocol::acceptor m_acceptor;
+};
+
+} }  // namsepace gloop::monitor
+#endif  // GLOOP_MONITOR_SERVER_H_
