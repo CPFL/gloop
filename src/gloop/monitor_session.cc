@@ -92,7 +92,7 @@ void Session::kill()
 
 void Session::configureTick(boost::asio::high_resolution_timer& timer)
 {
-    timer.expires_from_now(std::chrono::milliseconds(1));
+    timer.expires_from_now(std::chrono::milliseconds(GLOOP_KILL_TIME));
     timer.async_wait([&](const boost::system::error_code& ec) {
         if (!ec) {
             // This is ASIO call. So it is executed under the main thread now. (Since only the main thread invokes ASIO's ioService.run()).
@@ -101,6 +101,7 @@ void Session::configureTick(boost::asio::high_resolution_timer& timer)
                     if (session.isAttemptingToLaunch()) {
                         // Found. Let's kill the current kernel executing.
                         GLOOP_DEBUG("[%u] Let's kill this kernel.\n", m_id);
+                        kill();
                         break;
                     }
                 }

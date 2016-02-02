@@ -31,6 +31,7 @@
 #define GLOOP_SHARED_RESPONSE_QUEUE "gloop_shared_response_queue_"
 #define GLOOP_SHARED_MEMORY "gloop_shared_memory_"
 #define GLOOP_SHARED_MEMORY_SIZE 0x1000UL
+#define GLOOP_KILL_TIME 10
 
 namespace gloop {
 }  // namespace gloop
