@@ -147,11 +147,6 @@ void HostLoop::pollerMain()
     }
 }
 
-__global__ static void initializeDevice(IPC* channel)
-{
-    g_channel = channel;
-}
-
 void HostLoop::initialize()
 {
     {
