@@ -47,4 +47,14 @@ void Server::accept()
     });
 }
 
+void Server::registerSession(Session& session)
+{
+    m_sessionList.push_back(session);
+}
+
+void Server::unregisterSession(Session& session)
+{
+    m_sessionList.erase(SessionList::s_iterator_to(session));
+}
+
 } }  // namsepace gloop::monitor

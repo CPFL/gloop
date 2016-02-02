@@ -21,8 +21,8 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <chrono>
 #include <mutex>
 #include <vector>
 #include "data_log.h"
@@ -37,12 +37,17 @@ Session::Session(Server& server, uint32_t id)
     : m_id(id)
     , m_server(server)
     , m_socket(server.ioService())
-    , m_lock(server.mutex(), std::defer_lock)
+    , m_lock(server.kernelLock(), std::defer_lock)
+    , m_timer(server.ioService())
 {
+    // NOTE: This constructor is always executed in single thread.
+    m_server.registerSession(*this);
 }
 
 Session::~Session()
 {
+    // NOTE: This destructor is always executed in single thread.
+    m_server.unregisterSession(*this);
     GLOOP_DATA_LOG("close:(%u)\n", static_cast<unsigned>(id()));
     if (m_thread) {
         m_thread->interrupt();
@@ -79,6 +84,26 @@ void Session::handleWrite(const boost::system::error_code& error)
     boost::asio::async_read(m_socket, boost::asio::buffer(&m_buffer, sizeof(Command)), boost::bind(&Session::handleRead, this, boost::asio::placeholders::error));
 }
 
+void Session::configureTick(boost::asio::high_resolution_timer& timer)
+{
+    timer.expires_from_now(std::chrono::milliseconds(1));
+    timer.async_wait([&](const boost::system::error_code& ec) {
+        if (!ec) {
+            // This is ASIO call. So it is executed under the main thread now. (Since only the main thread invokes ASIO's ioService.run()).
+            for (auto& session : m_server.sessionList()) {
+                if (&session != this) {
+                    if (session.isAttemptingToLaunch()) {
+                        // Found. Let's kill the current kernel executing.
+                        GLOOP_DEBUG("[%u] Let's kill this kernel.\n", m_id);
+                        break;
+                    }
+                }
+            }
+            configureTick(timer);
+        }
+    });
+}
+
 bool Session::handle(Command& command)
 {
     printf("Request...\n");
@@ -91,12 +116,16 @@ bool Session::handle(Command& command)
 
     case Command::Type::Lock: {
         GLOOP_DEBUG("[%u] Lock kernel token.\n", m_id);
+        m_attemptToLaunch.store(true);
         m_lock.lock();
+        m_attemptToLaunch.store(false);
+        configureTick(m_timer);
         return true;
     }
 
     case Command::Type::Unlock: {
         GLOOP_DEBUG("[%u] Unlock kernel token.\n", m_id);
+        m_timer.cancel();
         m_lock.unlock();
         return false;
     }
@@ -109,9 +138,13 @@ bool Session::initialize(Command& command)
     m_mainQueue = Session::createQueue(GLOOP_SHARED_MAIN_QUEUE, id(), true);
     m_requestQueue = Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, id(), true);
     m_responseQueue = Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, id(), true);
+    m_sharedMemory = Session::createMemory(GLOOP_SHARED_MEMORY, id(), GLOOP_SHARED_MEMORY_SIZE, true);
+    m_signal = make_unique<boost::interprocess::mapped_region>(*m_sharedMemory.get(), boost::interprocess::read_write, /* Offset. */ 0, GLOOP_SHARED_MEMORY_SIZE);
+
     assert(m_mainQueue);
     assert(m_requestQueue);
     assert(m_responseQueue);
+
     m_thread = make_unique<boost::thread>(&Session::main, this);
 
     command = (Command) {
@@ -121,10 +154,10 @@ bool Session::initialize(Command& command)
     return true;
 }
 
-std::string Session::createName(const char* prefix, uint32_t id)
+std::string Session::createName(const std::string& prefix, uint32_t id)
 {
-    std::vector<char> name(200);
-    const int ret = std::snprintf(name.data(), name.size() - 1, "%s%u", prefix, id);
+    std::vector<char> name(prefix.size() + 100);
+    const int ret = std::snprintf(name.data(), name.size() - 1, "%s%u", prefix.c_str(), id);
     if (ret < 0) {
         std::perror(nullptr);
         std::exit(1);
@@ -133,16 +166,30 @@ std::string Session::createName(const char* prefix, uint32_t id)
     return std::string(name.data(), ret);
 }
 
-std::unique_ptr<boost::interprocess::message_queue> Session::createQueue(const char* prefix, uint32_t id, bool create)
+std::unique_ptr<boost::interprocess::message_queue> Session::createQueue(const std::string& prefix, uint32_t id, bool create)
 {
-    std::string name = createName(prefix, id);
-    GLOOP_DEBUG("queue:(%s)\n", name.c_str());
+    const std::string name = createName(prefix, id);
     if (create) {
         boost::interprocess::message_queue::remove(name.c_str());
         return make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only, name.c_str(), 0x1000, sizeof(Command));
     }
     return make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, name.c_str());
 }
+
+std::unique_ptr<boost::interprocess::shared_memory_object> Session::createMemory(const std::string& prefix, uint32_t id, std::size_t sharedMemorySize, bool create)
+{
+    const std::string name = createName(prefix, id);
+    std::unique_ptr<boost::interprocess::shared_memory_object> memory;
+    if (create) {
+        boost::interprocess::shared_memory_object::remove(name.c_str());
+        memory = make_unique<boost::interprocess::shared_memory_object>(boost::interprocess::create_only, name.c_str(), boost::interprocess::read_write);
+    } else {
+        memory = make_unique<boost::interprocess::shared_memory_object>(boost::interprocess::open_only, name.c_str(), boost::interprocess::read_write);
+    }
+    memory->truncate(sharedMemorySize);
+    return memory;
+}
+
 
 void Session::main()
 {

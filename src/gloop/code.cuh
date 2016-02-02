@@ -36,6 +36,7 @@ enum class Code : int32_t {
     Close,
     Read,
 
+    Stop
 };
 
 inline bool IsOperationCode(Code code)

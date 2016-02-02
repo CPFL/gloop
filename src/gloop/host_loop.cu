@@ -88,6 +88,8 @@ HostLoop::HostLoop(int deviceNumber)
     m_mainQueue = monitor::Session::createQueue(GLOOP_SHARED_MAIN_QUEUE, m_id, false);
     m_requestQueue = monitor::Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, m_id, false);
     m_responseQueue = monitor::Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, m_id, false);
+    m_sharedMemory = monitor::Session::createMemory(GLOOP_SHARED_MEMORY, m_id, GLOOP_SHARED_MEMORY_SIZE, false);
+    m_signal = make_unique<boost::interprocess::mapped_region>(*m_sharedMemory.get(), boost::interprocess::read_write, /* Offset. */ 0, GLOOP_SHARED_MEMORY_SIZE);
     GLOOP_DEBUG("id:(%u)\n", m_id);
 }
 
@@ -162,23 +164,23 @@ void HostLoop::initialize()
 {
     {
         // This ensures that primary GPU context is initialized.
-        std::lock_guard<KernelLock> guard(m_kernelLock);
+        std::lock_guard<KernelLock> lock(m_kernelLock);
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pgraph));
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pcopy0));
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pcopy1));
+
+        m_channel = make_unique<IPC>();
+
+        IPC* deviceChannel = nullptr;
+        GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&deviceChannel, m_channel.get(), 0));
+
+        for (int i = 0; i < 16; ++i) {
+            m_pool.push_back(HostMemory::create(GLOOP_SHARED_PAGE_SIZE, cudaHostAllocPortable));
+        }
+
+        cudaThreadSynchronize();
+        CUDA_SAFE_CALL(cudaPeekAtLastError());
     }
-
-    m_channel = make_unique<IPC>();
-
-    IPC* deviceChannel = nullptr;
-    GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&deviceChannel, m_channel.get(), 0));
-
-    for (int i = 0; i < 16; ++i) {
-        m_pool.push_back(HostMemory::create(GLOOP_SHARED_PAGE_SIZE, cudaHostAllocPortable));
-    }
-
-	cudaThreadSynchronize();
-	CUDA_SAFE_CALL(cudaPeekAtLastError());
 }
 
 void HostLoop::registerKernelCompletionCallback(cudaStream_t stream)

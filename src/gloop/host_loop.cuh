@@ -26,6 +26,7 @@
 #include <atomic>
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
+#include <boost/interprocess/shared_memory_object.hpp>
 #include <deque>
 #include <gpufs/libgpufs/fs_initializer.cu.h>
 #include <gipc/gipc.cuh>
@@ -118,6 +119,8 @@ private:
     std::unique_ptr<boost::interprocess::message_queue> m_mainQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
+    std::unique_ptr<boost::interprocess::shared_memory_object> m_sharedMemory;
+    std::unique_ptr<boost::interprocess::mapped_region> m_signal;
     std::unordered_map<std::string, File> m_fds { };
     cudaStream_t m_pgraph;
     cudaStream_t m_pcopy0;

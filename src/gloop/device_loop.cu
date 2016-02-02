@@ -135,7 +135,9 @@ __device__ bool DeviceLoop::drain()
             (*callback)(this, ipc->request());
             deallocate(callback);
         }
-        break;
+
+        // NOTE: Always break.
+        // break;
     }
     if (pending) {
         // Flush pending jobs to global pending status.

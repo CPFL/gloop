@@ -29,7 +29,8 @@
 #define GLOOP_SHARED_MAIN_QUEUE "gloop_shared_main_queue_"
 #define GLOOP_SHARED_REQUEST_QUEUE "gloop_shared_request_queue_"
 #define GLOOP_SHARED_RESPONSE_QUEUE "gloop_shared_response_queue_"
-#define GLOOP_SHARED_LAUNCH_MUTEX "gloop_shared_launch_mutex_"
+#define GLOOP_SHARED_MEMORY "gloop_shared_memory_"
+#define GLOOP_SHARED_MEMORY_SIZE 0x1000UL
 
 namespace gloop {
 }  // namespace gloop

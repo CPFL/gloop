@@ -21,43 +21,15 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_MONITOR_SERVER_H_
-#define GLOOP_MONITOR_SERVER_H_
-#include <atomic>
-#include <boost/asio.hpp>
-#include <boost/intrusive/list.hpp>
-#include "monitor_lock.h"
-#include "monitor_session.h"
-#include "noncopyable.h"
+#ifndef GLOOP_MONITOR_LOCK_H_
+#define GLOOP_MONITOR_LOCK_H_
+#include <boost/thread/mutex.hpp>
+#include "spinlock.h"
 namespace gloop {
 namespace monitor {
 
-class Server {
-GLOOP_NONCOPYABLE(Server);
-public:
-    typedef boost::intrusive::list<Session> SessionList;
+// typedef boost::mutex Lock;
+typedef Spinlock Lock;
 
-    Server(boost::asio::io_service& ioService, const char* endpoint);
-
-    boost::asio::io_service& ioService() { return m_ioService; }
-    const boost::asio::io_service& ioService() const { return m_ioService; }
-
-    Lock& kernelLock() { return m_kernelLock; }
-    SessionList& sessionList() { return m_sessionList; }
-
-    void registerSession(Session&);
-    void unregisterSession(Session&);
-
-private:
-    void accept();
-
-    std::atomic<uint32_t> m_nextId { 0 };
-    std::atomic<uint32_t> m_waitingCount { 0 };
-    Lock m_kernelLock;
-    SessionList m_sessionList;
-    boost::asio::io_service& m_ioService;
-    boost::asio::local::stream_protocol::acceptor m_acceptor;
-};
-
-} }  // namsepace gloop::monitor
-#endif  // GLOOP_MONITOR_SERVER_H_
+} }  // namespace gloop::monitor
+#endif  // GLOOP_MONITOR_LOCK_H_
