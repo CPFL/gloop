@@ -44,21 +44,35 @@ inline void tryLaunch(const Lambda& lambda)
     }
 }
 
+typedef std::aligned_storage<sizeof(DeviceLoop), alignof(DeviceLoop)>::type UninitializedDeviceLoopStorage;
+
 template<typename DeviceLambda, class... Args>
 inline __global__ void launch(volatile uint32_t* signal, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
-    DeviceLoop loop(signal, context, GLOOP_SHARED_SLOT_SIZE);
+    __shared__ UninitializedDeviceLoopStorage storage;
+    __shared__ DeviceLoop* loop;
+    BEGIN_SINGLE_THREAD
+    {
+        loop = new (&storage) DeviceLoop(signal, context, GLOOP_SHARED_SLOT_SIZE);
+    }
+    END_SINGLE_THREAD
     __threadfence_system();
-    callback(&loop, std::forward<Args>(args)...);
-    loop.drain();
+    callback(loop, std::forward<Args>(args)...);
+    loop->drain();
 }
 
 inline __global__ void resume(volatile uint32_t* signal, DeviceContext context)
 {
-    DeviceLoop loop(signal, context, GLOOP_SHARED_SLOT_SIZE);
+    __shared__ UninitializedDeviceLoopStorage storage;
+    __shared__ DeviceLoop* loop;
+    BEGIN_SINGLE_THREAD
+    {
+        loop = new (&storage) DeviceLoop(signal, context, GLOOP_SHARED_SLOT_SIZE);
+        loop->resume();
+    }
+    END_SINGLE_THREAD
     __threadfence_system();
-    loop.resume();
-    loop.drain();
+    loop->drain();
 }
 
 }  // namespace gloop

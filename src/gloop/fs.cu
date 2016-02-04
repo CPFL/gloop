@@ -33,59 +33,44 @@ namespace fs {
 
 __device__ void openImpl(DeviceLoop* loop, IPC* ipc, volatile request::Open& req, const char* filename, int mode)
 {
-    BEGIN_SINGLE_THREAD
-    {
-        memcpyIO(req.filename.data, filename, GLOOP_FILENAME_SIZE);
-        req.mode = mode;
-        loop->emit(Code::Open, ipc);
-    }
-    END_SINGLE_THREAD
+    GLOOP_ASSERT_SINGLE_THREAD();
+    memcpyIO(req.filename.data, filename, GLOOP_FILENAME_SIZE);
+    req.mode = mode;
+    ipc->emit(Code::Open);
 }
 
 __device__ void writeImpl(DeviceLoop* loop, IPC* ipc, volatile request::Write& req, int fd, size_t offset, size_t count, unsigned char* buffer)
 {
-    BEGIN_SINGLE_THREAD
-    {
-        req.fd = fd;
-        req.offset = offset;
-        req.count = count;
-        req.buffer = buffer;
-        loop->emit(Code::Write, ipc);
-    }
-    END_SINGLE_THREAD
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.fd = fd;
+    req.offset = offset;
+    req.count = count;
+    req.buffer = buffer;
+    ipc->emit(Code::Write);
 }
 
 __device__ void fstatImpl(DeviceLoop* loop, IPC* ipc, volatile request::Fstat& req, int fd)
 {
-    BEGIN_SINGLE_THREAD
-    {
-        req.fd = fd;
-        loop->emit(Code::Fstat, ipc);
-    }
-    END_SINGLE_THREAD
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.fd = fd;
+    ipc->emit(Code::Fstat);
 }
 
 __device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::Close& req, int fd)
 {
-    BEGIN_SINGLE_THREAD
-    {
-        req.fd = fd;
-        loop->emit(Code::Close, ipc);
-    }
-    END_SINGLE_THREAD
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.fd = fd;
+    ipc->emit(Code::Close);
 }
 
 __device__ void readImpl(DeviceLoop* loop, IPC* ipc, volatile request::Read& req, int fd, size_t offset, size_t count, unsigned char* buffer)
 {
-    BEGIN_SINGLE_THREAD
-    {
-        req.fd = fd;
-        req.offset = offset;
-        req.count = count;
-        req.buffer = buffer;
-        loop->emit(Code::Read, ipc);
-    }
-    END_SINGLE_THREAD
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.fd = fd;
+    req.offset = offset;
+    req.count = count;
+    req.buffer = buffer;
+    ipc->emit(Code::Read);
 }
 
 } }  // namespace gloop::fs
