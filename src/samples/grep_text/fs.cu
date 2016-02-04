@@ -95,7 +95,11 @@ for(int i=1;i<trials+1;i++){
 	double time_before=_timestamp();
 	if (!i) time_before=0;
 
-    hostLoop->launch(*hostContext, nthreads, [] __device__ (gloop::DeviceLoop* loop, char* src, char* out, char* dbs) {
+    hostLoop->launch(*hostContext, nthreads, [] __device__ (gloop::DeviceLoop* loop, thrust::tuple<char*, char*, char*> tuple) {
+        char* src;
+        char* out;
+        char* dbs;
+        thrust::tie(src, out, dbs) = tuple;
         grep_text(loop, src, out, dbs);
     }, d_filenames[0], d_filenames[1], d_filenames[2]);
 

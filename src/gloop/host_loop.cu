@@ -172,15 +172,6 @@ void HostLoop::initialize()
     }
 }
 
-void HostLoop::registerKernelCompletionCallback(cudaStream_t stream)
-{
-    GLOOP_CUDA_SAFE_CALL(cudaStreamAddCallback(stream, [](cudaStream_t stream, cudaError_t error, void* userData) {
-        GLOOP_CUDA_SAFE_CALL(error);
-        HostLoop* hostLoop = static_cast<HostLoop*>(userData);
-        hostLoop->m_ioService.post(boost::bind(&HostLoop::onKernelComplete, hostLoop));
-    }, this, /* Must be 0. */ 0));
-}
-
 void HostLoop::drain()
 {
     // Host main loop.
@@ -195,12 +186,12 @@ void HostLoop::prepareForLaunch()
 
 void HostLoop::resume()
 {
-    m_kernelLock.lock();
+    std::lock_guard<KernelLock> lock(m_kernelLock);
     prepareForLaunch();
     tryLaunch([&] {
         gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext());
     });
-    registerKernelCompletionCallback(m_pgraph);
+    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
 }
 
 void HostLoop::prologue(HostContext& hostContext, dim3 threads)
@@ -242,9 +233,8 @@ bool HostLoop::handleIO(Command command)
         m_pool.pop_front();
         assert(req.u.write.count <= hostMemory->size());
 
-        cudaStream_t stream = m_pcopy0;
-        GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(hostMemory->hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, stream));
-        GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
+        GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(hostMemory->hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, m_pcopy0));
+        GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pcopy0));
         __sync_synchronize();
 
         ssize_t writtenCount = pwrite(req.u.write.fd, hostMemory->hostPointer(), req.u.write.count, req.u.write.offset);
@@ -268,9 +258,8 @@ bool HostLoop::handleIO(Command command)
         __sync_synchronize();
 
         // FIXME: Should use multiple streams. And execute async.
-        cudaStream_t stream = m_pcopy1;
-        GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, hostMemory->hostPointer(), readCount, cudaMemcpyHostToDevice, stream));
-        GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(stream));
+        GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, hostMemory->hostPointer(), readCount, cudaMemcpyHostToDevice, m_pcopy1));
+        GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pcopy1));
 
         m_pool.push_back(hostMemory);
 
@@ -297,18 +286,6 @@ bool HostLoop::handleIO(Command command)
     }
     }
     return false;
-}
-
-void HostLoop::onKernelComplete()
-{
-    // GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
-    m_kernelLock.unlock();
-    if (m_currentContext->pending()) {
-        // GLOOP_DEBUG("resume %u\n", m_currentContext->pending());
-        resume();
-        return;
-    }
-    m_kernelWork.reset();
 }
 
 }  // namespace gloop

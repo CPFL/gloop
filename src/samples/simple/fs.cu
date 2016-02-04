@@ -154,7 +154,11 @@ int main( int argc, char** argv)
 
         // test_cpy<<<nblocks,nthreads,0,hostLoop->streamMgr->kernelStream>>>(d_filenames[0], d_filenames[1]);
         {
-            hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
+            // hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
+            hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<char*, char*> tuple) {
+                char* src;
+                char* dst;
+                thrust::tie(src, dst) = tuple;
                 test_cpy(loop, src, dst);
             }, d_filenames[0], d_filenames[1]);
         }
@@ -179,7 +183,6 @@ int main( int argc, char** argv)
         //PRINT_DEBUG;
 
         fprintf(stderr,"\n");
-        hostLoop.reset();
 
         PRINT_MALLOC;
         PRINT_FREE;

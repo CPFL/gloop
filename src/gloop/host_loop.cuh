@@ -27,6 +27,7 @@
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/shared_memory_object.hpp>
+#include <boost/thread.hpp>
 #include <deque>
 #include <gpufs/libgpufs/fs_initializer.cu.h>
 #include <gipc/gipc.cuh>
@@ -34,9 +35,11 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <thrust/tuple.h>
 #include <unordered_map>
 #include <uv.h>
 #include "command.h"
+#include "data_log.h"
 #include "entry.cuh"
 #include "host_context.cuh"
 #include "host_memory.cuh"
@@ -99,14 +102,11 @@ private:
     void send(Command);
 
     void resume();
-    void registerKernelCompletionCallback(cudaStream_t);
 
     void lockLaunch();
     void unlockLaunch();
 
     void prepareForLaunch();
-
-    void onKernelComplete();
 
     int m_deviceNumber;
     uv_loop_t* m_loop;
@@ -139,20 +139,29 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
 {
     prologue(hostContext, threads);
     {
-        m_kernelLock.lock();
-        prepareForLaunch();
-        while (true) {
-            gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, std::forward<Args>(args)...);
-            cudaError_t error = cudaGetLastError();
-            if (cudaErrorLaunchOutOfResources == error) {
-                continue;
+        auto arguments = thrust::make_tuple(std::forward<Args>(args)...);
+        std::unique_ptr<boost::thread> kernelThread = make_unique<boost::thread>([&] {
+            {
+                std::lock_guard<KernelLock> lock(m_kernelLock);
+                prepareForLaunch();
+                while (true) {
+                    gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, arguments);
+                    cudaError_t error = cudaGetLastError();
+                    if (cudaErrorLaunchOutOfResources == error) {
+                        continue;
+                    }
+                    GLOOP_CUDA_SAFE_CALL(error);
+                    break;
+                }
+                GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             }
-            GLOOP_CUDA_SAFE_CALL(error);
-            break;
-        }
-        registerKernelCompletionCallback(m_pgraph);
+            while (m_currentContext->pending()) {
+                resume();
+            }
+            m_kernelWork.reset();
+        });
+        drain();
     }
-    drain();
     epilogue();
 }
 
