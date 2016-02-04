@@ -218,7 +218,7 @@ bool HostLoop::handleIO(Command command)
     switch (static_cast<Code>(req.code)) {
     case Code::Open: {
         int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
-        GLOOP_DEBUG("Open %s %d\n", req.u.open.filename.data, fd);
+        // GLOOP_DEBUG("Open %s %d\n", req.u.open.filename.data, fd);
         ipc->request()->u.openResult.fd = fd;
         ipc->emit(Code::Complete);
         break;
@@ -227,7 +227,7 @@ bool HostLoop::handleIO(Command command)
     case Code::Write: {
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
-        GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
+        // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
 
         std::shared_ptr<HostMemory> hostMemory = m_pool.front();
         m_pool.pop_front();
@@ -249,7 +249,7 @@ bool HostLoop::handleIO(Command command)
     case Code::Read: {
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
-        GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
+        // GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
 
         std::shared_ptr<HostMemory> hostMemory = m_pool.front();
         m_pool.pop_front();
@@ -271,7 +271,7 @@ bool HostLoop::handleIO(Command command)
     case Code::Fstat: {
         struct stat buf { };
         ::fstat(req.u.fstat.fd, &buf);
-        GLOOP_DEBUG("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
+        // GLOOP_DEBUG("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
         ipc->request()->u.fstatResult.size = buf.st_size;
         ipc->emit(Code::Complete);
         break;
@@ -279,7 +279,7 @@ bool HostLoop::handleIO(Command command)
 
     case Code::Close: {
         m_currentContext->table().close(req.u.close.fd);
-        GLOOP_DEBUG("Close %d\n", req.u.close.fd);
+        // GLOOP_DEBUG("Close %d\n", req.u.close.fd);
         ipc->request()->u.closeResult.error = 0;
         ipc->emit(Code::Complete);
         break;
