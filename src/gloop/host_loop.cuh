@@ -43,6 +43,7 @@
 #include "entry.cuh"
 #include "host_context.cuh"
 #include "host_memory.cuh"
+#include "host_memory_pool.cuh"
 #include "ipc.cuh"
 #include "make_unique.h"
 #include "noncopyable.h"
@@ -130,7 +131,7 @@ private:
     cudaStream_t m_pgraph;
     cudaStream_t m_pcopy0;
     cudaStream_t m_pcopy1;
-    std::deque<std::shared_ptr<HostMemory>> m_pool;
+    HostMemoryPool m_pool;
     KernelLock m_kernelLock;
 };
 

@@ -39,6 +39,7 @@ add_library(gloop STATIC
     host_context.cu
     host_loop.cu
     host_memory.cu
+    host_memory_pool.cu
     device_loop.cu
     device_memory.cu
     dump_memory.cu

@@ -165,7 +165,7 @@ void HostLoop::initialize()
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&deviceChannel, m_channel.get(), 0));
 
         for (int i = 0; i < 16; ++i) {
-            m_pool.push_back(HostMemory::create(GLOOP_SHARED_PAGE_SIZE, cudaHostAllocPortable));
+            m_pool.release(HostMemory::create(GLOOP_SHARED_PAGE_SIZE, cudaHostAllocPortable));
         }
 
         CUDA_SAFE_CALL(cudaPeekAtLastError());
@@ -229,8 +229,7 @@ bool HostLoop::handleIO(Command command)
         // We should integrate implementation with GPUfs's buffer cache.
         // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
 
-        std::shared_ptr<HostMemory> hostMemory = m_pool.front();
-        m_pool.pop_front();
+        std::shared_ptr<HostMemory> hostMemory = m_pool.acquire();
         assert(req.u.write.count <= hostMemory->size());
 
         GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(hostMemory->hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, m_pcopy0));
@@ -239,7 +238,7 @@ bool HostLoop::handleIO(Command command)
 
         ssize_t writtenCount = pwrite(req.u.write.fd, hostMemory->hostPointer(), req.u.write.count, req.u.write.offset);
 
-        m_pool.push_back(hostMemory);
+        m_pool.release(hostMemory);
 
         ipc->request()->u.writeResult.writtenCount = writtenCount;
         ipc->emit(Code::Complete);
@@ -251,8 +250,7 @@ bool HostLoop::handleIO(Command command)
         // We should integrate implementation with GPUfs's buffer cache.
         // GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
 
-        std::shared_ptr<HostMemory> hostMemory = m_pool.front();
-        m_pool.pop_front();
+        std::shared_ptr<HostMemory> hostMemory = m_pool.acquire();
         assert(req.u.read.count <= hostMemory->size());
         ssize_t readCount = pread(req.u.read.fd, hostMemory->hostPointer(), req.u.read.count, req.u.read.offset);
         __sync_synchronize();
@@ -261,7 +259,7 @@ bool HostLoop::handleIO(Command command)
         GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, hostMemory->hostPointer(), readCount, cudaMemcpyHostToDevice, m_pcopy1));
         GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pcopy1));
 
-        m_pool.push_back(hostMemory);
+        m_pool.release(hostMemory);
 
         ipc->request()->u.readResult.readCount = readCount;
         ipc->emit(Code::Complete);
