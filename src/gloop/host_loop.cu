@@ -157,11 +157,6 @@ void HostLoop::initialize()
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_deviceSignal, m_signal->get_address(), 0));
 
-        m_channel = make_unique<IPC>();
-
-        IPC* deviceChannel = nullptr;
-        GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&deviceChannel, m_channel.get(), 0));
-
         for (int i = 0; i < 16; ++i) {
             m_copyWorkPool.release(CopyWork::create());
         }

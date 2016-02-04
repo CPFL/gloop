@@ -117,8 +117,6 @@ private:
     dim3 m_threads { };
     HostContext* m_currentContext { nullptr };
 
-    std::unique_ptr<IPC> m_channel;
-
     uint32_t m_id { 0 };
     boost::asio::io_service m_ioService;
     boost::asio::local::stream_protocol::socket m_socket;
