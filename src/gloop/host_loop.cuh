@@ -110,8 +110,8 @@ private:
 
     void prepareForLaunch();
 
-    int m_deviceNumber;
-    uv_loop_t* m_loop;
+    int m_deviceNumber { 0 };
+    uv_loop_t* m_loop { nullptr };
     std::unique_ptr<boost::thread> m_poller;
 
     dim3 m_threads { };
@@ -119,7 +119,7 @@ private:
 
     uint32_t m_id { 0 };
     boost::asio::io_service m_ioService;
-    boost::asio::local::stream_protocol::socket m_socket;
+    boost::asio::local::stream_protocol::socket m_monitorConnection;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
     std::unique_ptr<boost::interprocess::shared_memory_object> m_sharedMemory;

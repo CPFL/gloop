@@ -52,12 +52,13 @@ __device__ IPC* g_channel;
 HostLoop::HostLoop(int deviceNumber)
     : m_deviceNumber(deviceNumber)
     , m_loop(uv_loop_new())
-    , m_socket(m_ioService)
+    , m_ioService()
+    , m_monitorConnection(m_ioService)
     , m_kernelLock(*this)
 {
     // Connect to the gloop monitor.
     {
-        m_socket.connect(boost::asio::local::stream_protocol::endpoint(GLOOP_ENDPOINT));
+        m_monitorConnection.connect(boost::asio::local::stream_protocol::endpoint(GLOOP_ENDPOINT));
         Command command = {
             .type = Command::Type::Initialize,
         };
@@ -65,7 +66,7 @@ HostLoop::HostLoop(int deviceNumber)
         while (true) {
             boost::system::error_code error;
             boost::asio::write(
-                m_socket,
+                m_monitorConnection,
                 boost::asio::buffer(reinterpret_cast<const char*>(&command), sizeof(Command)),
                 boost::asio::transfer_all(),
                 error);
@@ -77,7 +78,7 @@ HostLoop::HostLoop(int deviceNumber)
         while (true) {
             boost::system::error_code error;
             boost::asio::read(
-                m_socket,
+                m_monitorConnection,
                 boost::asio::buffer(reinterpret_cast<char*>(&result), sizeof(Command)),
                 boost::asio::transfer_all(),
                 error);
