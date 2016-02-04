@@ -125,7 +125,6 @@ private:
     std::unique_ptr<boost::interprocess::shared_memory_object> m_sharedMemory;
     std::unique_ptr<boost::interprocess::mapped_region> m_signal;
     volatile uint32_t* m_deviceSignal;
-    std::unique_ptr<boost::asio::io_service::work> m_kernelWork;
     std::unordered_map<std::string, File> m_fds { };
     cudaStream_t m_pgraph;
     CopyWorkPool m_copyWorkPool;
@@ -138,6 +137,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
     prologue(hostContext, threads);
     {
         auto arguments = thrust::make_tuple(std::forward<Args>(args)...);
+        std::unique_ptr<boost::asio::io_service::work> kernelWork = make_unique<boost::asio::io_service::work>(m_ioService);
         std::unique_ptr<boost::thread> kernelThread = make_unique<boost::thread>([&] {
             {
                 std::lock_guard<KernelLock> lock(m_kernelLock);
@@ -156,7 +156,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
             while (m_currentContext->pending()) {
                 resume();
             }
-            m_kernelWork.reset();
+            kernelWork.reset();
         });
         drain();
     }

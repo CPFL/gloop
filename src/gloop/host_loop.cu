@@ -192,7 +192,6 @@ void HostLoop::prologue(HostContext& hostContext, dim3 threads)
 {
     m_threads = threads;
     m_currentContext = &hostContext;
-    m_kernelWork = make_unique<boost::asio::io_service::work>(m_ioService);
     runPoller();
 }
 
