@@ -87,7 +87,7 @@ public:
 
     __device__ Callback* dequeue();
 
-    __device__ bool drain();
+    __device__ void drain();
 
     __device__ void deallocate(Callback* callback);
 

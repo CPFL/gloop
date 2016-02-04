@@ -87,7 +87,7 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
     return nullptr;
 }
 
-__device__ bool DeviceLoop::drain()
+__device__ void DeviceLoop::drain()
 {
     __shared__ uint32_t pending;
     while (true) {
@@ -109,7 +109,7 @@ __device__ bool DeviceLoop::drain()
         __threadfence_block();
 
         if (!pending) {
-            return false;
+            break;
         }
 
         if (callback) {
@@ -122,8 +122,8 @@ __device__ bool DeviceLoop::drain()
             deallocate(callback);
         }
 
-#if 0
         __shared__ bool signaled;
+        __threadfence_block();
         BEGIN_SINGLE_THREAD
         {
             // FIXME: Sometimes, we should execute this. Taking tick in GPU kernel is nice.
@@ -131,20 +131,18 @@ __device__ bool DeviceLoop::drain()
         }
         END_SINGLE_THREAD
         __threadfence_block();
-
         if (signaled) {
             break;
         }
-#endif
-        break;
+        // break;
     }
+    __threadfence_block();
     BEGIN_SINGLE_THREAD
     {
         suspend();
     }
     END_SINGLE_THREAD
-    __syncthreads();
-    return true;
+    __threadfence_block();
 }
 
 __device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
@@ -180,6 +178,7 @@ __device__ void DeviceLoop::deallocate(Callback* callback)
 
 __device__ void DeviceLoop::suspend()
 {
+    // FIXME: always save.
     GLOOP_ASSERT_SINGLE_THREAD();
     __threadfence_system();  // FIXME
     PerBlockContext* blockContext = context();
