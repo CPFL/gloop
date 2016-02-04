@@ -36,6 +36,8 @@ add_custom_target(redirector
 add_library(gloop STATIC
     # gloop_device.cu
     ${CMAKE_CURRENT_BINARY_DIR}/redirector.cu
+    copy_work.cu
+    copy_worker.cu
     host_context.cu
     host_loop.cu
     host_memory.cu

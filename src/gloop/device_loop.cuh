@@ -28,15 +28,12 @@
 #include <gpufs/libgpufs/util.cu.h>
 #include <type_traits>
 #include "code.cuh"
+#include "config.h"
 #include "function.cuh"
 #include "ipc.cuh"
 #include "request.h"
 #include "utility.h"
 namespace gloop {
-
-#define GLOOP_SHARED_SLOT_SIZE 64
-#define GLOOP_SHARED_PAGE_SIZE 4096UL
-#define GLOOP_SHARED_PAGE_COUNT 2
 
 __device__ extern IPC* g_channel;
 

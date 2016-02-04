@@ -153,8 +153,8 @@ void HostLoop::initialize()
         // This ensures that primary GPU context is initialized.
         std::lock_guard<KernelLock> lock(m_kernelLock);
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pgraph));
-        GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pcopy0));
-        GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pcopy1));
+        m_pcopy0 = make_unique<CopyWorker>();
+        m_pcopy1 = make_unique<CopyWorker>();
 
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_deviceSignal, m_signal->get_address(), 0));
@@ -232,8 +232,8 @@ bool HostLoop::handleIO(Command command)
             std::shared_ptr<HostMemory> hostMemory = m_pool.acquire();
             assert(req.u.write.count <= hostMemory->size());
 
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(hostMemory->hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, m_pcopy0));
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pcopy0));
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(hostMemory->hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, m_pcopy0->stream()));
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pcopy0->stream()));
             __sync_synchronize();
 
             ssize_t writtenCount = pwrite(req.u.write.fd, hostMemory->hostPointer(), req.u.write.count, req.u.write.offset);
@@ -258,8 +258,8 @@ bool HostLoop::handleIO(Command command)
             __sync_synchronize();
 
             // FIXME: Should use multiple streams. And execute async.
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, hostMemory->hostPointer(), readCount, cudaMemcpyHostToDevice, m_pcopy1));
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pcopy1));
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, hostMemory->hostPointer(), readCount, cudaMemcpyHostToDevice, m_pcopy1->stream()));
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pcopy1->stream()));
 
             m_pool.release(hostMemory);
 

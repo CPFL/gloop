@@ -21,22 +21,28 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_CONFIG_H_
-#define GLOOP_CONFIG_H_
-
-#define GLOOP_VERSION "0.0.1"
-#define GLOOP_ENDPOINT "/tmp/gloop_endpoint"
-#define GLOOP_SHARED_MAIN_QUEUE "gloop_shared_main_queue_"
-#define GLOOP_SHARED_REQUEST_QUEUE "gloop_shared_request_queue_"
-#define GLOOP_SHARED_RESPONSE_QUEUE "gloop_shared_response_queue_"
-#define GLOOP_SHARED_MEMORY "gloop_shared_memory_"
-#define GLOOP_SHARED_MEMORY_SIZE 0x1000UL
-#define GLOOP_KILL_TIME 10
-
-#define GLOOP_SHARED_SLOT_SIZE 64
-#define GLOOP_SHARED_PAGE_SIZE 4096UL
-#define GLOOP_SHARED_PAGE_COUNT 2
-
+#ifndef GLOOP_COPY_WORKER_CU_H_
+#define GLOOP_COPY_WORKER_CU_H_
+#include "make_unique.h"
+#include "noncopyable.h"
 namespace gloop {
+
+class CopyWorker {
+GLOOP_NONCOPYABLE(CopyWorker);
+public:
+    CopyWorker();
+    ~CopyWorker();
+
+    static std::unique_ptr<CopyWorker> create()
+    {
+        return make_unique<CopyWorker>();
+    }
+
+    cudaStream_t stream() { return m_stream; }
+
+private:
+    cudaStream_t m_stream;
+};
+
 }  // namespace gloop
-#endif  // GLOOP_CONFIG_H_
+#endif  // GLOOP_COPY_WORKER_CU_H_

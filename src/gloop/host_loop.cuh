@@ -39,6 +39,7 @@
 #include <unordered_map>
 #include <uv.h>
 #include "command.h"
+#include "copy_worker.cuh"
 #include "data_log.h"
 #include "entry.cuh"
 #include "host_context.cuh"
@@ -129,8 +130,8 @@ private:
     std::unique_ptr<boost::asio::io_service::work> m_kernelWork;
     std::unordered_map<std::string, File> m_fds { };
     cudaStream_t m_pgraph;
-    cudaStream_t m_pcopy0;
-    cudaStream_t m_pcopy1;
+    std::unique_ptr<CopyWorker> m_pcopy0;
+    std::unique_ptr<CopyWorker> m_pcopy1;
     HostMemoryPool m_pool;
     KernelLock m_kernelLock;
 };
