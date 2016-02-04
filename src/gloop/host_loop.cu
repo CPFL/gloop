@@ -135,7 +135,6 @@ void HostLoop::pollerMain()
                 request::Request req { };
                 memcpyIO(&req, ipc->request(), sizeof(request::Request));
                 ipc->emit(Code::None);
-                // FIXME: Should handle IO with libuv.
                 handleIO({
                     .type = Command::Type::IO,
                     .payload = bitwise_cast<uintptr_t>(ipc),
@@ -169,7 +168,19 @@ void HostLoop::initialize()
 void HostLoop::drain()
 {
     // Host main loop.
+#if 0
+    // Run in main thread.
     m_ioService.run();
+#else
+    // Since kernel work is already held by kernel executing thread,
+    // when joining threads, we can say that all the events produced by ASIO
+    // is already drained.
+    boost::thread_group threadGroup;
+    for (int i = 0; i < 4; ++i) {
+        threadGroup.create_thread(boost::bind(&boost::asio::io_service::run, &m_ioService));
+    }
+    threadGroup.join_all();
+#endif
 }
 
 void HostLoop::prepareForLaunch()
