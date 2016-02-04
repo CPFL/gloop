@@ -212,7 +212,7 @@ void HostLoop::epilogue()
 bool HostLoop::handleIO(Command command)
 {
     assert(command.type == Command::Type::IO);
-    const request::Request& req = command.request;
+    request::Request req = command.request;
     IPC* ipc = bitwise_cast<IPC*>(command.payload);
 
     switch (static_cast<Code>(req.code)) {
@@ -227,42 +227,45 @@ bool HostLoop::handleIO(Command command)
     case Code::Write: {
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
-        // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
+        m_ioService.post([ipc, req, this]() {
+            // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
+            std::shared_ptr<HostMemory> hostMemory = m_pool.acquire();
+            assert(req.u.write.count <= hostMemory->size());
 
-        std::shared_ptr<HostMemory> hostMemory = m_pool.acquire();
-        assert(req.u.write.count <= hostMemory->size());
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(hostMemory->hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, m_pcopy0));
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pcopy0));
+            __sync_synchronize();
 
-        GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(hostMemory->hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, m_pcopy0));
-        GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pcopy0));
-        __sync_synchronize();
+            ssize_t writtenCount = pwrite(req.u.write.fd, hostMemory->hostPointer(), req.u.write.count, req.u.write.offset);
 
-        ssize_t writtenCount = pwrite(req.u.write.fd, hostMemory->hostPointer(), req.u.write.count, req.u.write.offset);
+            m_pool.release(hostMemory);
 
-        m_pool.release(hostMemory);
-
-        ipc->request()->u.writeResult.writtenCount = writtenCount;
-        ipc->emit(Code::Complete);
+            ipc->request()->u.writeResult.writtenCount = writtenCount;
+            ipc->emit(Code::Complete);
+        });
         break;
     }
 
     case Code::Read: {
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
-        // GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
+        m_ioService.post([ipc, req, this]() {
+            // GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
 
-        std::shared_ptr<HostMemory> hostMemory = m_pool.acquire();
-        assert(req.u.read.count <= hostMemory->size());
-        ssize_t readCount = pread(req.u.read.fd, hostMemory->hostPointer(), req.u.read.count, req.u.read.offset);
-        __sync_synchronize();
+            std::shared_ptr<HostMemory> hostMemory = m_pool.acquire();
+            assert(req.u.read.count <= hostMemory->size());
+            ssize_t readCount = pread(req.u.read.fd, hostMemory->hostPointer(), req.u.read.count, req.u.read.offset);
+            __sync_synchronize();
 
-        // FIXME: Should use multiple streams. And execute async.
-        GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, hostMemory->hostPointer(), readCount, cudaMemcpyHostToDevice, m_pcopy1));
-        GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pcopy1));
+            // FIXME: Should use multiple streams. And execute async.
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, hostMemory->hostPointer(), readCount, cudaMemcpyHostToDevice, m_pcopy1));
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pcopy1));
 
-        m_pool.release(hostMemory);
+            m_pool.release(hostMemory);
 
-        ipc->request()->u.readResult.readCount = readCount;
-        ipc->emit(Code::Complete);
+            ipc->request()->u.readResult.readCount = readCount;
+            ipc->emit(Code::Complete);
+        });
         break;
     }
 
