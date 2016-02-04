@@ -157,7 +157,7 @@ void HostLoop::initialize()
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_deviceSignal, m_signal->get_address(), 0));
 
-        for (int i = 0; i < 16; ++i) {
+        for (int i = 0; i < GLOOP_THREAD_GROUP_SIZE; ++i) {
             m_copyWorkPool.release(CopyWork::create());
         }
 
@@ -176,7 +176,7 @@ void HostLoop::drain()
     // when joining threads, we can say that all the events produced by ASIO
     // is already drained.
     boost::thread_group threadGroup;
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < GLOOP_THREAD_GROUP_SIZE; ++i) {
         threadGroup.create_thread(boost::bind(&boost::asio::io_service::run, &m_ioService));
     }
     threadGroup.join_all();

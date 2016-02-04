@@ -36,6 +36,7 @@
 #define GLOOP_SHARED_SLOT_SIZE 64
 #define GLOOP_SHARED_PAGE_SIZE 4096UL
 #define GLOOP_SHARED_PAGE_COUNT 2
+#define GLOOP_THREAD_GROUP_SIZE 8
 
 namespace gloop {
 }  // namespace gloop
