@@ -142,9 +142,6 @@ __device__ bool DeviceLoop::drain()
         if (signaled) {
             break;
         }
-
-        // NOTE: Always break.
-        // break;
     }
     if (pending) {
         // Flush pending jobs to global pending status.
