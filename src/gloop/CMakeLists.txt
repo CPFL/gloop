@@ -37,11 +37,11 @@ add_library(gloop STATIC
     # gloop_device.cu
     ${CMAKE_CURRENT_BINARY_DIR}/redirector.cu
     copy_work.cu
+    copy_work_pool.cu
     copy_worker.cu
     host_context.cu
     host_loop.cu
     host_memory.cu
-    host_memory_pool.cu
     device_loop.cu
     device_memory.cu
     dump_memory.cu

@@ -21,26 +21,25 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include <mutex>
-#include <thread>
-#include "host_memory_pool.cuh"
+#ifndef GLOOP_COPY_WORK_POOL_CU_H_
+#define GLOOP_COPY_WORK_POOL_CU_H_
+#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
+#include "copy_work.cuh"
 namespace gloop {
 
-std::shared_ptr<HostMemory> HostMemoryPool::acquire()
-{
-    boost::unique_lock<boost::mutex> lock(m_mutex);
-    while (m_memories.empty()) {
-        m_conditionVariable.wait(lock);
-    }
-    std::shared_ptr<HostMemory> result = m_memories.back();
-    m_memories.pop_back();
-    return result;
-}
+class CopyWorkPool {
+GLOOP_NONCOPYABLE(CopyWorkPool);
+public:
+    CopyWorkPool() = default;
+    std::shared_ptr<CopyWork> acquire();
+    void release(std::shared_ptr<CopyWork>);
 
-void HostMemoryPool::release(std::shared_ptr<HostMemory> memory)
-{
-    boost::unique_lock<boost::mutex> lock(m_mutex);
-    m_memories.push_back(memory);
-}
+private:
+    boost::mutex m_mutex;
+    boost::condition_variable m_conditionVariable;
+    std::vector<std::shared_ptr<CopyWork>> m_works;
+};
 
 }  // namespace gloop
+#endif  // GLOOP_COPY_WORK_POOL_CU_H_

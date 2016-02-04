@@ -29,7 +29,7 @@ namespace gloop {
 
 CopyWork::CopyWork()
 {
-    m_memory = HostMemory::create(GLOOP_SHARED_PAGE_SIZE, cudaHostAllocPortable);
+    m_hostMemory  = HostMemory::create(GLOOP_SHARED_PAGE_SIZE, cudaHostAllocPortable);
     m_worker = CopyWorker::create();
 }
 

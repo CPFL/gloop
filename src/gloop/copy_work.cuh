@@ -37,8 +37,11 @@ public:
         return std::make_shared<CopyWork>();
     }
 
+    HostMemory& hostMemory() { return *m_hostMemory; }
+    cudaStream_t stream() { return m_worker->stream(); }
+
 private:
-    std::shared_ptr<HostMemory> m_memory;
+    std::shared_ptr<HostMemory> m_hostMemory;
     std::unique_ptr<CopyWorker> m_worker;
 };
 
