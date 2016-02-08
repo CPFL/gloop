@@ -295,8 +295,6 @@ bool HostLoop::handleIO(Command command)
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
-            // void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset);
-            // void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, MAP_ANONYMOUS, req.u.mmap.offset);
             void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset);
             GLOOP_DEBUG("mmap:address(%p),size:(%u),prot:(%d),flags:(%d),fd:(%d),offset:(%d),res:(%p)\n", req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset, host);
             void* device = nullptr;
