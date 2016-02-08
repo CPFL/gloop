@@ -87,6 +87,7 @@ void Session::handleWrite(const boost::system::error_code& error)
 
 void Session::kill()
 {
+    std::lock_guard<Lock> guard(m_lock);
     syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 1);
 }
 
@@ -98,7 +99,6 @@ void Session::configureTick(boost::asio::high_resolution_timer& timer)
             // This is ASIO call. So it is executed under the main thread now. (Since only the main thread invokes ASIO's ioService.run()).
             for (auto& session : m_server.sessionList()) {
                 if (&session != this) {
-                    std::lock_guard<Lock> guard(session.m_lock);
                     if (session.isAttemptingToLaunch()) {
                         // Found. Let's kill the current kernel executing.
                         kill();
