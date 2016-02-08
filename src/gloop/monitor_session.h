@@ -77,6 +77,7 @@ private:
     std::atomic<bool> m_attemptToLaunch { false };
     uint32_t m_id;
     Server& m_server;
+    Lock m_lock;
     boost::asio::local::stream_protocol::socket m_socket;
     CommandBuffer m_buffer;
     std::unique_ptr<boost::thread> m_thread;
@@ -84,7 +85,7 @@ private:
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
     std::unique_ptr<boost::interprocess::shared_memory_object> m_sharedMemory;
     std::unique_ptr<boost::interprocess::mapped_region> m_signal;
-    std::unique_lock<Lock> m_lock;
+    std::unique_lock<Lock> m_kernelLock;
     boost::asio::high_resolution_timer m_timer;
 };
 

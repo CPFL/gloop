@@ -38,7 +38,7 @@ Session::Session(Server& server, uint32_t id)
     : m_id(id)
     , m_server(server)
     , m_socket(server.ioService())
-    , m_lock(server.kernelLock(), std::defer_lock)
+    , m_kernelLock(server.kernelLock(), std::defer_lock)
     , m_timer(server.ioService())
 {
     // NOTE: This constructor is always executed in single thread.
@@ -98,6 +98,7 @@ void Session::configureTick(boost::asio::high_resolution_timer& timer)
             // This is ASIO call. So it is executed under the main thread now. (Since only the main thread invokes ASIO's ioService.run()).
             for (auto& session : m_server.sessionList()) {
                 if (&session != this) {
+                    std::lock_guard<Lock> guard(session.m_lock);
                     if (session.isAttemptingToLaunch()) {
                         // Found. Let's kill the current kernel executing.
                         kill();
@@ -121,17 +122,23 @@ bool Session::handle(Command& command)
 
     case Command::Type::Lock: {
         GLOOP_DEBUG("[%u] Lock kernel token.\n", m_id);
-        m_attemptToLaunch.store(true);
-        m_lock.lock();
-        m_attemptToLaunch.store(false);
-        configureTick(m_timer);
+        {
+            std::lock_guard<Lock> guard(m_lock);
+            m_attemptToLaunch.store(true);
+            m_kernelLock.lock();
+            m_attemptToLaunch.store(false);
+            configureTick(m_timer);
+        }
         return true;
     }
 
     case Command::Type::Unlock: {
         GLOOP_DEBUG("[%u] Unlock kernel token.\n", m_id);
-        m_timer.cancel();
-        m_lock.unlock();
+        {
+            std::lock_guard<Lock> guard(m_lock);
+            m_timer.cancel();
+            m_kernelLock.unlock();
+        }
         return false;
     }
     }
