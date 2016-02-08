@@ -240,7 +240,7 @@ bool HostLoop::handleIO(Command command)
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
             __sync_synchronize();
 
-            ssize_t writtenCount = pwrite(req.u.write.fd, copyWork->hostMemory().hostPointer(), req.u.write.count, req.u.write.offset);
+            ssize_t writtenCount = ::pwrite(req.u.write.fd, copyWork->hostMemory().hostPointer(), req.u.write.count, req.u.write.offset);
 
             m_copyWorkPool.release(copyWork);
 
@@ -258,7 +258,7 @@ bool HostLoop::handleIO(Command command)
 
             std::shared_ptr<CopyWork> copyWork = m_copyWorkPool.acquire();
             assert(req.u.read.count <= copyWork->hostMemory().size());
-            ssize_t readCount = pread(req.u.read.fd, copyWork->hostMemory().hostPointer(), req.u.read.count, req.u.read.offset);
+            ssize_t readCount = ::pread(req.u.read.fd, copyWork->hostMemory().hostPointer(), req.u.read.count, req.u.read.offset);
             __sync_synchronize();
 
             // FIXME: Should use multiple streams. And execute async.
@@ -287,6 +287,41 @@ bool HostLoop::handleIO(Command command)
         // GLOOP_DEBUG("Close %d\n", req.u.close.fd);
         ipc->request()->u.closeResult.error = 0;
         ipc->emit(Code::Complete);
+        break;
+    }
+
+    case Code::Mmap: {
+        // FIXME: Significant naive implementaion.
+        // We should integrate implementation with GPUfs's buffer cache.
+        m_ioService.post([ipc, req, this]() {
+            void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset);
+            void* device = nullptr;
+            GLOOP_CUDA_SAFE_CALL(cudaHostRegister(host, req.u.mmap.size, cudaHostRegisterMapped));
+            GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&device, host, 0));
+            {
+                std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
+                m_currentContext->table().mmap(host, device);
+            }
+            ipc->request()->u.mmapResult.address = device;
+            ipc->emit(Code::ExitRequired);
+        });
+        break;
+    }
+
+    case Code::Munmap: {
+        // FIXME: Significant naive implementaion.
+        // We should integrate implementation with GPUfs's buffer cache.
+        m_ioService.post([ipc, req, this]() {
+            GLOOP_CUDA_SAFE_CALL(cudaHostUnregister(req.u.munmap.address));
+            void* host = nullptr;
+            {
+                std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
+                host = m_currentContext->table().munmap(req.u.munmap.address);
+            }
+            int error = munmap(host, req.u.munmap.size);
+            ipc->request()->u.munmapResult.error = error;
+            ipc->emit(Code::ExitRequired);
+        });
         break;
     }
     }

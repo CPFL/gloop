@@ -50,10 +50,16 @@ public:
     int open(std::string fileName, int mode);
     void close(int fd);
 
+    void mmap(void* host, void* device);
+    void* munmap(void* device);
+
 private:
     // This merges file open requests from the blocks.
     typedef std::unordered_map<std::string, std::shared_ptr<File>> FileNameToFileMap;
     FileNameToFileMap m_fileNameToFile;
+
+    typedef std::unordered_map<void*, void*> MmapTable;
+    MmapTable m_mmapTable;
 };
 
 }  // namespace gloop

@@ -38,6 +38,8 @@ __device__ void writeImpl(DeviceLoop*, IPC*, volatile request::Write&, int fd, s
 __device__ void fstatImpl(DeviceLoop*, IPC*, volatile request::Fstat&, int fd);
 __device__ void closeImpl(DeviceLoop*, IPC*, volatile request::Close&, int fd);
 __device__ void readImpl(DeviceLoop*, IPC*, volatile request::Read&, int fd, size_t offset, size_t count, unsigned char* buffer);
+__device__ void mmapImpl(DeviceLoop*, IPC*, volatile request::Mmap&, void* address, size_t size, int prot, int flags, int fd, off_t offset);
+__device__ void munmapImpl(DeviceLoop*, IPC*, volatile request::Munmap&, void* address, size_t size);
 
 template<typename Lambda>
 inline __device__ auto open(DeviceLoop* loop, const char* filename, int mode, Lambda callback) -> void
@@ -207,6 +209,33 @@ inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t cou
     writeOnePage(loop, fd, offset, min(count, GLOOP_SHARED_PAGE_SIZE), buffer, [=](DeviceLoop* loop, volatile request::Request* req) {
         performOnePageWrite(loop, fd, offset, count, buffer, offset, req, callback);
     });
+}
+
+template<typename Lambda>
+inline __device__ auto mmap(DeviceLoop* loop, void* address, size_t size, int prot, int flags, int fd, off_t offset, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop, req->u.mmapResult.address);
+        });
+        mmapImpl(loop, ipc, ipc->request()->u.mmap, address, size, prot, flags, fd, offset);
+    }
+    END_SINGLE_THREAD
+}
+
+
+template<typename Lambda>
+inline __device__ auto munmap(DeviceLoop* loop, void* address, size_t size, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop, req->u.munmapResult.error);
+        });
+        munmapImpl(loop, ipc, ipc->request()->u.munmap, address, size);
+    }
+    END_SINGLE_THREAD
 }
 
 } }  // namespace gloop::fs

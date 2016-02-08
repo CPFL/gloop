@@ -30,6 +30,7 @@
 #include "io.cuh"
 #include "mapped_memory.cuh"
 #include "noncopyable.h"
+#include "spinlock.h"
 namespace gloop {
 
 class HostLoop;
@@ -49,6 +50,9 @@ public:
 
     FileDescriptorTable& table() { return m_table; }
 
+    typedef Spinlock Mutex;
+    Mutex& mutex() { return m_mutex; }
+
     void prepareForLaunch();
 
     uint32_t pending() const;
@@ -57,6 +61,7 @@ private:
     HostContext(dim3 blocks);
     bool initialize();
 
+    Mutex m_mutex;
     FileDescriptorTable m_table { };
     std::unique_ptr<IPC[]> m_ipc { nullptr };
     std::shared_ptr<MappedMemory> m_pending { nullptr };

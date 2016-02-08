@@ -93,6 +93,28 @@ struct WriteOnePageResult {
     ssize_t writtenCount;
 };
 
+struct Mmap {
+    void* address;
+    size_t size;
+    int prot;
+    int flags;
+    int fd;
+    off_t offset;
+};
+
+struct MmapResult {
+    void* address;
+};
+
+struct Munmap {
+    void* address;
+    size_t size;
+};
+
+struct MunmapResult {
+    int error;
+};
+
 struct Request {
     int32_t code;
     union {
@@ -114,6 +136,12 @@ struct Request {
         AllocOnePageResult allocOnePageResult;
         ReadOnePageResult readOnePageResult;
         WriteOnePageResult writeOnePageResult;
+
+        Mmap mmap;
+        MmapResult mmapResult;
+
+        Munmap munmap;
+        MunmapResult munmapResult;
     } u;
 };
 

@@ -73,4 +73,24 @@ __device__ void readImpl(DeviceLoop* loop, IPC* ipc, volatile request::Read& req
     ipc->emit(Code::Read);
 }
 
+__device__ void mmapImpl(DeviceLoop* loop, IPC* ipc, volatile request::Mmap& req, void* address, size_t size, int prot, int flags, int fd, off_t offset)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.address = address;
+    req.size = size;
+    req.prot = prot;
+    req.flags = flags;
+    req.fd = fd;
+    req.offset = offset;
+    ipc->emit(Code::Mmap);
+}
+
+__device__ void munmapImpl(DeviceLoop* loop, IPC* ipc, volatile request::Munmap& req, void* address, size_t size)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.address = address;
+    req.size = size;
+    ipc->emit(Code::Munmap);
+}
+
 } }  // namespace gloop::fs

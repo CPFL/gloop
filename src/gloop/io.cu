@@ -61,4 +61,17 @@ void FileDescriptorTable::close(int fd)
     }
 }
 
+void FileDescriptorTable::mmap(void* host, void* device)
+{
+    m_mmapTable.insert(std::make_pair(host, device));
+}
+
+void* FileDescriptorTable::munmap(void* device)
+{
+    auto iterator = m_mmapTable.find(device);
+    void* result = iterator->second;
+    m_mmapTable.erase(iterator);
+    return result;
+}
+
 }  // namespace gloop

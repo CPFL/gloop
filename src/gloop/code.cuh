@@ -27,6 +27,7 @@
 namespace gloop {
 
 enum class Code : int32_t {
+    ExitRequired = -2,
     Complete = -1,
     None = 0,
 
@@ -35,6 +36,9 @@ enum class Code : int32_t {
     Fstat,
     Close,
     Read,
+
+    Mmap,
+    Munmap,
 
     Stop
 };

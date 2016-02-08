@@ -125,7 +125,6 @@ private:
     std::unique_ptr<boost::interprocess::shared_memory_object> m_sharedMemory;
     std::unique_ptr<boost::interprocess::mapped_region> m_signal;
     volatile uint32_t* m_deviceSignal;
-    std::unordered_map<std::string, File> m_fds { };
     cudaStream_t m_pgraph;
     CopyWorkPool m_copyWorkPool;
     KernelLock m_kernelLock;
