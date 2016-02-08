@@ -4,6 +4,9 @@
 #include <gloop/gloop.h>
 __device__ int OK;
 
+#undef FS_BLOCKSIZE
+#define FS_BLOCKSIZE 4096
+
 __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize)
 {
     if (me < filesize) {
@@ -33,6 +36,7 @@ __device__ LAST_SEMAPHORE sync_sem;
 __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
 {
     __shared__ uchar* scratch;
+
     BEGIN_SINGLE_THREAD
         scratch=(uchar*)malloc(FS_BLOCKSIZE);
         GPU_ASSERT(scratch!=NULL);
@@ -43,13 +47,19 @@ __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
             gloop::fs::fstat(loop, zfd, [=](gloop::DeviceLoop* loop, int filesize) {
                 size_t me = blockIdx.x * FS_BLOCKSIZE;
                 perform_copy(loop, scratch, zfd, zfd1, me, filesize);
+#if 0
+                gloop::fs::close(loop, zfd, [=](gloop::DeviceLoop* loop, int error) {
+                    gloop::fs::close(loop, zfd1, [=](gloop::DeviceLoop* loop, int error) {
+                    });
+                });
+#endif
             });
         });
     });
 }
 
 void init_device_app(){
-    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,1<<30));
+    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (2 << 20) * 256));
 }
 
 void init_app()
@@ -57,7 +67,7 @@ void init_app()
     void* d_OK;
     CUDA_SAFE_CALL(cudaGetSymbolAddress(&d_OK,OK));
     CUDA_SAFE_CALL(cudaMemset(d_OK,0,sizeof(int)));
-    // INITI LOCK
+    // INIT LOCK
     void* inited;
 
     CUDA_SAFE_CALL(cudaGetSymbolAddress(&inited,sync_sem));

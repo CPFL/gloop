@@ -102,7 +102,8 @@ int main( int argc, char** argv)
     if (gpudev!=NULL) global_devicenum=atoi(gpudev);
 
     fprintf(stderr,"GPU device chosen %d\n",global_devicenum);
-    CUDA_SAFE_CALL(cudaSetDevice(global_devicenum));
+    // FIXME
+    // CUDA_SAFE_CALL(cudaSetDevice(global_devicenum));
 
 
     if(argc<5) {
@@ -153,12 +154,17 @@ int main( int argc, char** argv)
 
         // test_cpy<<<nblocks,nthreads,0,hostLoop->streamMgr->kernelStream>>>(d_filenames[0], d_filenames[1]);
         {
-            hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
+            // hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
+            hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<char*, char*> tuple) {
+                char* src;
+                char* dst;
+                thrust::tie(src, dst) = tuple;
                 test_cpy(loop, src, dst);
             }, d_filenames[0], d_filenames[1]);
         }
 
-        cudaError_t error = cudaDeviceSynchronize();
+        // Already synchronized in HostLoop.
+        // cudaError_t error = cudaDeviceSynchronize();
         double time_after=_timestamp();
         if(!i) time_after=0;
         total_time+=(time_after-time_before);
@@ -168,16 +174,15 @@ int main( int argc, char** argv)
         fprintf(stderr, "open: %.0f, rw %.0f, close %.0f usec\n",c_open,c_rw,c_close);
 
         //Check for errors and failed asserts in asynchronous kernel launch.
-        if(error != cudaSuccess )
-        {
-            printf("Device failed, CUDA error message is: %s\n\n", cudaGetErrorString(error));
-        }
+        // if(error != cudaSuccess )
+        // {
+        //     printf("Device failed, CUDA error message is: %s\n\n", cudaGetErrorString(error));
+        // }
 
 
         //PRINT_DEBUG;
 
         fprintf(stderr,"\n");
-        hostLoop.reset();
 
         PRINT_MALLOC;
         PRINT_FREE;
@@ -197,8 +202,8 @@ int main( int argc, char** argv)
 
 
     //    cudaFree(d_output);
-        cudaDeviceReset();
-        if(error) break;
+        // cudaDeviceReset();
+        // if(error) break;
 
 
 
