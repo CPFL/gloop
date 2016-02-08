@@ -88,7 +88,9 @@ void Session::handleWrite(const boost::system::error_code& error)
 void Session::kill()
 {
     std::lock_guard<Lock> guard(m_lock);
-    syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 1);
+    if (m_kernelLock.owns_lock()) {
+        syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 1);
+    }
 }
 
 void Session::configureTick(boost::asio::high_resolution_timer& timer)
