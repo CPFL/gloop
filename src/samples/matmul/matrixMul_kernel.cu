@@ -240,13 +240,15 @@ performOuterLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int per
             //      volatile float* ptr_a=tmp_a;
             if (ptr_a==GMAP_FAILED) ERROR("GMMAP failed with m_a");
 
+#if 0
             gloop::fs::munmap(loop, ptr_c, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
                 gloop::fs::munmap(loop, ptr_a, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
                 });
             });
+#endif
 
-            // int bx = 0;
-            // performInnerLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, ptr_a, ptr_c, by, bx);
+            int bx = 0;
+            performInnerLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, ptr_a, ptr_c, by, bx);
         });
     });
 }
