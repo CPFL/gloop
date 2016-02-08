@@ -59,7 +59,7 @@ __device__ void DeviceLoop::enqueueLater(Callback lambda)
     m_control.wakeup |= (1ULL << pos);
 }
 
-__device__ auto DeviceLoop::dequeue() -> Callback*
+__device__ auto DeviceLoop::dequeue(bool& shouldExit) -> Callback*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     __threadfence_system();
@@ -72,15 +72,19 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
                 m_control.wakeup &= ~bit;
                 return m_slots + i;
             }
-        } else {
-            if (!(m_control.free & bit)) {
-                IPC* ipc = channel() + i;
-                if (ipc->peek() == Code::Complete) {
-                    ipc->emit(Code::None);
-                    GPU_ASSERT(ipc->peek() != Code::Complete);
-                    GPU_ASSERT(ipc->peek() == Code::None);
-                    return m_slots + i;
-                }
+        } else if (!(m_control.free & bit)) {
+            IPC* ipc = channel() + i;
+            Code code = ipc->peek();
+            if (code == Code::Complete) {
+                ipc->emit(Code::None);
+                GPU_ASSERT(ipc->peek() != Code::Complete);
+                GPU_ASSERT(ipc->peek() == Code::None);
+                return m_slots + i;
+            }
+
+            // FIXME: More careful exit decision.
+            if (code == Code::ExitRequired) {
+                shouldExit = true;
             }
         }
     }
@@ -89,8 +93,8 @@ __device__ auto DeviceLoop::dequeue() -> Callback*
 
 __device__ void DeviceLoop::drain()
 {
-    __shared__ uint32_t pending;
     while (true) {
+        __shared__ uint32_t pending;
         __shared__ Callback* callback;
         __shared__ IPC* ipc;
         BEGIN_SINGLE_THREAD
@@ -98,10 +102,17 @@ __device__ void DeviceLoop::drain()
             pending = m_control.pending;
 
             if (pending) {
-                callback = dequeue();
+                bool shouldExit = false;
+                callback = dequeue(shouldExit);
                 if (callback) {
                     uint32_t pos = position(callback);
                     ipc = channel() + pos;
+                } else {
+                    // FIXME: More careful exit routine.
+                    // Let's exit to meet ExitRequired requirements.
+                    if (shouldExit) {
+                        pending = 0;
+                    }
                 }
             }
         }

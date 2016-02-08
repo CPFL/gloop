@@ -82,7 +82,7 @@ public:
     __device__ void allocOnePage(Lambda lambda);
     __device__ void freeOnePage(void* page);
 
-    __device__ Callback* dequeue();
+    __device__ Callback* dequeue(bool& shouldExit);
 
     __device__ void drain();
 
