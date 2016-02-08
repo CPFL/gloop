@@ -21,6 +21,7 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include <mutex>
 #include "device_context.cuh"
 #include "ipc.cuh"
 #include "host_context.cuh"
@@ -72,6 +73,14 @@ uint32_t HostContext::pending() const
 void HostContext::prepareForLaunch()
 {
     writeNoCache<uint32_t>(m_pending->mappedPointer(), 0);
+    // Clean up ExitRequired flags.
+    {
+        std::lock_guard<Mutex> guard(m_mutex);
+        for (IPC* ipc : m_exitRequired) {
+            ipc->emit(Code::Complete);
+        }
+        m_exitRequired.clear();
+    }
     __sync_synchronize();
 }
 

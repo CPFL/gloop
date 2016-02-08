@@ -26,6 +26,7 @@
 #include <cuda.h>
 #include <memory>
 #include <utility>
+#include <vector>
 #include "device_context.cuh"
 #include "io.cuh"
 #include "mapped_memory.cuh"
@@ -57,6 +58,12 @@ public:
 
     uint32_t pending() const;
 
+    void addExitRequired(IPC* ipc)
+    {
+        // Mutex should be held.
+        m_exitRequired.push_back(ipc);
+    }
+
 private:
     HostContext(dim3 blocks);
     bool initialize();
@@ -67,7 +74,7 @@ private:
     std::shared_ptr<MappedMemory> m_pending { nullptr };
     DeviceContext m_context { nullptr };
     dim3 m_blocks { };
-    bool m_resumed { false };
+    std::vector<IPC*> m_exitRequired;
 };
 
 

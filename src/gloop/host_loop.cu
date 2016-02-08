@@ -301,9 +301,10 @@ bool HostLoop::handleIO(Command command)
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
                 m_currentContext->table().mmap(host, device);
+                ipc->request()->u.mmapResult.address = device;
+                ipc->emit(Code::ExitRequired);
+                m_currentContext->addExitRequired(ipc);
             }
-            ipc->request()->u.mmapResult.address = device;
-            ipc->emit(Code::ExitRequired);
         });
         break;
     }
@@ -317,10 +318,11 @@ bool HostLoop::handleIO(Command command)
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
                 host = m_currentContext->table().munmap(req.u.munmap.address);
+                int error = munmap(host, req.u.munmap.size);
+                ipc->request()->u.munmapResult.error = error;
+                ipc->emit(Code::ExitRequired);
+                m_currentContext->addExitRequired(ipc);
             }
-            int error = munmap(host, req.u.munmap.size);
-            ipc->request()->u.munmapResult.error = error;
-            ipc->emit(Code::ExitRequired);
         });
         break;
     }
