@@ -312,10 +312,7 @@ void runTest(int argc, char** argv)
     shrLog("\nUsing Matrix Sizes: A(%u x %u), B(%u x %u), C(%u x %u)\n\n",
     uiHA, uiWA, uiHB, uiWB, uiHC, uiWC);
 
-
-
-
-
+#if 0
     if(checkCmdLineFlag(argc, (const char**)argv, "device")) {
         int devID = getCmdLineArgumentInt(argc, (const char **)argv, "device=");
         if (devID < 0) {
@@ -342,6 +339,7 @@ void runTest(int argc, char** argv)
 
     cudaSetDevice(0);
     printf("OK?\n");
+#endif
 
     // setup execution parameters
     dim3 threads(block_size, block_size);
@@ -363,7 +361,7 @@ void runTest(int argc, char** argv)
     init_device_app();
     init_app();
 
-    printf("Device %d: \"%s\" with Compute %d.%d capability\n", devID, props.name, props.major, props.minor);
+    // printf("Device %d: \"%s\" with Compute %d.%d capability\n", devID, props.name, props.major, props.minor);
 
     // set seed for rand()
     srand(2006);
