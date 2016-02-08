@@ -50,8 +50,9 @@ public:
     int open(std::string fileName, int mode);
     void close(int fd);
 
-    void mmap(void* host, void* device);
-    void* munmap(void* device);
+    void registerMapping(void* host, void* device);
+    void* lookupHostByDevice(void* device);
+    void* unregisterMapping(void* device);
 
 private:
     // This merges file open requests from the blocks.

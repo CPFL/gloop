@@ -30,6 +30,7 @@
 #include <gpufs/libgpufs/fs_initializer.cu.h>
 #include <gpufs/libgpufs/host_loop.h>
 #include <memory>
+#include <sys/mman.h>
 #include "bitwise_cast.h"
 #include "command.h"
 #include "config.h"
@@ -300,7 +301,7 @@ bool HostLoop::handleIO(Command command)
             GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&device, host, 0));
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-                m_currentContext->table().mmap(host, device);
+                m_currentContext->table().registerMapping(host, device);
                 ipc->request()->u.mmapResult.address = device;
                 ipc->emit(Code::ExitRequired);
                 m_currentContext->addExitRequired(ipc);
@@ -314,11 +315,10 @@ bool HostLoop::handleIO(Command command)
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
             GLOOP_CUDA_SAFE_CALL(cudaHostUnregister(req.u.munmap.address));
-            void* host = nullptr;
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-                host = m_currentContext->table().munmap(req.u.munmap.address);
-                int error = munmap(host, req.u.munmap.size);
+                void* host = m_currentContext->table().unregisterMapping(req.u.munmap.address);
+                int error = ::munmap(host, req.u.munmap.size);
                 ipc->request()->u.munmapResult.error = error;
                 ipc->emit(Code::ExitRequired);
                 m_currentContext->addExitRequired(ipc);
@@ -326,6 +326,22 @@ bool HostLoop::handleIO(Command command)
         });
         break;
     }
+
+    case Code::Msync: {
+        // FIXME: Significant naive implementaion.
+        // We should integrate implementation with GPUfs's buffer cache.
+        m_ioService.post([ipc, req, this]() {
+            {
+                std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
+                void* host = m_currentContext->table().lookupHostByDevice(req.u.msync.address);
+                int error = ::msync(host, req.u.msync.size, req.u.msync.flags);
+                ipc->request()->u.msyncResult.error = error;
+                ipc->emit(Code::Complete);
+            }
+        });
+        break;
+    }
+
     }
     return false;
 }

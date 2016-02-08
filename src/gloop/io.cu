@@ -61,12 +61,17 @@ void FileDescriptorTable::close(int fd)
     }
 }
 
-void FileDescriptorTable::mmap(void* host, void* device)
+void FileDescriptorTable::registerMapping(void* host, void* device)
 {
     m_mmapTable.insert(std::make_pair(host, device));
 }
 
-void* FileDescriptorTable::munmap(void* device)
+void* FileDescriptorTable::lookupHostByDevice(void* device)
+{
+    return m_mmapTable[device];
+}
+
+void* FileDescriptorTable::unregisterMapping(void* device)
 {
     auto iterator = m_mmapTable.find(device);
     void* result = iterator->second;

@@ -115,6 +115,16 @@ struct MunmapResult {
     int error;
 };
 
+struct Msync {
+    void* address;
+    size_t size;
+    int flags;
+};
+
+struct MsyncResult {
+    int error;
+};
+
 struct Request {
     int32_t code;
     union {
@@ -142,6 +152,9 @@ struct Request {
 
         Munmap munmap;
         MunmapResult munmapResult;
+
+        Msync msync;
+        MsyncResult msyncResult;
     } u;
 };
 

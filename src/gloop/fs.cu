@@ -93,4 +93,13 @@ __device__ void munmapImpl(DeviceLoop* loop, IPC* ipc, volatile request::Munmap&
     ipc->emit(Code::Munmap);
 }
 
+__device__ void msyncImpl(DeviceLoop* loop, IPC* ipc, volatile request::Msync& req, void* address, size_t size, int flags)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.address = address;
+    req.size = size;
+    req.flags = flags;
+    ipc->emit(Code::Msync);
+}
+
 } }  // namespace gloop::fs

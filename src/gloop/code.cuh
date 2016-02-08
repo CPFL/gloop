@@ -39,6 +39,7 @@ enum class Code : int32_t {
 
     Mmap,
     Munmap,
+    Msync,
 
     Stop
 };

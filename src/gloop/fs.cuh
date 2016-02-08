@@ -40,6 +40,7 @@ __device__ void closeImpl(DeviceLoop*, IPC*, volatile request::Close&, int fd);
 __device__ void readImpl(DeviceLoop*, IPC*, volatile request::Read&, int fd, size_t offset, size_t count, unsigned char* buffer);
 __device__ void mmapImpl(DeviceLoop*, IPC*, volatile request::Mmap&, void* address, size_t size, int prot, int flags, int fd, off_t offset);
 __device__ void munmapImpl(DeviceLoop*, IPC*, volatile request::Munmap&, void* address, size_t size);
+__device__ void msyncImpl(DeviceLoop*, IPC*, volatile request::Msync&, void* address, size_t size, int flags);
 
 template<typename Lambda>
 inline __device__ auto open(DeviceLoop* loop, const char* filename, int mode, Lambda callback) -> void
@@ -234,6 +235,19 @@ inline __device__ auto munmap(DeviceLoop* loop, void* address, size_t size, Lamb
             callback(loop, req->u.munmapResult.error);
         });
         munmapImpl(loop, ipc, ipc->request()->u.munmap, address, size);
+    }
+    END_SINGLE_THREAD
+}
+
+template<typename Lambda>
+inline __device__ auto msync(DeviceLoop* loop, void* address, size_t size, int flags, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop, req->u.msyncResult.error);
+        });
+        msyncImpl(loop, ipc, ipc->request()->u.msync, address, size, flags);
     }
     END_SINGLE_THREAD
 }
