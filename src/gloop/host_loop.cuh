@@ -62,8 +62,6 @@ public:
 
     uint32_t id() const { return m_id; }
 
-    void drain();
-
     static std::unique_ptr<HostLoop> create(int deviceNumber);
 
     template<typename DeviceLambda, class... Args>
@@ -110,6 +108,11 @@ private:
 
     void prepareForLaunch();
 
+    void drain();
+    void drainKernel();
+    void performOneTimeResume();
+
+
     int m_deviceNumber { 0 };
     uv_loop_t* m_loop { nullptr };
     std::unique_ptr<boost::thread> m_poller;
@@ -119,6 +122,7 @@ private:
 
     uint32_t m_id { 0 };
     boost::asio::io_service m_ioService;
+    boost::asio::io_service m_kernelService;
     boost::asio::local::stream_protocol::socket m_monitorConnection;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
@@ -152,9 +156,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
                 }
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             }
-            while (m_currentContext->pending()) {
-                resume();
-            }
+            drainKernel();
             kernelWork.reset();
         });
         drain();

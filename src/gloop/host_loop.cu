@@ -321,16 +321,22 @@ bool HostLoop::handleIO(Command command)
         m_ioService.post([ipc, req, this]() {
             GLOOP_DEBUG("munmap:address(%p),size:(%u)\n", req.u.munmap.address, req.u.munmap.size);
             // FIXME: We should schedule this inside this process.
-            // GLOOP_CUDA_SAFE_CALL(cudaHostUnregister((void*)req.u.munmap.address));
-            GLOOP_DEBUG("Done\n");
-            {
-                std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-                void* host = m_currentContext->table().unregisterMapping((void*)req.u.munmap.address);
-                int error = ::munmap(host, req.u.munmap.size);
-                ipc->request()->u.munmapResult.error = error;
-                ipc->emit(Code::ExitRequired);
-                m_currentContext->addExitRequired(ipc);
-            }
+            m_kernelService.post([&] {
+                {
+                    std::lock_guard<KernelLock> lock(m_kernelLock);
+                    GLOOP_CUDA_SAFE_CALL(cudaHostUnregister((void*)req.u.munmap.address));
+                }
+                {
+                    std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
+                    void* host = m_currentContext->table().unregisterMapping((void*)req.u.munmap.address);
+                    int error = ::munmap(host, req.u.munmap.size);
+                    ipc->request()->u.munmapResult.error = error;
+                    ipc->emit(Code::ExitRequired);
+                    m_currentContext->addExitRequired(ipc);
+                }
+            });
+            // FIXME: This is timing dependent.
+            syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 1);
         });
         break;
     }
@@ -352,6 +358,22 @@ bool HostLoop::handleIO(Command command)
 
     }
     return false;
+}
+
+void HostLoop::performOneTimeResume()
+{
+    if (m_currentContext->pending()) {
+        m_kernelService.post([&] {
+            resume();
+            performOneTimeResume();
+        });
+    }
+}
+
+void HostLoop::drainKernel()
+{
+    performOneTimeResume();
+    m_kernelService.run();
 }
 
 }  // namespace gloop
