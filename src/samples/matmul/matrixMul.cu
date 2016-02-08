@@ -358,15 +358,18 @@ void runTest(int argc, char** argv)
 
     // volatile GPUGlobals* gpuGlobals;
     // initializer(&gpuGlobals);
-    init_device_app();
-    init_app();
+    // init_device_app();
+    // init_app();
 
     // printf("Device %d: \"%s\" with Compute %d.%d capability\n", devID, props.name, props.major, props.minor);
 
     // set seed for rand()
     srand(2006);
 
+    char* num_iter= getenv("NUM_ITER");
+    int NUM_ITERATIONS= (num_iter==NULL)?1: atoi(num_iter);
 
+#if 0
     // allocate host memory for matrices A and B
     unsigned int size_A = uiWA * uiHA;
     unsigned int mem_size_A = sizeof(float) * size_A;
@@ -409,9 +412,8 @@ void runTest(int argc, char** argv)
     checkCudaErrors(cudaMalloc((void**) &d_A, mem_size_A));
     checkCudaErrors(cudaMalloc((void**) &d_B, mem_size_B));
     checkCudaErrors(cudaMalloc((void**) &d_C, mem_size_C));
+#endif
 
-    char* num_iter= getenv("NUM_ITER");
-    int NUM_ITERATIONS= (num_iter==NULL)?1: atoi(num_iter);
 
 #if 0
 
@@ -631,6 +633,8 @@ void runTest(int argc, char** argv)
     PRINT_FLUSHED_READ;
     PRINT_FLUSHED_WRITE;
     PRINT_TRY_LOCK_FAILED;
+
+#if 0
     char fn[]="mtx_c";
     fn[0]='0';
     int fd=open(fn,O_RDONLY);
@@ -663,19 +667,21 @@ void runTest(int argc, char** argv)
         printDiff(h_C, h_CUBLAS, uiWC, uiHC, 10000, 1.0e-5f);
     }
     fprintf(stderr,"CUBLAS compares %s\n\n", (true == resCUBLAS) ? "OK" : "FAIL");
+#endif
 
 #define FLOP(t) ((double)uiHA*uiWA*uiWB*2)/(1<<30)/(t/1e6)
 
     // fprintf(stderr,"RESULTS: %d %d %d %d %d %d  %.0f %.0f %.0f %.3f %.3f %.3f %.0f %.0f %.3f \n",uiHA,uiWA,uiWB,uiHA*uiWA,uiWA*uiWB,uiHA*uiWB, res_cuda,res_tuned,total_time,FLOP(res_cuda),FLOP(res_tuned),FLOP(total_time), res_cuda_data, res_cuda_kernel, res_cuda_data/res_cuda_kernel);
 
     // clean up memory
+#if 0
     cudaFreeHost(h_A);
     cudaFreeHost(h_B);
     cudaFreeHost(h_C);
     checkCudaErrors(cudaFree(d_A));
     checkCudaErrors(cudaFree(d_B));
     checkCudaErrors(cudaFree(d_C));
-
+#endif
     //   cudaDeviceReset();
 }
 
