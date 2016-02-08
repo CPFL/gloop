@@ -24,6 +24,7 @@
 #ifndef GLOOP_FS_H_
 #define GLOOP_FS_H_
 #include <gpufs/libgpufs/fs_calls.cu.h>
+#include <sys/mman.h>
 #include <type_traits>
 #include <utility>
 #include "device_loop.cuh"
