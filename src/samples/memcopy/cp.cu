@@ -1,7 +1,5 @@
-#include "fs_debug.cu.h"
-#include "fs_initializer.cu.h"
-
 #include <gloop/gloop.h>
+
 __device__ int OK;
 
 #undef FS_BLOCKSIZE

@@ -6,24 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <unistd.h>
-
-#include "fs_debug.cu.h"
-#include "fs_initializer.cu.h"
-
-// INCLUDING CODE INLINE - change later
-#include "host_loop.h"
-#include <gloop/gloop.h>
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <string.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <math.h>
+#include <gloop/gloop.h>
 
 __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst);
 void init_device_app();
