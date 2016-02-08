@@ -415,6 +415,8 @@ void runTest(int argc, char** argv)
     char* num_iter= getenv("NUM_ITER");
     int NUM_ITERATIONS= (num_iter==NULL)?1: atoi(num_iter);
 
+#if 0
+
     double res_cuda_data=0;
     double res_cuda_kernel=0;
     double total_time_cuda=0;
@@ -563,6 +565,7 @@ void runTest(int argc, char** argv)
 
     double c_open, c_rw, c_close;
     c_open=c_rw=c_close=0;
+#endif
 
 
     double total_time=0;
@@ -665,7 +668,7 @@ void runTest(int argc, char** argv)
 
 #define FLOP(t) ((double)uiHA*uiWA*uiWB*2)/(1<<30)/(t/1e6)
 
-    fprintf(stderr,"RESULTS: %d %d %d %d %d %d  %.0f %.0f %.0f %.3f %.3f %.3f %.0f %.0f %.3f \n",uiHA,uiWA,uiWB,uiHA*uiWA,uiWA*uiWB,uiHA*uiWB, res_cuda,res_tuned,total_time,FLOP(res_cuda),FLOP(res_tuned),FLOP(total_time), res_cuda_data, res_cuda_kernel, res_cuda_data/res_cuda_kernel);
+    // fprintf(stderr,"RESULTS: %d %d %d %d %d %d  %.0f %.0f %.0f %.3f %.3f %.3f %.0f %.0f %.3f \n",uiHA,uiWA,uiWB,uiHA*uiWA,uiWA*uiWB,uiHA*uiWB, res_cuda,res_tuned,total_time,FLOP(res_cuda),FLOP(res_tuned),FLOP(total_time), res_cuda_data, res_cuda_kernel, res_cuda_data/res_cuda_kernel);
 
     // clean up memory
     cudaFreeHost(h_A);
