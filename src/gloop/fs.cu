@@ -85,7 +85,7 @@ __device__ void mmapImpl(DeviceLoop* loop, IPC* ipc, volatile request::Mmap& req
     ipc->emit(Code::Mmap);
 }
 
-__device__ void munmapImpl(DeviceLoop* loop, IPC* ipc, volatile request::Munmap& req, void* address, size_t size)
+__device__ void munmapImpl(DeviceLoop* loop, IPC* ipc, volatile request::Munmap& req, volatile void* address, size_t size)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.address = address;
@@ -93,7 +93,7 @@ __device__ void munmapImpl(DeviceLoop* loop, IPC* ipc, volatile request::Munmap&
     ipc->emit(Code::Munmap);
 }
 
-__device__ void msyncImpl(DeviceLoop* loop, IPC* ipc, volatile request::Msync& req, void* address, size_t size, int flags)
+__device__ void msyncImpl(DeviceLoop* loop, IPC* ipc, volatile request::Msync& req, volatile void* address, size_t size, int flags)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.address = address;

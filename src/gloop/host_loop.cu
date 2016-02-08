@@ -314,10 +314,10 @@ bool HostLoop::handleIO(Command command)
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
-            GLOOP_CUDA_SAFE_CALL(cudaHostUnregister(req.u.munmap.address));
+            GLOOP_CUDA_SAFE_CALL(cudaHostUnregister((void*)req.u.munmap.address));
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-                void* host = m_currentContext->table().unregisterMapping(req.u.munmap.address);
+                void* host = m_currentContext->table().unregisterMapping((void*)req.u.munmap.address);
                 int error = ::munmap(host, req.u.munmap.size);
                 ipc->request()->u.munmapResult.error = error;
                 ipc->emit(Code::ExitRequired);
@@ -333,7 +333,7 @@ bool HostLoop::handleIO(Command command)
         m_ioService.post([ipc, req, this]() {
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-                void* host = m_currentContext->table().lookupHostByDevice(req.u.msync.address);
+                void* host = m_currentContext->table().lookupHostByDevice((void*)req.u.msync.address);
                 int error = ::msync(host, req.u.msync.size, req.u.msync.flags);
                 ipc->request()->u.msyncResult.error = error;
                 ipc->emit(Code::Complete);

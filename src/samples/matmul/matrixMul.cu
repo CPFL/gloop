@@ -358,10 +358,6 @@ void runTest(int argc, char** argv)
     printf(" grid size: %dx%d per blockX= %d per blockY= %d\n",grid.x,grid.y,perBlockX,perBlockY);
     printf(" uiWA %d uiWB %d \n",uiWA,uiWB);
 
-    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, gridCUDA);
-
-
     // volatile GPUGlobals* gpuGlobals;
     // initializer(&gpuGlobals);
     init_device_app();
@@ -571,23 +567,38 @@ void runTest(int argc, char** argv)
 
     double total_time=0;
     for(int zzz=0;zzz<NUM_ITERATIONS;zzz++){
+        std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, grid);
+
         char fn[]="mtx_c";
         fn[0]='0'+zzz;
         unlink(fn);
         double time_before=_timestamp();
+        {
+            hostLoop->launch(*hostContext, threads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<int, int, int, int, char> tuple) {
+                int wA;
+                int wB;
+                int perBlockX;
+                int perBlockY;
+                char n;
+                thrust::tie(wA, wB, perBlockX, perBlockY, n) = tuple;
+                matrixMul<32>(loop, wA, wB, perBlockX, perBlockY, n);
+            }, uiWA, uiWB,perBlockX,perBlockY,'0'+zzz);
+        }
+
         // matrixMul<32><<< grid, threads,0,gpuGlobals->streamMgr->kernelStream >>>(uiWA, uiWB,perBlockX,perBlockY,'0'+zzz);
 
 
         // run_gpufs_handler(gpuGlobals,0);
 
-        cudaError_t error=  cudaDeviceSynchronize();
+        // cudaError_t error=  cudaDeviceSynchronize();
         double time_after=_timestamp();
         total_time+=(time_after-time_before);
         fprintf(stderr,"GPUFS >>>Total time=%0.f \n", (time_after-time_before)/1000);
         //Check for errors and failed asserts in asynchronous kernel launch.
-        if(error != cudaSuccess ) {
-            printf("Device failed, CUDA error message is: %s\n\n", cudaGetErrorString(error));
-        }
+        // if(error != cudaSuccess ) {
+        //     printf("Device failed, CUDA error message is: %s\n\n", cudaGetErrorString(error));
+        // }
     }
     // fprintf(stderr, "GPUFS open: %.0f, rw %.0f, close %.0f usec\n",c_open,c_rw,c_close);
     //     fprintf(stderr,"kernel is complete\n");

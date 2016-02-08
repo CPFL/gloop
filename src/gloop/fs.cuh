@@ -39,8 +39,8 @@ __device__ void fstatImpl(DeviceLoop*, IPC*, volatile request::Fstat&, int fd);
 __device__ void closeImpl(DeviceLoop*, IPC*, volatile request::Close&, int fd);
 __device__ void readImpl(DeviceLoop*, IPC*, volatile request::Read&, int fd, size_t offset, size_t count, unsigned char* buffer);
 __device__ void mmapImpl(DeviceLoop*, IPC*, volatile request::Mmap&, void* address, size_t size, int prot, int flags, int fd, off_t offset);
-__device__ void munmapImpl(DeviceLoop*, IPC*, volatile request::Munmap&, void* address, size_t size);
-__device__ void msyncImpl(DeviceLoop*, IPC*, volatile request::Msync&, void* address, size_t size, int flags);
+__device__ void munmapImpl(DeviceLoop*, IPC*, volatile request::Munmap&, volatile void* address, size_t size);
+__device__ void msyncImpl(DeviceLoop*, IPC*, volatile request::Msync&, volatile void* address, size_t size, int flags);
 
 template<typename Lambda>
 inline __device__ auto open(DeviceLoop* loop, const char* filename, int mode, Lambda callback) -> void
@@ -227,7 +227,7 @@ inline __device__ auto mmap(DeviceLoop* loop, void* address, size_t size, int pr
 
 
 template<typename Lambda>
-inline __device__ auto munmap(DeviceLoop* loop, void* address, size_t size, Lambda callback) -> void
+inline __device__ auto munmap(DeviceLoop* loop, volatile void* address, size_t size, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
     {
@@ -240,7 +240,7 @@ inline __device__ auto munmap(DeviceLoop* loop, void* address, size_t size, Lamb
 }
 
 template<typename Lambda>
-inline __device__ auto msync(DeviceLoop* loop, void* address, size_t size, int flags, Lambda callback) -> void
+inline __device__ auto msync(DeviceLoop* loop, volatile void* address, size_t size, int flags, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
     {

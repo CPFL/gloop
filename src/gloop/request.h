@@ -103,11 +103,11 @@ struct Mmap {
 };
 
 struct MmapResult {
-    void* address;
+    volatile void* address;
 };
 
 struct Munmap {
-    void* address;
+    volatile void* address;
     size_t size;
 };
 
@@ -116,7 +116,7 @@ struct MunmapResult {
 };
 
 struct Msync {
-    void* address;
+    volatile void* address;
     size_t size;
     int flags;
 };

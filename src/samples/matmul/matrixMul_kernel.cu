@@ -118,7 +118,143 @@ __device__ float tmp_a[1<<22];
 __device__ float tmp_b[1<<22];
 __device__ float tmp_c[1<<22];
 
-template <int BLOCK_SIZE> __global__ void
+template <int BLOCK_SIZE> __device__ void
+performOuterLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY, int f_a, int f_b, int f_c, int by);
+
+template <int BLOCK_SIZE> __device__ void
+performInnerLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY, int f_a, int f_b, int f_c, volatile float* ptr_a, volatile float* ptr_c, int by, int bx)
+{
+    if (bx == perBlockX) {
+        if(perBlockX>4) {
+            gmsync(ptr_c,0,0);
+        }
+        //gmsync(ptr_c,0,0);
+        gloop::fs::munmap(loop, ptr_c, 0, [=](gloop::DeviceLoop* loop, int error) {
+            gloop::fs::munmap(loop, ptr_a, 0, [=](gloop::DeviceLoop* loop, int error) {
+                performOuterLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, by + 1);
+            });
+        });
+        return;
+    }
+
+    // Index of the first sub-matrix of A processed by the block
+    int hB=wA;
+    int bBegin = hB*BLOCK_SIZE*bx*sizeof(float);
+    gloop::fs::mmap(loop, NULL,wA*BLOCK_SIZE*sizeof(float),0, O_GRDONLY, f_b, bBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
+        volatile float* ptr_b = (volatile float*)res;
+        //        volatile float * ptr_b=tmp_b;
+        //        if (ptr_b==GMAP_FAILED) ERROR("GMMAP failed with m_b");
+
+        // Block index
+
+        // Thread index
+        int tx = threadIdx.x;
+        int ty = threadIdx.y;
+
+
+        // Index of the last sub-matrix of A processed by the block
+        int aEnd   =  wA - 1;
+
+        // Step size used to iterate through the sub-matrices of A
+        int aStep  = BLOCK_SIZE;
+
+        // Csub is used to store the element of the block sub-matrix
+        // that is computed by the thread
+        float Csub = 0;
+
+        for( int a = 0, b= 0; a <=aEnd; a += aStep, b += aStep) {
+
+            // Declaration of the shared memory array As used to
+            // store the sub-matrix of A
+            __shared__ float As[BLOCK_SIZE][BLOCK_SIZE];
+
+            // Declaration of the shared memory array Bs used to
+            // store the sub-matrix of B
+            __shared__ float Bs[BLOCK_SIZE][BLOCK_SIZE+1];
+
+
+            // Load the matrices from device memory
+            // to shared memory; each thread loads
+            // one element of each matrix
+
+            AS(ty, tx) = ptr_a[a + wA * ty + tx];
+            BS(ty, tx) = ptr_b[b + wA * ty + tx];
+            //   AS(ty,tx)=1;
+            //   BS(ty,tx)=1;
+
+            // Synchronize to make sure the matrices are loaded
+            __syncthreads();
+
+            // Multiply the two matrices together;
+            // each thread computes one element
+            // of the block sub-matrix
+            //  #pragma unroll
+            float* bs_ptr=&BS(tx,0);
+            for (int k = 0; k < BLOCK_SIZE; ++k){
+                Csub+=AS(ty,k)*(*(bs_ptr+k));;
+            }
+            //if (Csub!=-1) Csub=AS(0,0);
+            // Synchronize to make sure that the preceding
+            // computation is done before loading two new
+            // sub-matrices of A and B in the next iteration
+            __syncthreads();
+        }
+
+        ptr_c[bx*BLOCK_SIZE+ wB*ty+tx]=Csub;
+
+        //    }
+        // Write the block sub-matrix to device memory;
+        // each thread writes one element
+
+        gloop::fs::munmap(loop, ptr_b, 0, [=](gloop::DeviceLoop* loop, int error) {
+            performInnerLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, ptr_a, ptr_c, by, bx + 1);
+        });
+    });
+}
+
+template <int BLOCK_SIZE> __device__ void
+performOuterLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY, int f_a, int f_b, int f_c, int by)
+{
+    if (by == (blockIdx.y+1)*perBlockY) {
+        gloop::fs::close(loop, f_a, [=](gloop::DeviceLoop* loop, int error) {
+            gloop::fs::close(loop, f_b, [=](gloop::DeviceLoop* loop, int error) {
+                gloop::fs::close(loop, f_c, [=](gloop::DeviceLoop* loop, int error) {
+                });
+            });
+        });
+        return;
+    }
+
+    int wC=wB;
+    int cBegin = wC*BLOCK_SIZE*by*sizeof(float);
+
+    gloop::fs::mmap(loop, NULL,wC*BLOCK_SIZE*sizeof(float),0, O_GWRONCE, f_c,cBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
+        volatile float* ptr_c=(volatile float*)res;
+        //    volatile float * ptr_c=tmp_c;
+        if (ptr_c==GMAP_FAILED) ERROR("GMMAP failed with m_c");
+
+        int aBegin = wA*BLOCK_SIZE*by*sizeof(float);
+
+        gloop::fs::mmap(loop, NULL,wA*BLOCK_SIZE*sizeof(float),0, O_GRDONLY, f_a,aBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
+            volatile float* ptr_a=(volatile float*)res;
+            //      volatile float* ptr_a=tmp_a;
+            if (ptr_a==GMAP_FAILED) ERROR("GMMAP failed with m_a");
+
+            int bx = 0;
+            performInnerLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, ptr_a, ptr_c, by, bx);
+        });
+    });
+}
+
+template <int BLOCK_SIZE> __device__ void
+performOperation(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY, int f_a, int f_b, int f_c)
+{
+    // for (int by=blockIdx.y*perBlockY;by<(blockIdx.y+1)*perBlockY;by++){
+    int by=blockIdx.y*perBlockY;
+    performOuterLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, by);
+}
+
+template <int BLOCK_SIZE> __device__ void
 matrixMul(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY, char n)
 {
     gloop::fs::open(loop, "mtx_a", O_GRDONLY, [=](gloop::DeviceLoop* loop, int f_a) {
@@ -126,120 +262,17 @@ matrixMul(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY,
             ERROR("Failed to open a");
         }
 
-        gloop::fs::open("mtx_b", O_GRDONLY, [=](gloop::DeviceLoop* loop, int f_b) {
+        gloop::fs::open(loop, "mtx_b", O_GRDONLY, [=](gloop::DeviceLoop* loop, int f_b) {
             if (f_b<0) {
                 ERROR("Failed to open B");
             }
 
             char out[6]="mtx_c"; out[0]=n;
-            gloop::fs::open(out, O_GWRONLY, [=](gloop::DeviceLoop* loop, int f_c) {
+            gloop::fs::open(loop, out, O_GWRONLY, [=](gloop::DeviceLoop* loop, int f_c) {
                 if (f_c<0) {
                     ERROR("Failed to open c");
                 }
-                for (int by=blockIdx.y*perBlockY;by<(blockIdx.y+1)*perBlockY;by++){
-
-                    int wC=wB;
-                    int cBegin = wC*BLOCK_SIZE*by*sizeof(float);
-
-                    volatile float* ptr_c=(volatile float*)gmmap(NULL,wC*BLOCK_SIZE*sizeof(float),0, O_GWRONCE, f_c,cBegin);
-                    //    volatile float * ptr_c=tmp_c;
-                    if (ptr_c==GMAP_FAILED) ERROR("GMMAP failed with m_c");
-
-
-                    int aBegin = wA*BLOCK_SIZE*by*sizeof(float);
-                    volatile float* ptr_a=(volatile float*)gmmap(NULL,wA*BLOCK_SIZE*sizeof(float),0, O_GRDONLY, f_a,aBegin);
-                    //      volatile float* ptr_a=tmp_a;
-                    if (ptr_a==GMAP_FAILED) ERROR("GMMAP failed with m_a");
-
-                    for (int bx=0;bx<perBlockX;bx++){
-
-                        // Index of the first sub-matrix of A processed by the block
-                        int hB=wA;
-
-                        int bBegin = hB*BLOCK_SIZE*bx*sizeof(float);
-
-
-                        volatile float* ptr_b=(volatile float*)gmmap(NULL,wA*BLOCK_SIZE*sizeof(float),0, O_GRDONLY, f_b,bBegin);
-                        //        volatile float * ptr_b=tmp_b;
-                        //        if (ptr_b==GMAP_FAILED) ERROR("GMMAP failed with m_b");
-
-                        // Block index
-
-                        // Thread index
-                        int tx = threadIdx.x;
-                        int ty = threadIdx.y;
-
-
-                        // Index of the last sub-matrix of A processed by the block
-                        int aEnd   =  wA - 1;
-
-                        // Step size used to iterate through the sub-matrices of A
-                        int aStep  = BLOCK_SIZE;
-
-                        // Csub is used to store the element of the block sub-matrix
-                        // that is computed by the thread
-                        float Csub = 0;
-
-                        for( int a = 0, b= 0; a <=aEnd; a += aStep, b += aStep) {
-
-                            // Declaration of the shared memory array As used to
-                            // store the sub-matrix of A
-                            __shared__ float As[BLOCK_SIZE][BLOCK_SIZE];
-
-                            // Declaration of the shared memory array Bs used to
-                            // store the sub-matrix of B
-                            __shared__ float Bs[BLOCK_SIZE][BLOCK_SIZE+1];
-
-
-                            // Load the matrices from device memory
-                            // to shared memory; each thread loads
-                            // one element of each matrix
-
-                            AS(ty, tx) = ptr_a[a + wA * ty + tx];
-                            BS(ty, tx) = ptr_b[b + wA * ty + tx];
-                            //   AS(ty,tx)=1;
-                            //   BS(ty,tx)=1;
-
-                            // Synchronize to make sure the matrices are loaded
-                            __syncthreads();
-
-                            // Multiply the two matrices together;
-                            // each thread computes one element
-                            // of the block sub-matrix
-                            //  #pragma unroll
-                            float* bs_ptr=&BS(tx,0);
-                            for (int k = 0; k < BLOCK_SIZE; ++k){
-                                Csub+=AS(ty,k)*(*(bs_ptr+k));;
-                            }
-                            //if (Csub!=-1) Csub=AS(0,0);
-                            // Synchronize to make sure that the preceding
-                            // computation is done before loading two new
-                            // sub-matrices of A and B in the next iteration
-                            __syncthreads();
-                        }
-
-                        ptr_c[bx*BLOCK_SIZE+ wB*ty+tx]=Csub;
-
-                        //    }
-                        // Write the block sub-matrix to device memory;
-                        // each thread writes one element
-
-                        gmunmap(ptr_b,0);
-                    }
-
-                    if(perBlockX>4 )
-                        gmsync(ptr_c,0,0);
-
-                    //gmsync(ptr_c,0,0);
-                    gmunmap(ptr_c,0);
-                    gmunmap(ptr_a,0);
-                }
-                gloop::fs::close(f_a, [=](int error) {
-                    gloop::fs::close(f_b, [=](int error) {
-                        gloop::fs::close(f_c, [=](int error) {
-                        });
-                    });
-                });
+                performOperation<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c);
             });
         });
     });
