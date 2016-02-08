@@ -40,8 +40,8 @@ __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
         GPU_ASSERT(scratch!=NULL);
     END_SINGLE_THREAD
 
-    gloop::fs::open(loop, src, O_GRDONLY, [=](gloop::DeviceLoop* loop, int zfd) {
-        gloop::fs::open(loop, dst, O_GWRONCE, [=](gloop::DeviceLoop* loop, int zfd1) {
+    gloop::fs::open(loop, src, O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd) {
+        gloop::fs::open(loop, dst, O_WRONLY | O_CREAT, [=](gloop::DeviceLoop* loop, int zfd1) {
             gloop::fs::fstat(loop, zfd, [=](gloop::DeviceLoop* loop, int filesize) {
                 size_t me = blockIdx.x * FS_BLOCKSIZE;
                 perform_copy(loop, scratch, zfd, zfd1, me, filesize);

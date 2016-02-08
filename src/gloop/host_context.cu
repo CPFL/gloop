@@ -22,6 +22,7 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <mutex>
+#include "data_log.h"
 #include "device_context.cuh"
 #include "ipc.cuh"
 #include "host_context.cuh"

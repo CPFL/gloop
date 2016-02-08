@@ -129,8 +129,8 @@ performInnerLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int per
             gmsync(ptr_c,0,0);
         }
         //gmsync(ptr_c,0,0);
-        gloop::fs::munmap(loop, ptr_c, 0, [=](gloop::DeviceLoop* loop, int error) {
-            gloop::fs::munmap(loop, ptr_a, 0, [=](gloop::DeviceLoop* loop, int error) {
+        gloop::fs::munmap(loop, ptr_c, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
+            gloop::fs::munmap(loop, ptr_a, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
                 performOuterLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, by + 1);
             });
         });
@@ -140,7 +140,7 @@ performInnerLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int per
     // Index of the first sub-matrix of A processed by the block
     int hB=wA;
     int bBegin = hB*BLOCK_SIZE*bx*sizeof(float);
-    gloop::fs::mmap(loop, NULL,wA*BLOCK_SIZE*sizeof(float),0, O_GRDONLY, f_b, bBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
+    gloop::fs::mmap(loop, NULL,wA*BLOCK_SIZE*sizeof(float), PROT_READ | PROT_WRITE, MAP_SHARED, f_b, bBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
         volatile float* ptr_b = (volatile float*)res;
         //        volatile float * ptr_b=tmp_b;
         //        if (ptr_b==GMAP_FAILED) ERROR("GMMAP failed with m_b");
@@ -206,7 +206,7 @@ performInnerLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int per
         // Write the block sub-matrix to device memory;
         // each thread writes one element
 
-        gloop::fs::munmap(loop, ptr_b, 0, [=](gloop::DeviceLoop* loop, int error) {
+        gloop::fs::munmap(loop, ptr_b, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
             performInnerLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, ptr_a, ptr_c, by, bx + 1);
         });
     });
@@ -228,20 +228,25 @@ performOuterLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int per
     int wC=wB;
     int cBegin = wC*BLOCK_SIZE*by*sizeof(float);
 
-    gloop::fs::mmap(loop, NULL,wC*BLOCK_SIZE*sizeof(float),0, O_GWRONCE, f_c,cBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
+    gloop::fs::mmap(loop, NULL,wA*BLOCK_SIZE*sizeof(float),PROT_READ | PROT_WRITE, MAP_SHARED, f_c,cBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
         volatile float* ptr_c=(volatile float*)res;
         //    volatile float * ptr_c=tmp_c;
         if (ptr_c==GMAP_FAILED) ERROR("GMMAP failed with m_c");
 
         int aBegin = wA*BLOCK_SIZE*by*sizeof(float);
 
-        gloop::fs::mmap(loop, NULL,wA*BLOCK_SIZE*sizeof(float),0, O_GRDONLY, f_a,aBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
+        gloop::fs::mmap(loop, NULL,wA*BLOCK_SIZE*sizeof(float),PROT_READ | PROT_WRITE, MAP_SHARED, f_a,aBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
             volatile float* ptr_a=(volatile float*)res;
             //      volatile float* ptr_a=tmp_a;
             if (ptr_a==GMAP_FAILED) ERROR("GMMAP failed with m_a");
 
-            int bx = 0;
-            performInnerLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, ptr_a, ptr_c, by, bx);
+            gloop::fs::munmap(loop, ptr_c, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
+                gloop::fs::munmap(loop, ptr_a, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
+                });
+            });
+
+            // int bx = 0;
+            // performInnerLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, ptr_a, ptr_c, by, bx);
         });
     });
 }
@@ -257,18 +262,18 @@ performOperation(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int per
 template <int BLOCK_SIZE> __device__ void
 matrixMul(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY, char n)
 {
-    gloop::fs::open(loop, "mtx_a", O_GRDONLY, [=](gloop::DeviceLoop* loop, int f_a) {
+    gloop::fs::open(loop, "mtx_a", O_RDWR, [=](gloop::DeviceLoop* loop, int f_a) {
         if (f_a<0) {
             ERROR("Failed to open a");
         }
 
-        gloop::fs::open(loop, "mtx_b", O_GRDONLY, [=](gloop::DeviceLoop* loop, int f_b) {
+        gloop::fs::open(loop, "mtx_b", O_RDWR, [=](gloop::DeviceLoop* loop, int f_b) {
             if (f_b<0) {
                 ERROR("Failed to open B");
             }
 
             char out[6]="mtx_c"; out[0]=n;
-            gloop::fs::open(loop, out, O_GWRONLY, [=](gloop::DeviceLoop* loop, int f_c) {
+            gloop::fs::open(loop, out, O_RDWR, [=](gloop::DeviceLoop* loop, int f_c) {
                 if (f_c<0) {
                     ERROR("Failed to open c");
                 }

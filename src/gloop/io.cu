@@ -63,7 +63,7 @@ void FileDescriptorTable::close(int fd)
 
 void FileDescriptorTable::registerMapping(void* host, void* device)
 {
-    m_mmapTable.insert(std::make_pair(host, device));
+    m_mmapTable.insert(std::make_pair(device, host));
 }
 
 void* FileDescriptorTable::lookupHostByDevice(void* device)

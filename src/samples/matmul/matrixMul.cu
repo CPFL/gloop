@@ -575,7 +575,7 @@ void runTest(int argc, char** argv)
 
         char fn[]="mtx_c";
         fn[0]='0'+zzz;
-        unlink(fn);
+        // unlink(fn);
         double time_before=_timestamp();
         {
             hostLoop->launch(*hostContext, threads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<int, int, int, int, char> tuple) {

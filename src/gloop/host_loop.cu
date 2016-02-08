@@ -223,7 +223,7 @@ bool HostLoop::handleIO(Command command)
     switch (static_cast<Code>(req.code)) {
     case Code::Open: {
         int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
-        // GLOOP_DEBUG("Open %s %d\n", req.u.open.filename.data, fd);
+        // GLOOP_DEBUG("open:(%s),fd:(%d)\n", req.u.open.filename.data, fd);
         ipc->request()->u.openResult.fd = fd;
         ipc->emit(Code::Complete);
         break;
@@ -295,8 +295,13 @@ bool HostLoop::handleIO(Command command)
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
+            // void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset);
+            // void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, MAP_ANONYMOUS, req.u.mmap.offset);
             void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset);
+            GLOOP_DEBUG("mmap:address(%p),size:(%u),prot:(%d),flags:(%d),fd:(%d),offset:(%d),res:(%p)\n", req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset, host);
             void* device = nullptr;
+            // volatile uint32_t value = *((volatile uint32_t*)host);
+            // *((volatile uint32_t*)host) = value;
             GLOOP_CUDA_SAFE_CALL(cudaHostRegister(host, req.u.mmap.size, cudaHostRegisterMapped));
             GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&device, host, 0));
             {
@@ -314,7 +319,10 @@ bool HostLoop::handleIO(Command command)
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
-            GLOOP_CUDA_SAFE_CALL(cudaHostUnregister((void*)req.u.munmap.address));
+            GLOOP_DEBUG("munmap:address(%p),size:(%u)\n", req.u.munmap.address, req.u.munmap.size);
+            // FIXME: We should schedule this inside this process.
+            // GLOOP_CUDA_SAFE_CALL(cudaHostUnregister((void*)req.u.munmap.address));
+            GLOOP_DEBUG("Done\n");
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
                 void* host = m_currentContext->table().unregisterMapping((void*)req.u.munmap.address);
