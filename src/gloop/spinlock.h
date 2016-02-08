@@ -44,6 +44,11 @@ public:
         m_locked.clear(std::memory_order_release);
     }
 
+    bool try_lock()
+    {
+        return !m_locked.test_and_set(std::memory_order_acquire);
+    }
+
 private:
     std::atomic_flag m_locked { ATOMIC_FLAG_INIT };
 };
