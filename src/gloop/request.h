@@ -69,6 +69,15 @@ struct CloseResult {
     int error;
 };
 
+struct Ftruncate {
+    int fd;
+    off_t offset;
+};
+
+struct FtruncateResult {
+    int error;
+};
+
 struct Read {
     int fd;
     size_t offset;
@@ -139,6 +148,9 @@ struct Request {
 
         Close close;
         CloseResult closeResult;
+
+        Ftruncate ftruncate;
+        FtruncateResult ftruncateResult;
 
         Read read;
         ReadResult readResult;

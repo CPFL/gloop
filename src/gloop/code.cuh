@@ -36,6 +36,7 @@ enum class Code : int32_t {
     Fstat,
     Close,
     Read,
+    Ftruncate,
 
     Mmap,
     Munmap,

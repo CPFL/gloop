@@ -291,6 +291,15 @@ bool HostLoop::handleIO(Command command)
         break;
     }
 
+    case Code::Ftruncate: {
+        m_ioService.post([ipc, req, this]() {
+            int result = ::ftruncate(req.u.ftruncate.fd, req.u.ftruncate.offset);
+            ipc->request()->u.ftruncateResult.error = result;
+            ipc->emit(Code::Complete);
+        });
+        break;
+    }
+
     case Code::Mmap: {
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.

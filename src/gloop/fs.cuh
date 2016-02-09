@@ -38,6 +38,7 @@ __device__ void writeImpl(DeviceLoop*, IPC*, volatile request::Write&, int fd, s
 __device__ void fstatImpl(DeviceLoop*, IPC*, volatile request::Fstat&, int fd);
 __device__ void closeImpl(DeviceLoop*, IPC*, volatile request::Close&, int fd);
 __device__ void readImpl(DeviceLoop*, IPC*, volatile request::Read&, int fd, size_t offset, size_t count, unsigned char* buffer);
+__device__ void ftruncateImpl(DeviceLoop*, IPC*, volatile request::Ftruncate&, int fd, off_t offset);
 __device__ void mmapImpl(DeviceLoop*, IPC*, volatile request::Mmap&, void* address, size_t size, int prot, int flags, int fd, off_t offset);
 __device__ void munmapImpl(DeviceLoop*, IPC*, volatile request::Munmap&, volatile void* address, size_t size);
 __device__ void msyncImpl(DeviceLoop*, IPC*, volatile request::Msync&, volatile void* address, size_t size, int flags);
@@ -77,6 +78,19 @@ inline __device__ auto close(DeviceLoop* loop, int fd, Lambda callback) -> void
             callback(loop, req->u.closeResult.error);
         });
         closeImpl(loop, ipc, ipc->request()->u.close, fd);
+    }
+    END_SINGLE_THREAD
+}
+
+template<typename Lambda>
+inline __device__ auto ftruncate(DeviceLoop* loop, int fd, off_t offset, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop, req->u.ftruncateResult.error);
+        });
+        ftruncateImpl(loop, ipc, ipc->request()->u.ftruncate, fd, offset);
     }
     END_SINGLE_THREAD
 }
