@@ -38,6 +38,9 @@
 #define GLOOP_SHARED_PAGE_COUNT 2
 #define GLOOP_THREAD_GROUP_SIZE 8
 
+// sizeof(uint64_t) * GLOOP_LAMBDA_SIZE.
+#define GLOOP_LAMBDA_SIZE 64
+
 namespace gloop {
 }  // namespace gloop
 #endif  // GLOOP_CONFIG_H_

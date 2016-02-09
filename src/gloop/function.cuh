@@ -74,8 +74,7 @@
 
 #ifndef GLOOP__NV_LIBCXX_FUNCTIONAL_H__
 #define GLOOP__NV_LIBCXX_FUNCTIONAL_H__
-
-#define GLOOP_LAMBDA_SIZE 32
+#include "config.h"
 
 #if __cplusplus < 201103L 
   #if defined(_MSC_VER)
