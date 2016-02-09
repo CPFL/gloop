@@ -421,11 +421,12 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
 
 void init_device_app()
 {
-    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,1<<30));
+    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (2 << 20) * 256));
 }
 
 void init_app()
 {
+#if 0
     // INITI LOCK
     void* inited;
 
@@ -434,6 +435,7 @@ void init_app()
 
     CUDA_SAFE_CALL(cudaGetSymbolAddress(&inited,last_lock));
     CUDA_SAFE_CALL(cudaMemset(inited,0,sizeof(LAST_SEMAPHORE)));
+#endif
 }
 
 double post_app(double total_time, float trials )
