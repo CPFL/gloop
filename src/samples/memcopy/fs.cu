@@ -201,7 +201,7 @@ int main( int argc, char** argv)
 
     if (d_filenames) free(d_filenames);
 
-    double thpt=post_app(total_time,trials);
+    // double thpt=post_app(total_time,trials);
     struct stat s1,s2,s3;
     if (stat(argv[4],&s1)) perror("stat failed");
     if (stat(argv[5],&s2)) perror("stat failed");

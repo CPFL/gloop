@@ -448,9 +448,3 @@ void init_app()
     CUDA_SAFE_CALL(cudaGetSymbolAddress(&inited,last_lock));
     CUDA_SAFE_CALL(cudaMemset(inited,0,sizeof(LAST_SEMAPHORE)));
 }
-
-double post_app(double total_time, float trials )
-{
-    return 0;
-    //return  sizeof(float)*VEC_FLOAT*((double)VEC_FLOAT)*2/ (total_time/trials);
-}

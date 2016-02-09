@@ -34,7 +34,6 @@
 void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* dbs);
 void init_device_app();
 void init_app();
-double post_app(double total_time, float trials );
 
 char*  update_filename(const char* h_filename){
 	int n=strlen(h_filename);
@@ -142,13 +141,7 @@ int main( int argc, char** argv)
 
     }
 	if (d_filenames) free(d_filenames);
-
-	double thpt=post_app(total_time,trials);
-
 	fprintf(stderr,"Performance: %.3f usec FS_BLOCKSIZE %d FS_LOGBLOCKSIZE %d\n",total_time/trials,FS_BLOCKSIZE, FS_LOGBLOCKSIZE );
 //((double)output_size*(double)nblocks*(double)read_count)/(total_time/TRIALS)/1e3 );
 	return 0;
 }
-
-
-
