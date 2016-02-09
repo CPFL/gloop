@@ -130,7 +130,7 @@ private:
     std::unique_ptr<boost::interprocess::mapped_region> m_signal;
     volatile uint32_t* m_deviceSignal;
     cudaStream_t m_pgraph;
-    CopyWorkPool m_copyWorkPool;
+    std::unique_ptr<CopyWorkPool> m_copyWorkPool;
     KernelLock m_kernelLock;
 };
 

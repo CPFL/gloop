@@ -602,6 +602,28 @@ void runTest(int argc, char** argv)
         // if(error != cudaSuccess ) {
         //     printf("Device failed, CUDA error message is: %s\n\n", cudaGetErrorString(error));
         // }
+
+        // stop and destroy timer
+        fprintf(stderr,"GPUFS >>>Total time=%0.f Gflops= %.3f\n", total_time/1000,((double)uiHA*uiWA*uiWB*2)/(1<<30)/(total_time/1e6));
+
+
+        //  delete gpuGlobals;
+
+        PRINT_MALLOC;
+        PRINT_FREE;
+        PRINT_PAGE_ALLOC_RETRIES;
+        PRINT_LOCKLESS_SUCCESS;
+        PRINT_WRONG_FILE_ID;
+
+        PRINT_RT_MALLOC;
+        PRINT_RT_FREE;
+        PRINT_HT_MISS;
+        PRINT_PRECLOSE_PUSH;
+        PRINT_PRECLOSE_FETCH;
+        PRINT_HT_HIT;
+        PRINT_FLUSHED_READ;
+        PRINT_FLUSHED_WRITE;
+        PRINT_TRY_LOCK_FAILED;
     }
     // fprintf(stderr, "GPUFS open: %.0f, rw %.0f, close %.0f usec\n",c_open,c_rw,c_close);
     //     fprintf(stderr,"kernel is complete\n");
@@ -611,28 +633,6 @@ void runTest(int argc, char** argv)
 
 
 
-
-    // stop and destroy timer
-    fprintf(stderr,"GPUFS >>>Total time=%0.f Gflops= %.3f\n", total_time/1000,((double)uiHA*uiWA*uiWB*2)/(1<<30)/(total_time/1e6));
-
-
-    //  delete gpuGlobals;
-
-    PRINT_MALLOC;
-    PRINT_FREE;
-    PRINT_PAGE_ALLOC_RETRIES;
-    PRINT_LOCKLESS_SUCCESS;
-    PRINT_WRONG_FILE_ID;
-
-    PRINT_RT_MALLOC;
-    PRINT_RT_FREE;
-    PRINT_HT_MISS;
-    PRINT_PRECLOSE_PUSH;
-    PRINT_PRECLOSE_FETCH;
-    PRINT_HT_HIT;
-    PRINT_FLUSHED_READ;
-    PRINT_FLUSHED_WRITE;
-    PRINT_TRY_LOCK_FAILED;
 
 #if 0
     char fn[]="mtx_c";

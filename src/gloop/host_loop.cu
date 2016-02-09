@@ -98,6 +98,18 @@ HostLoop::~HostLoop()
 {
     uv_loop_close(m_loop);
     stopPoller();
+
+    {
+        std::lock_guard<KernelLock> lock(m_kernelLock);
+
+        // Before destroying the primary GPU context,
+        // we should clear all the GPU resources.
+        m_copyWorkPool.reset();
+
+        CUdevice device;
+        GLOOP_CUDA_SAFE_CALL(cuDeviceGet(&device, 0));
+        GLOOP_CUDA_SAFE_CALL(cuDevicePrimaryCtxRelease(device));
+    }
 }
 
 std::unique_ptr<HostLoop> HostLoop::create(int deviceNumber)
@@ -155,9 +167,10 @@ void HostLoop::initialize()
 
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_deviceSignal, m_signal->get_address(), 0));
+        m_copyWorkPool = make_unique<CopyWorkPool>();
 
         for (int i = 0; i < GLOOP_THREAD_GROUP_SIZE; ++i) {
-            m_copyWorkPool.release(CopyWork::create());
+            m_copyWorkPool->release(CopyWork::create());
         }
 
         CUDA_SAFE_CALL(cudaPeekAtLastError());
@@ -233,7 +246,7 @@ bool HostLoop::handleIO(Command command)
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
             // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
-            std::shared_ptr<CopyWork> copyWork = m_copyWorkPool.acquire();
+            std::shared_ptr<CopyWork> copyWork = m_copyWorkPool->acquire();
             assert(req.u.write.count <= copyWork->hostMemory().size());
 
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(copyWork->hostMemory().hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, copyWork->stream()));
@@ -242,7 +255,7 @@ bool HostLoop::handleIO(Command command)
 
             ssize_t writtenCount = ::pwrite(req.u.write.fd, copyWork->hostMemory().hostPointer(), req.u.write.count, req.u.write.offset);
 
-            m_copyWorkPool.release(copyWork);
+            m_copyWorkPool->release(copyWork);
 
             ipc->request()->u.writeResult.writtenCount = writtenCount;
             ipc->emit(Code::Complete);
@@ -256,7 +269,7 @@ bool HostLoop::handleIO(Command command)
         m_ioService.post([ipc, req, this]() {
             // GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
 
-            std::shared_ptr<CopyWork> copyWork = m_copyWorkPool.acquire();
+            std::shared_ptr<CopyWork> copyWork = m_copyWorkPool->acquire();
             assert(req.u.read.count <= copyWork->hostMemory().size());
             ssize_t readCount = ::pread(req.u.read.fd, copyWork->hostMemory().hostPointer(), req.u.read.count, req.u.read.offset);
             __sync_synchronize();
@@ -265,7 +278,7 @@ bool HostLoop::handleIO(Command command)
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, copyWork->hostMemory().hostPointer(), readCount, cudaMemcpyHostToDevice, copyWork->stream()));
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
 
-            m_copyWorkPool.release(copyWork);
+            m_copyWorkPool->release(copyWork);
 
             ipc->request()->u.readResult.readCount = readCount;
             ipc->emit(Code::Complete);
