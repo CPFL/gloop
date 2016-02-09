@@ -196,6 +196,7 @@ void HostLoop::resume()
         gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext());
     });
     GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
+    // GLOOP_DEBUG("resume\n");
 }
 
 void HostLoop::prologue(HostContext& hostContext, dim3 threads)
@@ -305,16 +306,14 @@ bool HostLoop::handleIO(Command command)
             void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset);
             GLOOP_DEBUG("mmap:address(%p),size:(%u),prot:(%d),flags:(%d),fd:(%d),offset:(%d),res:(%p)\n", req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset, host);
             void* device = nullptr;
-            // volatile uint32_t value = *((volatile uint32_t*)host);
-            // *((volatile uint32_t*)host) = value;
+            // Not sure, but, mapped memory can be accessed immediately from GPU kernel.
             GLOOP_CUDA_SAFE_CALL(cudaHostRegister(host, req.u.mmap.size, cudaHostRegisterMapped));
             GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&device, host, 0));
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
                 m_currentContext->table().registerMapping(host, device);
                 ipc->request()->u.mmapResult.address = device;
-                ipc->emit(Code::ExitRequired);
-                m_currentContext->addExitRequired(ipc);
+                ipc->emit(Code::Complete);
             }
         });
         break;
@@ -330,17 +329,7 @@ bool HostLoop::handleIO(Command command)
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
                 void* host = m_currentContext->table().unregisterMapping((void*)req.u.munmap.address);
                 int error = ::munmap(host, req.u.munmap.size);
-                if (!m_currentContext->addUnmapRequest((void*)req.u.munmap.address)) {
-                    m_kernelService.post([&] {
-                        {
-                            std::lock_guard<KernelLock> lock(m_kernelLock);
-                            for (void* pointer : m_currentContext->unmapRequests()) {
-                                GLOOP_CUDA_SAFE_CALL(cudaHostUnregister(pointer));
-                            }
-                            m_currentContext->clearUnmapRequests();
-                        }
-                    });
-                }
+                m_currentContext->addUnmapRequest((void*)req.u.munmap.address);
                 ipc->request()->u.munmapResult.error = error;
                 ipc->emit(Code::ExitRequired);
                 m_currentContext->addExitRequired(ipc);

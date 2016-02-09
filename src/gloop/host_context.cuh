@@ -68,18 +68,7 @@ public:
     {
         // Mutex should be held.
         m_unmapRequests.push_back(pointer);
-        bool scheduled = m_exitHandlerScheduled;
-        m_exitHandlerScheduled = true;
-        return scheduled;
     }
-
-    void clearUnmapRequests()
-    {
-        m_unmapRequests.clear();
-        m_exitHandlerScheduled = false;
-    }
-
-    std::vector<void*> unmapRequests() { return m_unmapRequests; }
 
 private:
     HostContext(dim3 blocks);

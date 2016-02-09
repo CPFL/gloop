@@ -81,6 +81,10 @@ void HostContext::prepareForLaunch()
             ipc->emit(Code::Complete);
         }
         m_exitRequired.clear();
+        for (void* pointer : m_unmapRequests) {
+            GLOOP_CUDA_SAFE_CALL(cudaHostUnregister(pointer));
+        }
+        m_unmapRequests.clear();
     }
     __sync_synchronize();
 }
