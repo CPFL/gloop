@@ -332,12 +332,17 @@ bool HostLoop::handleIO(Command command)
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
                 void* host = m_currentContext->table().unregisterMapping((void*)req.u.munmap.address);
                 int error = ::munmap(host, req.u.munmap.size);
-                m_kernelService.post([&] {
-                    {
-                        std::lock_guard<KernelLock> lock(m_kernelLock);
-                        GLOOP_CUDA_SAFE_CALL(cudaHostUnregister((void*)req.u.munmap.address));
-                    }
-                });
+                if (!m_currentContext->addUnmapRequest((void*)req.u.munmap.address)) {
+                    m_kernelService.post([&] {
+                        {
+                            std::lock_guard<KernelLock> lock(m_kernelLock);
+                            for (void* pointer : m_currentContext->unmapRequests()) {
+                                GLOOP_CUDA_SAFE_CALL(cudaHostUnregister(pointer));
+                            }
+                            m_currentContext->clearUnmapRequests();
+                        }
+                    });
+                }
                 ipc->request()->u.munmapResult.error = error;
                 ipc->emit(Code::ExitRequired);
                 m_currentContext->addExitRequired(ipc);

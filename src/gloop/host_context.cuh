@@ -64,6 +64,23 @@ public:
         m_exitRequired.push_back(ipc);
     }
 
+    bool addUnmapRequest(void* pointer)
+    {
+        // Mutex should be held.
+        m_unmapRequests.push_back(pointer);
+        bool scheduled = m_exitHandlerScheduled;
+        m_exitHandlerScheduled = true;
+        return scheduled;
+    }
+
+    void clearUnmapRequests()
+    {
+        m_unmapRequests.clear();
+        m_exitHandlerScheduled = false;
+    }
+
+    std::vector<void*> unmapRequests() { return m_unmapRequests; }
+
 private:
     HostContext(dim3 blocks);
     bool initialize();
@@ -75,6 +92,8 @@ private:
     DeviceContext m_context { nullptr };
     dim3 m_blocks { };
     std::vector<IPC*> m_exitRequired;
+    std::vector<void*> m_unmapRequests;
+    bool m_exitHandlerScheduled { false };
 };
 
 
