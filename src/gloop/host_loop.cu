@@ -48,8 +48,6 @@
 #include "utility.h"
 namespace gloop {
 
-__device__ IPC* g_channel;
-
 HostLoop::HostLoop(int deviceNumber)
     : m_deviceNumber(deviceNumber)
     , m_loop(uv_loop_new())
