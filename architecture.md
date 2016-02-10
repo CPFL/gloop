@@ -1,5 +1,27 @@
 # Architecture
 
+## Revised draft
+
+gloop は device loop と host loop という2つの event loop, そして system 全体を調停する scheduler を提供し, shared GPUs における GPU 利用の調停を行う. event loop は (1) user 透過な GPU kernel の suspend と resume のための scheduling point の提供と (2) non-blocking な I/O operations の提供を行う.
+
+![gloop](fig/multiple.png?raw=true)
+
+図は gloop の architecture を示す. それぞれの application は 2種類の event loop を持つ. host 側に host loop を持ち, GPU 側では ThreadBlock ごとに device loop を持つ. scheduler はそれぞれの host loop を束ね, system 全体での GPU の利用を調停している.
+
+application は host loop を介して GPU kernel を実行する. host loop は scheduler に問い合わせ, GPU kernel の実行権を取得し GPU kernel を実行する. GPU kernel 内では device loop は event loop abstraction が提供し, またこれを用いた gloop APIs を提供する. gloop APIs は non-blocking な I/O operations であり device-host 間 IPC を通じて I/O operation を発行することができる. I/O operation が完了すると device loop は callback を呼び出す.
+
+host loop は IPC を経由して device loop からの I/O request を受け取り, asynchronous に I/O を発行する. そして I/O が完了した場合, device loop に向かって IPC で通知する. このため, device loop を抜けることなく, I/O を実行することができる. GPU kernel code を記述するだけで host I/O も含んだプログラムを記述することができる.
+
+scheduler はそれぞれの host loop からの実行権 request 及び実行時間を監視しており, (1) 実行中以外の host loop からの実行権 request があり, (2) 実行中の host loop が一定以上の時間 GPU kernel を実行し続けている時, 実行中の host loop 及び corresponding device loop に GPU kernel の suspend を行うよう request する. device loop は event loop の task 消費のタイミングで実行状態, すなわち queued tasks を含んだ device loop の状態を保存し GPU kernel を終了させる. これによって他の host loop に GPU kernel 実行権を明け渡すことができる.
+host loop は GPU kernel 終了後, pending tasks が残っているかどうかを確認し, 残っていた場合, 自動的に再び kernel 実行権を取得し GPU kernel を実行を試みる. この際, device loop の状態は以前保存されたものから resume される. gloop APIs user 側からは透過的に GPU kernel が suspend, resume される.
+
+device loop は他の host loop による kernel 実行権 request が存在しない場合中断しない. GPU kernel launch は costly operation である[GPUnet]. gloop は必要があって初めて device loop を抜けることによって必要のない GPU kernel launch による latency を削減する.
+
+malicious な application や gloop APIs を用いない application が存在した場合は, GPU kernel を kill する. これは GPU が non-preemptive であるため, kernel の実行の中断を gloop のような support なしに行うことができないためである.
+
+
+## Discussion
+
 ## Draft
 
 ![gloop](fig/multiple.png?raw=true)
