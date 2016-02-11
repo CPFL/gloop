@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
 
         std::shared_ptr<gloop::DeviceMemory> memory = gloop::DeviceMemory::create(filename.size() + 1);
         CUDA_SAFE_CALL(cudaMemcpy(memory->devicePointer(), filename.c_str(), filename.size() + 1,cudaMemcpyHostToDevice));
-        CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1ULL << 20) * 512));
+        CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1ULL << 20) * 896));
 
         gloop::Benchmark bench;
         bench.begin();
