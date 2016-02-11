@@ -46,9 +46,12 @@ int main(int argc, char** argv) {
     fprintf(stderr," iterations: %d blocks %d threads %d\n",trials, nblocks, nthreads);
 
     {
+        uint32_t pipelinePageCount = 0;
         dim3 blocks(nblocks);
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks, pipelinePageCount);
+
+        CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1ULL << 20)));
 
         hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<int> tuple) {
             throttle(loop, 0, thrust::get<0>(tuple));

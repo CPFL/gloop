@@ -27,6 +27,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include "config.h"
 #include "device_context.cuh"
 #include "io.cuh"
 #include "mapped_memory.cuh"
@@ -41,7 +42,7 @@ GLOOP_NONCOPYABLE(HostContext);
 public:
     __host__ ~HostContext();
 
-    __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 blocks);
+    __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 blocks, uint32_t pageCount = GLOOP_SHARED_PAGE_COUNT);
 
     __host__ DeviceContext deviceContext() { return m_context; }
 
@@ -71,7 +72,7 @@ public:
     }
 
 private:
-    HostContext(dim3 blocks);
+    HostContext(dim3 blocks, uint32_t pageCount);
     bool initialize();
 
     Mutex m_mutex;
@@ -80,6 +81,7 @@ private:
     std::shared_ptr<MappedMemory> m_pending { nullptr };
     DeviceContext m_context { nullptr };
     dim3 m_blocks { };
+    uint32_t m_pageCount { };
     std::vector<IPC*> m_exitRequired;
     std::vector<void*> m_unmapRequests;
     bool m_exitHandlerScheduled { false };

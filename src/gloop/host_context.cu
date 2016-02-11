@@ -31,17 +31,18 @@
 
 namespace gloop {
 
-std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 blocks)
+std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 blocks, uint32_t pageCount)
 {
-    std::unique_ptr<HostContext> hostContext(new HostContext(blocks));
+    std::unique_ptr<HostContext> hostContext(new HostContext(blocks, pageCount));
     if (!hostContext->initialize()) {
         return nullptr;
     }
     return hostContext;
 }
 
-HostContext::HostContext(dim3 blocks)
+HostContext::HostContext(dim3 blocks, uint32_t pageCount)
     : m_blocks(blocks)
+    , m_pageCount(pageCount)
 {
 }
 
@@ -62,7 +63,9 @@ bool HostContext::initialize()
     GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.pending, m_pending->mappedPointer(), 0));
 
     GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceLoop::PerBlockContext) * m_blocks.x * m_blocks.y));
-    GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceLoop::OnePage) * GLOOP_SHARED_PAGE_COUNT * m_blocks.x * m_blocks.y));
+    if (m_pageCount) {
+        GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceLoop::OnePage) * m_pageCount * m_blocks.x * m_blocks.y));
+    }
     return true;
 }
 
