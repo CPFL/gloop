@@ -23,6 +23,7 @@
 */
 
 #include <gloop/gloop.h>
+#include <gloop/benchmark.h>
 #include <gloop/device_memory.cuh>
 
 
@@ -86,9 +87,13 @@ int main(int argc, char** argv) {
         std::shared_ptr<gloop::DeviceMemory> memory = gloop::DeviceMemory::create(filename.size() + 1);
         CUDA_SAFE_CALL(cudaMemcpy(memory->devicePointer(), filename.c_str(), filename.size() + 1,cudaMemcpyHostToDevice));
 
+        gloop::Benchmark bench;
+        bench.begin();
         hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<char*> tuple) {
             entry(loop, thrust::get<0>(tuple));
         }, reinterpret_cast<char*>(memory->devicePointer()));
+        bench.end();
+        bench.report();
     }
 
     return 0;
