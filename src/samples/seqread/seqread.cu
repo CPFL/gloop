@@ -58,10 +58,8 @@ __device__ void entry(gloop::DeviceLoop* loop, char* filename)
 
     gloop::fs::open(loop, filename, O_RDONLY, [=](gloop::DeviceLoop* loop, int fd) {
         gloop::fs::fstat(loop, fd, [=](gloop::DeviceLoop* loop, int filesize) {
-#if 0
             size_t me = blockIdx.x * GLOOP_SHARED_PAGE_SIZE;
             perform_read(loop, scratch, fd, me, filesize);
-#endif
         });
     });
 }
@@ -86,6 +84,7 @@ int main(int argc, char** argv) {
 
         std::shared_ptr<gloop::DeviceMemory> memory = gloop::DeviceMemory::create(filename.size() + 1);
         CUDA_SAFE_CALL(cudaMemcpy(memory->devicePointer(), filename.c_str(), filename.size() + 1,cudaMemcpyHostToDevice));
+        CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1ULL << 20) * 512));
 
         gloop::Benchmark bench;
         bench.begin();
