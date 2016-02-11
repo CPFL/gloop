@@ -370,20 +370,4 @@ bool HostLoop::handleIO(Command command)
     return false;
 }
 
-void HostLoop::performOneTimeResume()
-{
-    if (m_currentContext->pending()) {
-        m_kernelService.post([&] {
-            resume();
-            performOneTimeResume();
-        });
-    }
-}
-
-void HostLoop::drainKernel()
-{
-    performOneTimeResume();
-    m_kernelService.run();
-}
-
 }  // namespace gloop

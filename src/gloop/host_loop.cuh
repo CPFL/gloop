@@ -122,7 +122,6 @@ private:
 
     uint32_t m_id { 0 };
     boost::asio::io_service m_ioService;
-    boost::asio::io_service m_kernelService;
     boost::asio::local::stream_protocol::socket m_monitorConnection;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
@@ -156,7 +155,9 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
                 }
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             }
-            drainKernel();
+            while (m_currentContext->pending()) {
+                resume();
+            }
             kernelWork.reset();
         });
         drain();
@@ -166,22 +167,22 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
 
 inline void HostLoop::lockLaunch()
 {
-        unsigned int priority { };
-        std::size_t size { };
-        Command command {
-            .type = Command::Type::Lock,
-            .payload = 0
-        };
-        m_requestQueue->send(&command, sizeof(Command), 0);
-        m_responseQueue->receive(&command, sizeof(Command), size, priority);
+    unsigned int priority { };
+    std::size_t size { };
+    Command command {
+        .type = Command::Type::Lock,
+        .payload = 0
+    };
+    m_requestQueue->send(&command, sizeof(Command), 0);
+    m_responseQueue->receive(&command, sizeof(Command), size, priority);
 }
 
 inline void HostLoop::unlockLaunch()
 {
-        Command command {
-            .type = Command::Type::Unlock
-        };
-        m_requestQueue->send(&command, sizeof(Command), 0);
+    Command command {
+        .type = Command::Type::Unlock
+    };
+    m_requestQueue->send(&command, sizeof(Command), 0);
 }
 
 }  // namespace gloop
