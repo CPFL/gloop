@@ -21,24 +21,39 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_LOOP_CU_H_
-#define GLOOP_LOOP_CU_H_
-#include <utility>
-#include "device_loop.cuh"
-namespace gloop {
-namespace loop {
 
-template<typename Lambda>
-inline __device__ auto async(DeviceLoop* loop, Lambda callback) -> void
+#include <gloop/gloop.h>
+
+__device__ void throttle(gloop::DeviceLoop* loop, int count, int limit)
 {
-    BEGIN_SINGLE_THREAD
-    {
-        loop->enqueueLater([callback](DeviceLoop* loop, volatile request::Request* req) {
-            callback(loop);
+    if (count != limit) {
+        gloop::loop::async(loop, [=] (gloop::DeviceLoop* loop) {
+            throttle(loop, count + 1, limit);
         });
     }
-    END_SINGLE_THREAD
 }
 
-} }  // namespace gloop::loop
-#endif  // GLOOP_LOOP_CU_H_
+int main(int argc, char** argv) {
+
+    if(argc<4) {
+        fprintf(stderr,"<kernel_iterations> <blocks> <threads>\n");
+        return -1;
+    }
+    int trials=atoi(argv[1]);
+    int nblocks=atoi(argv[2]);
+    int nthreads=atoi(argv[3]);
+
+    fprintf(stderr," iterations: %d blocks %d threads %d\n",trials, nblocks, nthreads);
+
+    {
+        dim3 blocks(nblocks);
+        std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
+
+        hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<int> tuple) {
+            throttle(loop, 0, thrust::get<0>(tuple));
+        }, trials);
+    }
+
+    return 0;
+}
