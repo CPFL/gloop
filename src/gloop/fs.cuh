@@ -140,9 +140,9 @@ inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offse
         });
     }
 
+    copyNoCache_block(buffer + (requestedOffset - offset), reinterpret_cast<volatile uchar*>(page), readCount);
     BEGIN_SINGLE_THREAD
     {
-        memcpyIO(buffer + (requestedOffset - offset), page, readCount);
         loop->freeOnePage(page);
     }
     END_SINGLE_THREAD
@@ -168,12 +168,10 @@ inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, siz
     BEGIN_SINGLE_THREAD
     {
         loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
+            unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
+            copyNoCache_block(page, reinterpret_cast<volatile uchar*>(buffer), transferringSize);
             BEGIN_SINGLE_THREAD
             {
-                unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
-                memcpyIO(page, buffer, transferringSize);
-                __threadfence();
-
                 auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
                     BEGIN_SINGLE_THREAD
                     {
