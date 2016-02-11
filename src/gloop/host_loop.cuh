@@ -67,9 +67,6 @@ public:
     template<typename DeviceLambda, class... Args>
     __host__ void launch(HostContext& context, dim3 threads, const DeviceLambda& callback, Args... args);
 
-private:
-    HostLoop(int deviceNumber);
-
     class KernelLock {
     GLOOP_NONCOPYABLE(KernelLock);
     public:
@@ -88,6 +85,11 @@ private:
     private:
         HostLoop& m_hostLoop;
     };
+
+    KernelLock& kernelLock() { return m_kernelLock; }
+
+private:
+    HostLoop(int deviceNumber);
 
     void prologue(HostContext&, dim3 threads);
     void epilogue();

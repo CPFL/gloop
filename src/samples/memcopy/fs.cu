@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <gloop/gloop.h>
+#include <gloop/benchmark.h>
 
 __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst);
 void init_device_app();
@@ -121,28 +122,24 @@ int main( int argc, char** argv)
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(global_devicenum);
         std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
 
-        init_device_app();
-        init_app();
+        {
+            // FIXME: Workaround.
+            std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+            init_device_app();
+            init_app();
 
-
-        if (num_files>0){
-            d_filenames=(char**)malloc(sizeof(char*)*num_files);
-            for(int i=0;i<num_files;i++){
-                d_filenames[i]=update_filename(argv[i+4]);
-                fprintf(stderr,"file -%s\n",argv[i+4]);
+            if (num_files>0){
+                d_filenames=(char**)malloc(sizeof(char*)*num_files);
+                for(int i=0;i<num_files;i++){
+                    d_filenames[i]=update_filename(argv[i+4]);
+                    fprintf(stderr,"file -%s\n",argv[i+4]);
+                }
             }
         }
-        double time_before=_timestamp();
-        if (!i) time_before=0;
-        // vector, matrix, out
 
-        double c_open, c_rw, c_close;
-        c_open=c_rw=c_close=0;
-
-
-        // test_cpy<<<nblocks,nthreads,0,hostLoop->streamMgr->kernelStream>>>(d_filenames[0], d_filenames[1]);
+        gloop::Benchmark benchmark;
+        benchmark.begin();
         {
-            // hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
             hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<char*, char*> tuple) {
                 char* src;
                 char* dst;
@@ -150,53 +147,52 @@ int main( int argc, char** argv)
                 test_cpy(loop, src, dst);
             }, d_filenames[0], d_filenames[1]);
         }
+        benchmark.end();
+        benchmark.report();
 
         // Already synchronized in HostLoop.
         // cudaError_t error = cudaDeviceSynchronize();
-        double time_after=_timestamp();
-        if(!i) time_after=0;
-        total_time+=(time_after-time_before);
-        if (i>0) {time_res[i]=time_after-time_before;
-            fprintf(stderr," t-%.3f-us\n",time_res[i]);
-        }
-        fprintf(stderr, "open: %.0f, rw %.0f, close %.0f usec\n",c_open,c_rw,c_close);
-
-        //Check for errors and failed asserts in asynchronous kernel launch.
-        // if(error != cudaSuccess )
-        // {
-        //     printf("Device failed, CUDA error message is: %s\n\n", cudaGetErrorString(error));
+        // double time_after=_timestamp();
+        // if(!i) time_after=0;
+        // total_time+=(time_after-time_before);
+        // if (i>0) {time_res[i]=time_after-time_before;
+        //     fprintf(stderr," t-%.3f-us\n",time_res[i]);
         // }
+        // fprintf(stderr, "open: %.0f, rw %.0f, close %.0f usec\n",c_open,c_rw,c_close);
+
+        // //Check for errors and failed asserts in asynchronous kernel launch.
+        // // if(error != cudaSuccess )
+        // // {
+        // //     printf("Device failed, CUDA error message is: %s\n\n", cudaGetErrorString(error));
+        // // }
 
 
-        //PRINT_DEBUG;
+        // //PRINT_DEBUG;
 
-        fprintf(stderr,"\n");
+        // fprintf(stderr,"\n");
 
-        PRINT_MALLOC;
-        PRINT_FREE;
-        PRINT_PAGE_ALLOC_RETRIES;
-        PRINT_LOCKLESS_SUCCESS;
-        PRINT_WRONG_FILE_ID;
+        // PRINT_MALLOC;
+        // PRINT_FREE;
+        // PRINT_PAGE_ALLOC_RETRIES;
+        // PRINT_LOCKLESS_SUCCESS;
+        // PRINT_WRONG_FILE_ID;
 
-        PRINT_RT_MALLOC;
-        PRINT_RT_FREE;
-        PRINT_HT_MISS;
-        PRINT_PRECLOSE_PUSH;
-        PRINT_PRECLOSE_FETCH;
-        PRINT_HT_HIT;
-        PRINT_FLUSHED_READ;
-        PRINT_FLUSHED_WRITE;
-        PRINT_TRY_LOCK_FAILED;
+        // PRINT_RT_MALLOC;
+        // PRINT_RT_FREE;
+        // PRINT_HT_MISS;
+        // PRINT_PRECLOSE_PUSH;
+        // PRINT_PRECLOSE_FETCH;
+        // PRINT_HT_HIT;
+        // PRINT_FLUSHED_READ;
+        // PRINT_FLUSHED_WRITE;
+        // PRINT_TRY_LOCK_FAILED;
 
 
-    //    cudaFree(d_output);
+        // cudaFree(d_output);
         // cudaDeviceReset();
         // if(error) break;
-
-
-
     }
-
+#if 0
 
 
     if (d_filenames) free(d_filenames);
@@ -217,6 +213,7 @@ int main( int argc, char** argv)
     fprintf(stderr,"Performance: %.3f usec +/- %.3f, %.3f GB,  %.3f GB/s +/- %.3f, FS_BLOCKSIZE %d FS_LOGBLOCKSIZE %d\n",avg_time,std_time, d_size,
                 avg_thpt*1e6,std_thpt*1e6,FS_BLOCKSIZE, FS_LOGBLOCKSIZE );
     //((double)output_size*(double)nblocks*(double)read_count)/(total_time/TRIALS)/1e3 );
+#endif
     return 0;
 }
 
