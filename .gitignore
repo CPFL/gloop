@@ -3,3 +3,4 @@ src/third_party/cuda
 src/samples/grep_text/gpufs.sorted
 mtx_*
 0tx_c
+data
