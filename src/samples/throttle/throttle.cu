@@ -27,7 +27,7 @@
 __device__ void throttle(gloop::DeviceLoop* loop, int count, int limit)
 {
     if (count != limit) {
-        gloop::loop::async(loop, [=] (gloop::DeviceLoop* loop) {
+        gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
             throttle(loop, count + 1, limit);
         });
     }

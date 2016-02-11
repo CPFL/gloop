@@ -29,7 +29,7 @@ namespace gloop {
 namespace loop {
 
 template<typename Lambda>
-inline __device__ auto async(DeviceLoop* loop, Lambda callback) -> void
+inline __device__ auto postTask(DeviceLoop* loop, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
     {
