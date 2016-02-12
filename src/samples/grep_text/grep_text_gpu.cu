@@ -57,7 +57,7 @@ __device__ void init_int_to_char_map()
 }
 #endif
 
-__forceinline__ __device__ void print_uint(char* tgt, int input, int *len){
+__device__ void print_uint(char* tgt, int input, int *len){
         if (input<10) {tgt[0]=int_to_char_map[input]; tgt[1]=0; *len=1; return;}
         char count=0;
         while(input>0)
@@ -125,7 +125,7 @@ __device__ int find_overlap(char* dst)
 
 
 
-__forceinline__ __device__ void prefetch_banks(char *dst, volatile char *src, int data_size, int total_buf)
+__device__ void prefetch_banks(char *dst, volatile char *src, int data_size, int total_buf)
 {
   __syncthreads();
   int i=0;
@@ -159,7 +159,7 @@ __device__ void prefetch(char *dst, volatile char *src, int data_size, int total
 #define MATCH  1
 
 
-__forceinline__ __device__ int match_string( char* a, char*data, int data_size, char* wordlen)
+__device__ int match_string( char* a, char*data, int data_size, char* wordlen)
 {
   int matches=0;
   char sizecount=0;
