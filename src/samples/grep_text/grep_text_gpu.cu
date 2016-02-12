@@ -9,7 +9,7 @@
 
 #include "fs_constants.h"
 #include "util.cu.h"
-#include "fs_calls.cu.h"
+// #include "fs_calls.cu.h"
 #include <sys/mman.h>
 #include <stdio.h>
 #include <gloop/gloop.h>
@@ -67,7 +67,7 @@ __device__ void print_uint(char* tgt, int input, int *len){
         }
 }
 
-
+#if 0
 __device__ volatile char* get_row(volatile uchar** cur_page_ptr, size_t* cur_page_offset, size_t req_file_offset, int max_file_size, int fd, int type)
 {
         if (*cur_page_ptr!=NULL && *cur_page_offset+FS_BLOCKSIZE>req_file_offset)
@@ -88,6 +88,7 @@ struct _pagehelper{
         volatile uchar* page;
         size_t file_offset;
 };
+#endif
 
 //#define alpha(src)      (((src)>=65 && (src)<=90)||( (src)>=97 && (src)<=122)|| (src)==95 || (src)==39)
 #define alpha(src)      (((src)>=65 && (src)<=90)||( (src)>=97 && (src)<=122)|| (src)==95)
