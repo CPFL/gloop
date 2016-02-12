@@ -222,7 +222,7 @@ __device__ bool perform_matching(gloop::DeviceLoop* loop, struct context ctx, in
     __shared__ char input[INPUT_PREFETCH_ARRAY];
     int to_read = ctx.to_read;
     for(;input_block< to_read;input_block+=INPUT_PREFETCH_SIZE){
-        int data_left=ctx.to_read-input_block;
+        int data_left=to_read-input_block;
 
         prefetch_banks(input,ctx.input_tmp + input_block,min(data_left,INPUT_PREFETCH_SIZE),INPUT_PREFETCH_SIZE);
         char word_size=0;
@@ -324,7 +324,7 @@ __device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char
     __shared__ int db_strlen;
 
     if (char* current_db = get_next(ctx, previous_db, &next_db, &db_strlen)) {
-        gloop::fs::open(loop, current_db,O_GRDONLY, [=](gloop::DeviceLoop* loop, int zfd_db) {
+        gloop::fs::open(loop, current_db,O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_db) {
             if (zfd_db<0) ERROR("Failed to open DB file");
             gloop::fs::fstat(loop, zfd_db, [=](gloop::DeviceLoop* loop, int db_size) {
                 process_one_chunk_in_db(loop, ctx, next_db, zfd_db, 0, db_size, db_strlen);
@@ -352,13 +352,13 @@ __device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char
 
 void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* dbs)
 {
-    gloop::fs::open(loop, dbs,O_GRDONLY, [=](gloop::DeviceLoop* loop, int zfd_dbs) {
+    gloop::fs::open(loop, dbs,O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_dbs) {
         if (zfd_dbs<0) ERROR("Failed to open output");
 
-        gloop::fs::open(loop, out,O_GWRONCE, [=](gloop::DeviceLoop* loop, int zfd_o) {
+        gloop::fs::open(loop, out,O_RDWR|O_CREAT, [=](gloop::DeviceLoop* loop, int zfd_o) {
             if (zfd_o<0) ERROR("Failed to open output");
 
-            gloop::fs::open(loop, src,O_GRDONLY, [=](gloop::DeviceLoop* loop, int zfd_src) {
+            gloop::fs::open(loop, src,O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_src) {
                 if (zfd_src<0) ERROR("Failed to open input");
 
                 gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop* loop, int in_size) {

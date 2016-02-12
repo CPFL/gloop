@@ -3,8 +3,10 @@
 # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++14 -stdlib=libc++")
 # set(GLOOP_CUDA_RUNTIME_LIBS cudart_static;dl;rt;c++;m;${CMAKE_THREAD_LIBS_INIT})
 
-set(CMAKE_CXX_FLAGS "-g3 -std=c++11")
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -g -G -rdc=true --expt-extended-lambda -std=c++11 -w --keep")
+# set(CMAKE_CXX_FLAGS "-g3 -std=c++11")
+# set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -g -G -rdc=true --expt-extended-lambda -std=c++11 -w --keep")
+set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -maxrregcount 32 --generate-code code=sm_21,arch=compute_20 --generate-code code=sm_30,arch=compute_30 -rdc=true --expt-extended-lambda -std=c++11 -w --keep")
 
 set(GLOOP_CUDA_RUNTIME_LIBS cuda cudart_static;dl;rt;m;${CMAKE_THREAD_LIBS_INIT})
 link_directories(/usr/local/cuda-7.5/lib64)
