@@ -435,7 +435,7 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
 
 void init_device_app()
 {
-    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (2 << 20) * 256));
+    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1 << 20) * 256));
 }
 
 void init_app()

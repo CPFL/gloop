@@ -92,7 +92,6 @@ int main( int argc, char** argv)
         double time_before=_timestamp();
         if (!i) time_before=0;
 
-        printf("Hello\n");
         hostLoop->launch(*hostContext, nthreads, [] __device__ (gloop::DeviceLoop* loop, thrust::tuple<char*, char*, char*> tuple) {
             char* src;
             char* out;
@@ -100,7 +99,6 @@ int main( int argc, char** argv)
             thrust::tie(src, out, dbs) = tuple;
             grep_text(loop, src, out, dbs);
         }, d_filenames[0], d_filenames[1], d_filenames[2]);
-        printf("Done\n");
 
         // cudaError_t error = cudaDeviceSynchronize();
         double time_after=_timestamp();
