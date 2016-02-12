@@ -125,15 +125,18 @@ template <int BLOCK_SIZE> __device__ void
 performInnerLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY, int f_a, int f_b, int f_c, volatile float* ptr_a, volatile float* ptr_c, int by, int bx)
 {
     if (bx == perBlockX) {
-        if(perBlockX>4) {
-            gmsync(ptr_c,0,0);
-        }
-        //gmsync(ptr_c,0,0);
-        gloop::fs::munmap(loop, ptr_c, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
-            gloop::fs::munmap(loop, ptr_a, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
-                performOuterLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, by + 1);
+        auto nextProcess = [=](gloop::DeviceLoop* loop, int error) {
+            gloop::fs::munmap(loop, ptr_c, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
+                gloop::fs::munmap(loop, ptr_a, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
+                    performOuterLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, by + 1);
+                });
             });
-        });
+        };
+        if(perBlockX>4) {
+            gloop::fs::msync(loop, ptr_c, wA*BLOCK_SIZE*sizeof(float), 0, nextProcess);
+            return;
+        }
+        nextProcess(loop, 0);
         return;
     }
 

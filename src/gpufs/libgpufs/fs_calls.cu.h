@@ -41,7 +41,7 @@
 #define WRITE 1
 
 __device__ volatile FTable_page* getRwLockedPage(volatile FTable_entry* fentry, size_t block_id, int fd, int cpu_fd,int type_req);
-
+#if 0
  __device__ int gclose(int fd);
  __device__ int gopen(char* filename, int flags);
 __device__ int gmsync(volatile void *addr, size_t length,int flags);
@@ -56,5 +56,5 @@ __device__ size_t gwrite(int fd,size_t offset, size_t size, uchar* buffer);
 
  __device__ int gfsync(int fd);
  __device__ int gftruncate(int fd, int size);
-
+#endif
 #endif
