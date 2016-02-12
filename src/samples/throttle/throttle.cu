@@ -23,6 +23,7 @@
 */
 
 #include <gloop/gloop.h>
+#include <gloop/benchmark.h>
 
 __device__ void throttle(gloop::DeviceLoop* loop, int count, int limit)
 {
@@ -42,8 +43,9 @@ int main(int argc, char** argv) {
     int trials=atoi(argv[1]);
     int nblocks=atoi(argv[2]);
     int nthreads=atoi(argv[3]);
+    int id=atoi(argv[4]);
 
-    fprintf(stderr," iterations: %d blocks %d threads %d\n",trials, nblocks, nthreads);
+    fprintf(stderr," iterations: %d blocks %d threads %d id %d\n",trials, nblocks, nthreads, id);
 
     {
         uint32_t pipelinePageCount = 0;
@@ -53,9 +55,14 @@ int main(int argc, char** argv) {
 
         CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1ULL << 20)));
 
+        gloop::Benchmark benchmark;
+        benchmark.begin();
         hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<int> tuple) {
             throttle(loop, 0, thrust::get<0>(tuple));
         }, trials);
+        benchmark.end();
+        printf("[%d] ", id);
+        benchmark.report();
     }
 
     return 0;
