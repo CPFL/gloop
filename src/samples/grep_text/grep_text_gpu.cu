@@ -27,7 +27,6 @@ struct context {
     char* db_files;
     int to_read;
     char* current_db_name;
-    char* input;
     char* corpus;
     int* output_count;
 };
@@ -39,13 +38,26 @@ __forceinline__ __device__ void memcpy_thread(volatile char* dst, const volatile
 }
 
 
-__device__ char int_to_char_map[10];
+const __constant__ char int_to_char_map[10] = {
+    '0',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9'
+};
+#if 0
 __device__ void init_int_to_char_map()
 {
   int_to_char_map[0]='0'; int_to_char_map[1]='1'; int_to_char_map[2]='2'; int_to_char_map[3]='3'; int_to_char_map[4]='4'; int_to_char_map[5]='5'; int_to_char_map[6]='6'; int_to_char_map[7]='7'; int_to_char_map[8]='8'; int_to_char_map[9]='9';
 }
+#endif
 
-__device__ void print_uint(char* tgt, int input, int *len){
+__forceinline__ __device__ void print_uint(char* tgt, int input, int *len){
         if (input<10) {tgt[0]=int_to_char_map[input]; tgt[1]=0; *len=1; return;}
         char count=0;
         while(input>0)
@@ -113,7 +125,7 @@ __device__ int find_overlap(char* dst)
 
 
 
-__device__ void prefetch_banks(char *dst, volatile char *src, int data_size, int total_buf)
+__forceinline__ __device__ void prefetch_banks(char *dst, volatile char *src, int data_size, int total_buf)
 {
   __syncthreads();
   int i=0;
@@ -147,13 +159,14 @@ __device__ void prefetch(char *dst, volatile char *src, int data_size, int total
 #define MATCH  1
 
 
-__device__ int match_string( char* a, char*data, int data_size, char* wordlen)
+__forceinline__ __device__ int match_string( char* a, char*data, int data_size, char* wordlen)
 {
   int matches=0;
   char sizecount=0;
   char word_start=1;
   if (*a==0) return -1;
 
+  #pragma unroll 32
   for(int i=0;i<data_size;i++)
   {
     if (!alpha(data[i])) {
@@ -161,7 +174,6 @@ __device__ int match_string( char* a, char*data, int data_size, char* wordlen)
       word_start=1;
       sizecount=0;
     }else{
-
       if (a[sizecount]==data[i]) { sizecount++; }
       else {  word_start=0;  sizecount=0;}
     }
@@ -200,27 +212,49 @@ __device__ char* get_next(struct context& ctx, char* str, char** next, int* db_s
 #define PREFETCH_SIZE 16384
 
 __device__ int global_output;
+__device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context ctx, char* next_db, int zfd_db, size_t _cursor, size_t db_size, int db_strlen);
 
+__device__ bool perform_matching(gloop::DeviceLoop* loop, struct context ctx, int input_block, int corpus_size, int db_strlen, int db_size, char* next_db, int zfd_db, int next_cursor)
+{
+    ///////////////////// NOW WE ARE DEALING WITH THE INPUT
+    //
+    // indexing is in chars, not in row size
+    __shared__ char input[INPUT_PREFETCH_ARRAY];
+    int to_read = ctx.to_read;
+    for(;input_block< to_read;input_block+=INPUT_PREFETCH_SIZE){
+        int data_left=ctx.to_read-input_block;
 
-__device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char* previous_db);
+        prefetch_banks(input,ctx.input_tmp + input_block,min(data_left,INPUT_PREFETCH_SIZE),INPUT_PREFETCH_SIZE);
+        char word_size=0;
+        int res= match_string(input+threadIdx.x*33,ctx.corpus,corpus_size,&word_size);
 
-__device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context ctx, char* current_db, char* next_db, int zfd_db, size_t _cursor, size_t db_size, int db_strlen) {
-    if (_cursor < db_size) {
-        bool last_iter=db_size-_cursor<(CORPUS_PREFETCH_SIZE+32);
-        int db_left=last_iter?db_size-_cursor: CORPUS_PREFETCH_SIZE+32;
+        if (!__syncthreads_or(res!=LEN_ZERO && res )) continue;
 
-        BEGIN_SINGLE_THREAD
-            ctx.corpus[db_left]='\0';
-            __threadfence_block();
-        END_SINGLE_THREAD
-        gloop::fs::read(loop, zfd_db,_cursor,db_left,(uchar*)ctx.corpus, [=](gloop::DeviceLoop* loop, int bytes_read) {
-            if(bytes_read!=db_left) ERROR("Failed to read DB file");
+        if(res!=LEN_ZERO && res ){
+            char numstr[4]; int numlen;
+            print_uint(numstr,res,&numlen);
 
+            int offset=atomicAdd(ctx.output_count,(numlen+1+word_size+1+db_strlen+1));
 
-            // take care of the stitches
-            int overlap=0;
+            char* outptr=ctx.output_buffer+offset;
+            memcpy_thread(outptr, input+threadIdx.x*33,word_size);
+            outptr[word_size]=' ';
 
-            auto next = [=](size_t _cursor) {
+            memcpy_thread(outptr+word_size+1,numstr,numlen);
+            outptr[word_size+numlen+1]=' ';
+
+            memcpy_thread(outptr+word_size+numlen+2,ctx.current_db_name,db_strlen);
+            outptr[word_size+numlen+db_strlen+2]='\n';
+        }
+        __syncthreads();
+        if (*ctx.output_count){
+            __shared__ int old_offset;
+            if (threadIdx.x==0) old_offset=atomicAdd(&global_output, *ctx.output_count);
+            __syncthreads();
+
+            gloop::fs::write(loop, ctx.zfd_o, old_offset, *ctx.output_count,(uchar*) ctx.output_buffer, [=](gloop::DeviceLoop* loop, int written_size) {
+                if (written_size != *ctx.output_count) ERROR("Write to output failed");
+
                 __syncthreads();
 
                 /// how many did we find
@@ -228,8 +262,40 @@ __device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context 
                     *ctx.output_count = 0;
                 }
                 __syncthreads();
-                process_one_chunk_in_db(loop, ctx, current_db, next_db, zfd_db, _cursor, db_size, db_strlen);
-            };
+                if (perform_matching(loop, ctx, input_block+INPUT_PREFETCH_SIZE, corpus_size, db_strlen, db_size, next_db, zfd_db, next_cursor)) {
+                    process_one_chunk_in_db(loop, ctx, next_db, zfd_db, next_cursor, db_size, db_strlen);
+                }
+            });
+            return false;
+        }
+        __syncthreads();
+
+        /// how many did we find
+        if(threadIdx.x==0){
+            *ctx.output_count = 0;
+        }
+        __syncthreads();
+    }
+    return true;
+}
+
+__device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char* previous_db);
+
+__device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context ctx, char* next_db, int zfd_db, size_t _cursor, size_t db_size, int db_strlen) {
+    if (_cursor < db_size) {
+        bool last_iter=db_size-_cursor<(CORPUS_PREFETCH_SIZE+32);
+        int db_left=last_iter?db_size-_cursor: CORPUS_PREFETCH_SIZE+32;
+
+        BEGIN_SINGLE_THREAD
+        {
+            ctx.corpus[db_left]='\0';
+            __threadfence_block();
+        }
+        END_SINGLE_THREAD
+        gloop::fs::read(loop, zfd_db,_cursor,db_left,(uchar*)ctx.corpus, [=](gloop::DeviceLoop* loop, int bytes_read) {
+            if(bytes_read!=db_left) ERROR("Failed to read DB file");
+            // take care of the stitches
+            int overlap=0;
 
             size_t next_cursor = _cursor;
             if(!last_iter){
@@ -237,48 +303,9 @@ __device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context 
                 next_cursor+=overlap;
             }
             next_cursor+=CORPUS_PREFETCH_SIZE;
-            ///////////////////// NOW WE ARE DEALING WITH THE INPUT
-            //
-            // indexing is in chars, not in row size
-            for(int input_block=0;input_block<ctx.to_read;input_block+=INPUT_PREFETCH_SIZE){
-                int data_left=ctx.to_read-input_block;
-
-                prefetch_banks(ctx.input,ctx.input_tmp + input_block,min(data_left,INPUT_PREFETCH_SIZE),INPUT_PREFETCH_SIZE);
-
-                char word_size=0;
-                int res= match_string(ctx.input+threadIdx.x*33,ctx.corpus,last_iter?db_left+1:CORPUS_PREFETCH_SIZE+overlap+1,&word_size);
-
-                if (!__syncthreads_or(res!=LEN_ZERO && res )) continue;
-
-                if(res!=LEN_ZERO && res ){
-                    char numstr[4]; int numlen;
-                    print_uint(numstr,res,&numlen);
-
-                    int offset=atomicAdd(ctx.output_count,(numlen+1+word_size+1+db_strlen+1));
-
-                    char* outptr=ctx.output_buffer+offset;
-                    memcpy_thread(outptr, ctx.input+threadIdx.x*33,word_size);
-                    outptr[word_size]=' ';
-
-                    memcpy_thread(outptr+word_size+1,numstr,numlen);
-                    outptr[word_size+numlen+1]=' ';
-
-                    memcpy_thread(outptr+word_size+numlen+2,current_db,db_strlen);
-                    outptr[word_size+numlen+db_strlen+2]='\n';
-                }
-                __syncthreads();
-                if (*ctx.output_count){
-                    __shared__ int old_offset;
-                    if (threadIdx.x==0) old_offset=atomicAdd(&global_output, *ctx.output_count);
-                    __syncthreads();
-
-                    gloop::fs::write(loop, ctx.zfd_o, old_offset, *ctx.output_count,(uchar*) ctx.output_buffer, [=](gloop::DeviceLoop* loop, int written_size) {
-                        if (written_size != *ctx.output_count) ERROR("Write to output failed");
-                        next(next_cursor);
-                    });
-                    return;
-                }
-                next(next_cursor);
+            int corpus_size = last_iter?db_left+1:CORPUS_PREFETCH_SIZE+overlap+1;
+            if (perform_matching(loop, ctx, 0, corpus_size, db_strlen, db_size, next_db, zfd_db, next_cursor)) {
+                process_one_chunk_in_db(loop, ctx, next_db, zfd_db, next_cursor, db_size, db_strlen);
             }
         });
         return;
@@ -300,7 +327,7 @@ __device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char
         gloop::fs::open(loop, current_db,O_GRDONLY, [=](gloop::DeviceLoop* loop, int zfd_db) {
             if (zfd_db<0) ERROR("Failed to open DB file");
             gloop::fs::fstat(loop, zfd_db, [=](gloop::DeviceLoop* loop, int db_size) {
-                process_one_chunk_in_db(loop, ctx, current_db, next_db, zfd_db, 0, db_size, db_strlen);
+                process_one_chunk_in_db(loop, ctx, next_db, zfd_db, 0, db_size, db_strlen);
             });
         });
         return;
@@ -369,12 +396,11 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                         __shared__ char* input_tmp;
                         __shared__ char* output_buffer;
                         __shared__ char* current_db_name;
-                        __shared__ char* input;
                         __shared__ char* corpus;
                         __shared__ int* output_count;
                         BEGIN_SINGLE_THREAD
                         {
-                            init_int_to_char_map();
+                            // init_int_to_char_map();
                             input_tmp=(char*)malloc(data_to_process);
                             assert(input_tmp);
                             output_buffer=(char*)malloc(data_to_process/32*(32+FILENAME_SIZE+sizeof(int)));
@@ -395,7 +421,6 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                                 init_lock.signal();
                             }
                             current_db_name = (char*)malloc(FILENAME_SIZE+1);
-                            input = (char*)malloc(INPUT_PREFETCH_ARRAY);
                             corpus = (char*)malloc(CORPUS_PREFETCH_SIZE+32+1); // just in case we need the leftovers
                         }
                         END_SINGLE_THREAD
@@ -417,7 +442,6 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                                         db_files,
                                         to_read,
                                         current_db_name,
-                                        input,
                                         corpus,
                                         output_count
                                     };
