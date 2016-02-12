@@ -33,9 +33,11 @@
 #include "fs_globals.cu.h"
 
 // no reference counting here
+#if 0
  __device__ int single_thread_fsync(int fd);
  __device__ int single_thread_ftruncate(int fd, int size);
  __device__ int single_thread_open(char* filename, int flags);
+#endif
 
 #define READ 0
 #define WRITE 1
