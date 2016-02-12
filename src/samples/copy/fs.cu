@@ -88,7 +88,7 @@ int main( int argc, char** argv)
 
     fprintf(stderr,"GPU device chosen %d\n",global_devicenum);
 
-    if(argc<5) {
+    if(argc<7) {
         fprintf(stderr,"<kernel_iterations> <blocks> <threads> f1 f2 ... f_#files\n");
         return -1;
     }
@@ -96,10 +96,11 @@ int main( int argc, char** argv)
     assert(trials<=MAX_TRIALS);
     int nblocks=atoi(argv[2]);
     int nthreads=atoi(argv[3]);
+    int id = atoi(argv[4]);
 
-    fprintf(stderr," iterations: %d blocks %d threads %d\n",trials, nblocks, nthreads);
+    fprintf(stderr," iterations: %d blocks %d threads %d id %d\n",trials, nblocks, nthreads, id);
 
-    int num_files=argc-1-3;
+    int num_files=argc-1-4;
     char** d_filenames=NULL;
 
 
@@ -119,8 +120,8 @@ int main( int argc, char** argv)
             if (num_files>0){
                 d_filenames=(char**)malloc(sizeof(char*)*num_files);
                 for(int i=0;i<num_files;i++){
-                    d_filenames[i]=update_filename(argv[i+4]);
-                    fprintf(stderr,"file -%s\n",argv[i+4]);
+                    d_filenames[i]=update_filename(argv[i+5]);
+                    fprintf(stderr,"file -%s\n",argv[i+5]);
                 }
             }
         }
@@ -136,6 +137,7 @@ int main( int argc, char** argv)
             }, d_filenames[0], d_filenames[1]);
         }
         benchmark.end();
+        printf("[%d] ", id);
         benchmark.report();
     }
     return 0;
