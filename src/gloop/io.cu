@@ -43,7 +43,7 @@ int FileDescriptorTable::open(std::string fileName, int mode)
         iter->second->refCount++;
         return iter->second->fd;
     }
-    int fd = ::open(fileName.c_str(), mode);
+    int fd = ::open(fileName.c_str(), mode, 644);
     m_fileNameToFile.insert(iter, std::make_pair(fileName, std::make_shared<File>(fd)));
     return fd;
 }

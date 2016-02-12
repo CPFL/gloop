@@ -16,6 +16,8 @@ if (CMAKE_BUILD_TYPE MATCHES Release)
         -DRELEASE=1
         -DMALLOC_STATS
     )
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O2")
 endif()
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
