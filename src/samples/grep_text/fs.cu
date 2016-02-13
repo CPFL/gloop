@@ -16,12 +16,10 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "fs_debug.cu.h"
-#include "fs_initializer.cu.h"
-
 // INCLUDING CODE INLINE - change later
 #include "host_loop.h"
 #include <gloop/gloop.h>
+#include <gloop/benchmark.h>
 //
 
 
@@ -92,6 +90,8 @@ int main( int argc, char** argv)
         double time_before=_timestamp();
         if (!i) time_before=0;
 
+        gloop::Benchmark benchmark;
+        benchmark.begin();
         hostLoop->launch(*hostContext, nthreads, [] __device__ (gloop::DeviceLoop* loop, thrust::tuple<char*, char*, char*> tuple) {
             char* src;
             char* out;
@@ -99,6 +99,8 @@ int main( int argc, char** argv)
             thrust::tie(src, out, dbs) = tuple;
             grep_text(loop, src, out, dbs);
         }, d_filenames[0], d_filenames[1], d_filenames[2]);
+        benchmark.end();
+        benchmark.report();
 
         // cudaError_t error = cudaDeviceSynchronize();
         double time_after=_timestamp();
