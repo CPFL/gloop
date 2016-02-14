@@ -53,7 +53,10 @@ int main(int argc, char** argv) {
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
         std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks, pipelinePageCount);
 
-        CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1ULL << 20)));
+        {
+            std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1ULL << 20)));
+        }
 
         gloop::Benchmark benchmark;
         benchmark.begin();

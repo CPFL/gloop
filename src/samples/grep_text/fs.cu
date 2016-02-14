@@ -76,15 +76,18 @@ int main( int argc, char** argv)
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
         std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
 
-        init_device_app();
-        init_app();
+        {
+            std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+            init_device_app();
+            init_app();
 
 
-        if (num_files>0){
-            d_filenames=(char**)malloc(sizeof(char*)*num_files);
-            for(int i=0;i<num_files;i++){
-                d_filenames[i]=update_filename(argv[i+4]);
-                fprintf(stderr,"file -%s\n",argv[i+4]);
+            if (num_files>0){
+                d_filenames=(char**)malloc(sizeof(char*)*num_files);
+                for(int i=0;i<num_files;i++){
+                    d_filenames[i]=update_filename(argv[i+4]);
+                    fprintf(stderr,"file -%s\n",argv[i+4]);
+                }
             }
         }
         gloop::Benchmark benchmark;
