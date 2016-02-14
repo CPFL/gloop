@@ -54,14 +54,14 @@ int main( int argc, char** argv)
 
 
 	if(argc<5) {
-		fprintf(stderr,"<kernel_iterations> <blocks> <threads> f1 f2 ... f_#files\n");
+		fprintf(stderr,"<id> <blocks> <threads> f1 f2 ... f_#files\n");
 		return -1;
 	}
-	int trials=atoi(argv[1]);
+	int id=atoi(argv[1]);
 	int nblocks=atoi(argv[2]);
 	int nthreads=atoi(argv[3]);
 
-	fprintf(stderr," iterations: %d blocks %d threads %d\n",trials, nblocks, nthreads);
+	fprintf(stderr," id: %d blocks %d threads %d\n",id, nblocks, nthreads);
 
 	int num_files=argc-1-3;
 	char** d_filenames=NULL;
@@ -70,7 +70,7 @@ int main( int argc, char** argv)
 	double total_time=0;
 //	int scratch_size=128*1024*1024*4;
 
-    for(int i=1;i<trials+1;i++){
+    {
         dim3 blocks(nblocks);
 
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
@@ -87,9 +87,6 @@ int main( int argc, char** argv)
                 fprintf(stderr,"file -%s\n",argv[i+4]);
             }
         }
-        double time_before=_timestamp();
-        if (!i) time_before=0;
-
         gloop::Benchmark benchmark;
         benchmark.begin();
         hostLoop->launch(*hostContext, nthreads, [] __device__ (gloop::DeviceLoop* loop, thrust::tuple<char*, char*, char*> tuple) {
@@ -100,48 +97,9 @@ int main( int argc, char** argv)
             grep_text(loop, src, out, dbs);
         }, d_filenames[0], d_filenames[1], d_filenames[2]);
         benchmark.end();
+        printf("[%d] ", id);
         benchmark.report();
-
-        // cudaError_t error = cudaDeviceSynchronize();
-        double time_after=_timestamp();
-        if(!i) time_after=0;
-        total_time+=(time_after-time_before);
-
-        //Check for errors and failed asserts in asynchronous kernel launch.
-        //if(error != cudaSuccess )
-        //{
-        //    printf("Device failed, CUDA error message is: %s\n\n", cudaGetErrorString(error));
-        //}
-
-
-        //PRINT_DEBUG;
-
-        fprintf(stderr,"\n");
-
-        PRINT_MALLOC;
-        PRINT_FREE;
-        PRINT_PAGE_ALLOC_RETRIES;
-        PRINT_LOCKLESS_SUCCESS;
-        PRINT_WRONG_FILE_ID;
-
-        PRINT_RT_MALLOC;
-        PRINT_RT_FREE;
-        PRINT_HT_MISS;
-        PRINT_PRECLOSE_PUSH;
-        PRINT_PRECLOSE_FETCH;
-        PRINT_HT_HIT;
-        PRINT_FLUSHED_READ;
-        PRINT_FLUSHED_WRITE;
-        PRINT_TRY_LOCK_FAILED;
-
-
-    //	cudaFree(d_output);
-        // cudaDeviceReset();
-        // if(error) break;
-
     }
 	if (d_filenames) free(d_filenames);
-	fprintf(stderr,"Performance: %.3f usec FS_BLOCKSIZE %d FS_LOGBLOCKSIZE %d\n",total_time/trials,FS_BLOCKSIZE, FS_LOGBLOCKSIZE );
-//((double)output_size*(double)nblocks*(double)read_count)/(total_time/TRIALS)/1e3 );
 	return 0;
 }
