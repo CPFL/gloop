@@ -221,14 +221,21 @@ __device__ bool perform_matching(gloop::DeviceLoop* loop, struct context ctx, in
     // indexing is in chars, not in row size
     __shared__ char input[INPUT_PREFETCH_ARRAY];
     int to_read = ctx.to_read;
-    for(;input_block< to_read;input_block+=INPUT_PREFETCH_SIZE){
+    if (input_block< to_read){
         int data_left=to_read-input_block;
 
         prefetch_banks(input,ctx.input_tmp + input_block,min(data_left,INPUT_PREFETCH_SIZE),INPUT_PREFETCH_SIZE);
         char word_size=0;
         int res= match_string(input+threadIdx.x*33,ctx.corpus,corpus_size,&word_size);
 
-        if (!__syncthreads_or(res!=LEN_ZERO && res )) continue;
+        if (!__syncthreads_or(res!=LEN_ZERO && res )) {
+            gloop::loop::postTask(loop, [=](gloop::DeviceLoop* loop) {
+                if (perform_matching(loop, ctx, input_block+INPUT_PREFETCH_SIZE, corpus_size, db_strlen, db_size, next_db, zfd_db, next_cursor)) {
+                    process_one_chunk_in_db(loop, ctx, next_db, zfd_db, next_cursor, db_size, db_strlen);
+                }
+            });
+            return false;
+        }
 
         if(res!=LEN_ZERO && res ){
             char numstr[4]; int numlen;
@@ -268,13 +275,20 @@ __device__ bool perform_matching(gloop::DeviceLoop* loop, struct context ctx, in
             });
             return false;
         }
-        __syncthreads();
+        gloop::loop::postTask(loop, [=](gloop::DeviceLoop* loop) {
+            __syncthreads();
 
-        /// how many did we find
-        if(threadIdx.x==0){
-            *ctx.output_count = 0;
-        }
-        __syncthreads();
+            /// how many did we find
+            if(threadIdx.x==0){
+                *ctx.output_count = 0;
+            }
+            __syncthreads();
+
+            if (perform_matching(loop, ctx, input_block+INPUT_PREFETCH_SIZE, corpus_size, db_strlen, db_size, next_db, zfd_db, next_cursor)) {
+                process_one_chunk_in_db(loop, ctx, next_db, zfd_db, next_cursor, db_size, db_strlen);
+            }
+        });
+        return false;
     }
     return true;
 }
