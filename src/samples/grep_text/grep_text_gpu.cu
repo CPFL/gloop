@@ -375,8 +375,8 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
             gloop::fs::open(loop, src,O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_src) {
                 if (zfd_src<0) ERROR("Failed to open input");
 
-                gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop* loop, int in_size) {
-                    int total_words=in_size/32;
+                gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop* loop, int src_size) {
+                    int total_words=src_size/32;
 
                     if (total_words==0) ERROR("empty input");
 
@@ -400,67 +400,65 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                     }
 
 
-                    gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop* loop, size_t src_size) {
-                        int data_to_process=words_per_chunk*32;
+                    int data_to_process=words_per_chunk*32;
 
-                        if (blockIdx.x==gridDim.x-1)
-                            data_to_process=src_size-data_to_process*blockIdx.x;
+                    if (blockIdx.x==gridDim.x-1)
+                        data_to_process=src_size-data_to_process*blockIdx.x;
 
-                        __shared__ char* db_files;
-                        __shared__ char* input_tmp;
-                        __shared__ char* output_buffer;
-                        __shared__ char* current_db_name;
-                        __shared__ char* corpus;
-                        __shared__ int* output_count;
-                        BEGIN_SINGLE_THREAD
-                        {
-                            // init_int_to_char_map();
-                            input_tmp=(char*)malloc(data_to_process);
-                            assert(input_tmp);
-                            output_buffer=(char*)malloc(data_to_process/32*(32+FILENAME_SIZE+sizeof(int)));
-                            assert(output_buffer);
-                            output_count = (int*)malloc(sizeof(int));
-                            *output_count = 0;
+                    __shared__ char* db_files;
+                    __shared__ char* input_tmp;
+                    __shared__ char* output_buffer;
+                    __shared__ char* current_db_name;
+                    __shared__ char* corpus;
+                    __shared__ int* output_count;
+                    BEGIN_SINGLE_THREAD
+                    {
+                        // init_int_to_char_map();
+                        input_tmp=(char*)malloc(data_to_process);
+                        assert(input_tmp);
+                        output_buffer=(char*)malloc(data_to_process/32*(32+FILENAME_SIZE+sizeof(int)));
+                        assert(output_buffer);
+                        output_count = (int*)malloc(sizeof(int));
+                        *output_count = 0;
 
-                            db_files=(char*) malloc(3*1024*1024);
-                            assert(db_files);
-                            __shared__ int toInit;
-                            toInit=init_lock.try_wait();
-                            if (toInit == 1) {
-                                global_output=0;
+                        db_files=(char*) malloc(3*1024*1024);
+                        assert(db_files);
+                        __shared__ int toInit;
+                        toInit=init_lock.try_wait();
+                        if (toInit == 1) {
+                            global_output=0;
 #if 0
-                                single_thread_ftruncate(zfd_o,0);
+                            single_thread_ftruncate(zfd_o,0);
 #endif
-                                __threadfence();
-                                init_lock.signal();
-                            }
-                            current_db_name = (char*)malloc(FILENAME_SIZE+1);
-                            corpus = (char*)malloc(CORPUS_PREFETCH_SIZE+32+1); // just in case we need the leftovers
+                            __threadfence();
+                            init_lock.signal();
                         }
-                        END_SINGLE_THREAD
+                        current_db_name = (char*)malloc(FILENAME_SIZE+1);
+                        corpus = (char*)malloc(CORPUS_PREFETCH_SIZE+32+1); // just in case we need the leftovers
+                    }
+                    END_SINGLE_THREAD
 
-                        gloop::fs::fstat(loop, zfd_dbs, [=](gloop::DeviceLoop* loop, size_t dbs_size) {
-                            gloop::fs::read(loop, zfd_dbs,0,dbs_size,(uchar*)db_files, [=](gloop::DeviceLoop* loop, size_t db_bytes_read) {
-                                if(db_bytes_read!=dbs_size) ERROR("Failed to read dbs");
-                                db_files[db_bytes_read]='\0';
+                    gloop::fs::fstat(loop, zfd_dbs, [=](gloop::DeviceLoop* loop, size_t dbs_size) {
+                        gloop::fs::read(loop, zfd_dbs,0,dbs_size,(uchar*)db_files, [=](gloop::DeviceLoop* loop, size_t db_bytes_read) {
+                            if(db_bytes_read!=dbs_size) ERROR("Failed to read dbs");
+                            db_files[db_bytes_read]='\0';
 
-                                int to_read=min(data_to_process,(int)src_size);
-                                gloop::fs::read(loop, zfd_src,blockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](gloop::DeviceLoop* loop, size_t bytes_read) {
-                                    if (bytes_read!=to_read) ERROR("FAILED to read input");
-                                    struct context ctx {
-                                        zfd_src,
-                                        zfd_dbs,
-                                        zfd_o,
-                                        output_buffer,
-                                        input_tmp,
-                                        db_files,
-                                        to_read,
-                                        current_db_name,
-                                        corpus,
-                                        output_count
-                                    };
-                                    process_one_db(loop, ctx, db_files);
-                                });
+                            int to_read=min(data_to_process,(int)src_size);
+                            gloop::fs::read(loop, zfd_src,blockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](gloop::DeviceLoop* loop, size_t bytes_read) {
+                                if (bytes_read!=to_read) ERROR("FAILED to read input");
+                                struct context ctx {
+                                    zfd_src,
+                                    zfd_dbs,
+                                    zfd_o,
+                                    output_buffer,
+                                    input_tmp,
+                                    db_files,
+                                    to_read,
+                                    current_db_name,
+                                    corpus,
+                                    output_count
+                                };
+                                process_one_db(loop, ctx, db_files);
                             });
                         });
                     });
