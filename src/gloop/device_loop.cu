@@ -63,7 +63,7 @@ __device__ auto DeviceLoop::dequeue(bool& shouldExit) -> Callback*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     __threadfence_system();
-    for (uint32_t i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
+    for (int i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
         // Look into ICP status to run callbacks.
         uint64_t bit = 1ULL << i;
         if (m_control.sleep & bit) {
