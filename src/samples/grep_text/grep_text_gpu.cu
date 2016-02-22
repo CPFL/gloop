@@ -15,6 +15,9 @@
 #include <gloop/gloop.h>
 
 
+#define MEMSIZE ((1 << 20) * 1024)
+#define THREADS (128)
+
 __device__ volatile INIT_LOCK init_lock;
 __device__ volatile LAST_SEMAPHORE last_lock;
 
@@ -104,8 +107,8 @@ struct _pagehelper{
 
 //#define alpha(src)      (((src)>=65 && (src)<=90)||( (src)>=97 && (src)<=122)|| (src)==95 || (src)==39)
 #define alpha(src)      (((src)>=65 && (src)<=90)||( (src)>=97 && (src)<=122)|| (src)==95)
-#define INPUT_PREFETCH_ARRAY (128*33)
-#define INPUT_PREFETCH_SIZE (128*32)
+#define INPUT_PREFETCH_ARRAY (THREADS*33)
+#define INPUT_PREFETCH_SIZE (THREADS*32)
 
 #define CORPUS_PREFETCH_SIZE (16384)
 
@@ -208,7 +211,7 @@ __device__ char* get_next(struct context& ctx, char* str, char** next, int* db_s
   return ctx.current_db_name;
 }
 
-#define ROW_SIZE (128*32)
+#define ROW_SIZE (THREADS*32)
 #define PREFETCH_SIZE 16384
 
 __device__ int global_output;
@@ -471,7 +474,7 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
 
 void init_device_app()
 {
-    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1 << 20) * 256));
+    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, MEMSIZE));
 }
 
 void init_app()
