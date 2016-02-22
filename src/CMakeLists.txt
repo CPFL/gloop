@@ -32,6 +32,7 @@ endif()
 include_directories(".")
 
 add_subdirectory(gipc)
+add_subdirectory(cmalloc)
 add_subdirectory(gpufs)
 add_subdirectory(gloop)
 add_subdirectory(samples)
