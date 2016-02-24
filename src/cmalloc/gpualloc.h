@@ -149,7 +149,9 @@ __device__ float* g_interFragSum; // A float for every thread
 __device__ __forceinline__ void* mallocCudaMalloc(uint allocSize);
 __device__ __forceinline__ void freeCudaMalloc(void* ptr);
 
+#if 0
 __device__ __forceinline__ void* mallocAtomicMalloc(uint allocSize);
+#endif
 
 __device__ __forceinline__ void* mallocAtomicWrapMalloc(uint allocSize);
 
@@ -175,8 +177,10 @@ __device__ __forceinline__ void* mallocFDGMalloc(FDG::Warp* warp, uint allocSize
 __device__ __forceinline__ void freeFDGMalloc(FDG::Warp* warp);
 #endif
 
+#if 0
 __device__ __forceinline__ void* mallocHalloc(uint allocSize);
 __device__ __forceinline__ void freeHalloc(void* ptr);
+#endif
 
 extern "C" __global__ void CircularMallocPrepare1(uint numChunks);
 extern "C" __global__ void CircularMallocPrepare3(uint numChunks, uint rootChunk);
