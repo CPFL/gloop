@@ -22,6 +22,7 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <cstdint>
 #include "code.cuh"
 #include "device_loop.cuh"
 #include "net.cuh"
@@ -30,6 +31,8 @@
 
 namespace gloop {
 namespace net {
+
+static_assert(sizeof(void*) == sizeof(uint64_t), "In both the host and the device, the size of the pointer should be 64bit.");
 
 __device__ void socketImpl(DeviceLoop* loop, IPC* ipc, volatile request::Socket& req, int domain, int type, int protocol)
 {
