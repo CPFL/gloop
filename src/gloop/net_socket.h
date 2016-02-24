@@ -21,48 +21,12 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_NET_CU_H_
-#define GLOOP_NET_CU_H_
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <type_traits>
-#include <utility>
-#include "device_loop.cuh"
-#include "memcpy_io.cuh"
-#include "net_socket.h"
-#include "request.h"
-
+#ifndef GLOOP_NET_SOCKET_H_
+#define GLOOP_NET_SOCKET_H_
 namespace gloop {
 namespace net {
 
-__device__ void socketImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetSocket& req, int domain, int type, int protocol);
-__device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetClose& req, Socket* socket);
-
-template<typename Lambda>
-inline __device__ auto socket(DeviceLoop* loop, int domain, int type, int protocol, Lambda callback) -> void
-{
-    BEGIN_SINGLE_THREAD
-    {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
-            callback(loop, req->u.netSocketResult.socket);
-        });
-        socketImpl(loop, ipc, ipc->request()->u.netSocket, domain, type, protocol);
-    }
-    END_SINGLE_THREAD
-}
-
-template<typename Lambda>
-inline __device__ auto close(DeviceLoop* loop, Socket* socket, Lambda callback) -> void
-{
-    BEGIN_SINGLE_THREAD
-    {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
-            callback(loop, req->u.netCloseResult.error);
-        });
-        closeImpl(loop, ipc, ipc->request()->u.netClose, socket);
-    }
-    END_SINGLE_THREAD
-}
+struct Socket;
 
 } }  // namespace gloop::net
-#endif  // GLOOP_NET_CU_H_
+#endif  // GLOOP_NET_SOCKET_H_

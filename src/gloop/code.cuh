@@ -45,7 +45,8 @@ enum class Code : int32_t {
     Msync,
 
     // Net APIs.
-    Socket,
+    NetSocket,
+    NetClose,
 
     Stop
 };

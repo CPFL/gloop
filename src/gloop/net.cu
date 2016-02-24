@@ -34,13 +34,20 @@ namespace net {
 
 static_assert(sizeof(void*) == sizeof(uint64_t), "In both the host and the device, the size of the pointer should be 64bit.");
 
-__device__ void socketImpl(DeviceLoop* loop, IPC* ipc, volatile request::Socket& req, int domain, int type, int protocol)
+__device__ void socketImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetSocket& req, int domain, int type, int protocol)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.domain = domain;
     req.type = type;
     req.protocol = protocol;
-    ipc->emit(Code::Socket);
+    ipc->emit(Code::NetSocket);
+}
+
+__device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetClose& req, Socket* socket)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.socket = socket;
+    ipc->emit(Code::NetClose);
 }
 
 } }  // namespace gloop::net

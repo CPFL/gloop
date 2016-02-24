@@ -23,6 +23,7 @@
 */
 #ifndef GLOOP_REQUEST_H_
 #define GLOOP_REQUEST_H_
+#include "net_socket.h"
 namespace gloop {
 namespace request {
 
@@ -134,14 +135,22 @@ struct MsyncResult {
     int error;
 };
 
-struct Socket {
+struct NetSocket {
     int domain;
     int type;
     int protocol;
 };
 
-struct SocketResult {
-    int socket;
+struct NetSocketResult {
+    net::Socket* socket;
+};
+
+struct NetClose {
+    net::Socket* socket;
+};
+
+struct NetCloseResult {
+    int error;
 };
 
 struct Request {
@@ -178,8 +187,11 @@ struct Request {
         Msync msync;
         MsyncResult msyncResult;
 
-        Socket socket;
-        SocketResult socketResult;
+        NetSocket netSocket;
+        NetSocketResult netSocketResult;
+
+        NetClose netClose;
+        NetCloseResult netCloseResult;
     } u;
 };
 

@@ -366,6 +366,24 @@ bool HostLoop::handleIO(Command command)
         break;
     }
 
+    case Code::NetSocket: {
+        m_ioService.post([ipc, req, this]() {
+            auto* socket = new boost::asio::local::stream_protocol::socket(m_ioService);
+            ipc->request()->u.netSocketResult.socket = reinterpret_cast<net::Socket*>(socket);
+            ipc->emit(Code::Complete);
+        });
+        break;
+    }
+
+    case Code::NetClose: {
+        m_ioService.post([ipc, req, this]() {
+            delete reinterpret_cast<boost::asio::local::stream_protocol::socket*>(req.u.netClose.socket);
+            ipc->request()->u.netCloseResult.error = 0;
+            ipc->emit(Code::Complete);
+        });
+        break;
+    }
+
     }
     return false;
 }
