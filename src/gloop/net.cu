@@ -21,39 +21,23 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_CODE_CU_H_
-#define GLOOP_CODE_CU_H_
-#include <cstdint>
+
+#include "code.cuh"
+#include "device_loop.cuh"
+#include "net.cuh"
+#include "memcpy_io.cuh"
+#include "request.h"
+
 namespace gloop {
+namespace net {
 
-enum class Code : int32_t {
-    ExitRequired = -2,
-    Complete = -1,
-    None = 0,
-
-    // FS APIs.
-    Open = 1,
-    Write,
-    Fstat,
-    Close,
-    Read,
-    Ftruncate,
-
-    // Memory APIs.
-    Mmap,
-    Munmap,
-    Msync,
-
-    // Net APIs.
-    Socket,
-
-    Stop
-};
-
-inline bool IsOperationCode(Code code)
+__device__ void socketImpl(DeviceLoop* loop, IPC* ipc, volatile request::Socket& req, int domain, int type, int protocol)
 {
-    return static_cast<int32_t>(code) > 0;
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.domain = domain;
+    req.type = type;
+    req.protocol = protocol;
+    ipc->emit(Code::Socket);
 }
 
-}  // namespace gloop
-#endif  // GLOOP_CODE_CU_H_
+} }  // namespace gloop::net

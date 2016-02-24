@@ -21,39 +21,33 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_CODE_CU_H_
-#define GLOOP_CODE_CU_H_
-#include <cstdint>
+#ifndef GLOOP_NET_CU_H_
+#define GLOOP_NET_CU_H_
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <type_traits>
+#include <utility>
+#include "device_loop.cuh"
+#include "memcpy_io.cuh"
+#include "request.h"
+
 namespace gloop {
+namespace net {
 
-enum class Code : int32_t {
-    ExitRequired = -2,
-    Complete = -1,
-    None = 0,
+__device__ void socketImpl(DeviceLoop* loop, IPC* ipc, volatile request::Socket& req, int domain, int type, int protocol);
 
-    // FS APIs.
-    Open = 1,
-    Write,
-    Fstat,
-    Close,
-    Read,
-    Ftruncate,
-
-    // Memory APIs.
-    Mmap,
-    Munmap,
-    Msync,
-
-    // Net APIs.
-    Socket,
-
-    Stop
-};
-
-inline bool IsOperationCode(Code code)
+template<typename Lambda>
+inline __device__ auto socket(DeviceLoop* loop, int domain, int type, int protocol, Lambda callback) -> void
 {
-    return static_cast<int32_t>(code) > 0;
+    BEGIN_SINGLE_THREAD
+    {
+        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop, req->u.socketResult.socket);
+        });
+        socketImpl(loop, ipc, ipc->request()->u.socket, domain, type, protocol);
+    }
+    END_SINGLE_THREAD
 }
 
-}  // namespace gloop
-#endif  // GLOOP_CODE_CU_H_
+} }  // namespace gloop::net
+#endif  // GLOOP_NET_CU_H_

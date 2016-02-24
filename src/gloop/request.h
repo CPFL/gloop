@@ -134,6 +134,16 @@ struct MsyncResult {
     int error;
 };
 
+struct Socket {
+    int domain;
+    int type;
+    int protocol;
+};
+
+struct SocketResult {
+    int socket;
+};
+
 struct Request {
     int32_t code;
     union {
@@ -167,6 +177,9 @@ struct Request {
 
         Msync msync;
         MsyncResult msyncResult;
+
+        Socket socket;
+        SocketResult socketResult;
     } u;
 };
 

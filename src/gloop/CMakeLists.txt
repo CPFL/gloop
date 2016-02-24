@@ -51,6 +51,7 @@ add_library(gloop STATIC
     mapped_memory.cu
     monitor_server.cc
     monitor_session.cc
+    net.cu
     process.cu
     system_initialize.cu
 )
