@@ -29,6 +29,8 @@
 #define THREADS_PER_TB 256
 
 __device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in *addr) {
+    gloop::net::tcp::connect(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
+    });
 #if 0
 	__shared__ int sock;
 	int ret;

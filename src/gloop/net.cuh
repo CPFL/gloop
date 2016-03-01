@@ -44,7 +44,7 @@ inline __device__ auto socket(DeviceLoop* loop, int domain, int type, int protoc
     BEGIN_SINGLE_THREAD
     {
         auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
-            callback(loop, req->u.netSocketResult.socket);
+            callback(loop, const_cast<Socket*>(req->u.netSocketResult.socket));
         });
         socketImpl(loop, ipc, ipc->request()->u.netSocket, domain, type, protocol);
     }
@@ -74,7 +74,7 @@ inline __device__ auto connect(DeviceLoop* loop, struct sockaddr_in* addr, Lambd
     BEGIN_SINGLE_THREAD
     {
         auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
-            callback(loop, req->u.netTCPConnectResult.socket);
+            callback(loop, const_cast<Socket*>(req->u.netTCPConnectResult.socket));
         });
         connectImpl(loop, ipc, ipc->request()->u.netTCPConnect, addr);
     }
