@@ -29,4 +29,5 @@
 #include "fs.cuh"
 #include "host_context.cuh"
 #include "host_loop.cuh"
+#include "net.cuh"
 #endif  // GLOOP_GLOOP_H_

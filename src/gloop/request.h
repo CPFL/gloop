@@ -23,6 +23,8 @@
 */
 #ifndef GLOOP_REQUEST_H_
 #define GLOOP_REQUEST_H_
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include "net_socket.h"
 namespace gloop {
 namespace request {
@@ -153,6 +155,14 @@ struct NetCloseResult {
     int error;
 };
 
+struct NetTCPConnect{
+    struct sockaddr_in address;
+};
+
+struct NetTCPConnectResult {
+    net::Socket* socket;
+};
+
 struct Request {
     int32_t code;
     union {
@@ -192,6 +202,9 @@ struct Request {
 
         NetClose netClose;
         NetCloseResult netCloseResult;
+
+        NetTCPConnect netTCPConnect;
+        NetTCPConnectResult netTCPConnectResult;
     } u;
 };
 

@@ -50,4 +50,15 @@ __device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetClose
     ipc->emit(Code::NetClose);
 }
 
+namespace tcp {
+
+__device__ void connectImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPConnect& req, struct sockaddr_in* addr)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    // FIXME: Fix this part.
+    *const_cast<struct sockaddr_in*>(&req.address) = *reinterpret_cast<struct sockaddr_in*>(addr);
+    ipc->emit(Code::NetSocket);
+}
+
+}  // namespace gloop::net::tcp
 } }  // namespace gloop::net

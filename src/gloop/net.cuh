@@ -64,5 +64,23 @@ inline __device__ auto close(DeviceLoop* loop, Socket* socket, Lambda callback) 
     END_SINGLE_THREAD
 }
 
+namespace tcp {
+
+__device__ void connectImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPConnect& req, struct sockaddr_in* addr);
+
+template<typename Lambda>
+inline __device__ auto connect(DeviceLoop* loop, struct sockaddr_in* addr, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop, req->u.netTCPConnectResult.socket);
+        });
+        connectImpl(loop, ipc, ipc->request()->u.netTCPConnect, addr);
+    }
+    END_SINGLE_THREAD
+}
+
+}  // namespace gloop::net::tcp
 } }  // namespace gloop::net
 #endif  // GLOOP_NET_CU_H_

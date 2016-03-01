@@ -47,6 +47,7 @@ enum class Code : int32_t {
     // Net APIs.
     NetSocket,
     NetClose,
+    NetTCPConnect,
 
     Stop
 };
