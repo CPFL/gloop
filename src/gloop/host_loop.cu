@@ -464,8 +464,6 @@ bool HostLoop::handleIO(Command command)
 
     case Code::NetTCPSend: {
         // GLOOP_DEBUG("net::tcp::send:socket:(%p),count:(%u),buffer:(%p)\n", req.u.netTCPSend.socket, req.u.netTCPSend.count, req.u.netTCPSend.buffer);
-        std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
-        benchmark->begin();
         assert(reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPSend.socket));
         m_ioService.post([=]() {
             // FIXME: This should be reconsidered.
@@ -476,14 +474,17 @@ bool HostLoop::handleIO(Command command)
 
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(copyWork->hostMemory().hostPointer(), req.u.netTCPSend.buffer, count, cudaMemcpyDeviceToHost, copyWork->stream()));
 
-            std::shared_ptr<std::vector<unsigned char>> buffer = std::make_shared<std::vector<unsigned char>>();
-            buffer->resize(count);
+            std::shared_ptr<std::vector<unsigned char>> buffer = std::make_shared<std::vector<unsigned char>>(count);
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
             std::memcpy(buffer->data(), copyWork->hostMemory().hostPointer(), count);
             m_copyWorkPool->release(copyWork);
 
+            std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
+            benchmark->begin();
             boost::asio::ip::tcp::socket* socket = reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPSend.socket);
             boost::asio::async_write(*socket, boost::asio::buffer(buffer->data(), buffer->size()), [=](const boost::system::error_code& error, size_t sentCount) {
+                benchmark->end();
+                benchmark->report("send ");
                 if (error) {
                     if ((boost::asio::error::eof == error) || (boost::asio::error::connection_reset == error)) {
                         ipc->request()->u.netTCPReceiveResult.receiveCount = 0;
@@ -494,8 +495,6 @@ bool HostLoop::handleIO(Command command)
                     ipc->request()->u.netTCPSendResult.sentCount = sentCount;
                 }
                 ipc->emit(Code::Complete);
-                benchmark->end();
-                benchmark->report("send ");
             });
         });
         break;
