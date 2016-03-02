@@ -94,7 +94,11 @@ private:
     void prologue(HostContext&, dim3 threads);
     void epilogue();
 
+    // System initialization.
     void initialize();
+
+    // Per thread initialization.
+    void initializeInThread();
 
     void runPoller();
     void stopPoller();
@@ -143,6 +147,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
         auto arguments = thrust::make_tuple(std::forward<Args>(args)...);
         std::unique_ptr<boost::asio::io_service::work> kernelWork = make_unique<boost::asio::io_service::work>(m_ioService);
         std::unique_ptr<boost::thread> kernelThread = make_unique<boost::thread>([&] {
+            initializeInThread();
             {
                 std::lock_guard<KernelLock> lock(m_kernelLock);
                 prepareForLaunch();

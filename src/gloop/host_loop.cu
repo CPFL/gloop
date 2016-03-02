@@ -125,6 +125,7 @@ void HostLoop::runPoller()
 {
     assert(!m_poller);
     m_poller = make_unique<boost::thread>([this]() {
+        initializeInThread();
         pollerMain();
     });
 }
@@ -160,10 +161,11 @@ void HostLoop::pollerMain()
 
 void HostLoop::initialize()
 {
+    initializeInThread();
     {
         // This ensures that primary GPU context is initialized.
         std::lock_guard<KernelLock> lock(m_kernelLock);
-        GLOOP_CUDA_SAFE_CALL(cudaSetDevice(m_deviceNumber));
+        GLOOP_CUDA_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceMapHost | cudaDeviceScheduleSpin));
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pgraph));
 
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
@@ -178,6 +180,11 @@ void HostLoop::initialize()
     }
 }
 
+void HostLoop::initializeInThread()
+{
+    GLOOP_CUDA_SAFE_CALL(cudaSetDevice(m_deviceNumber));
+}
+
 void HostLoop::drain()
 {
     // Host main loop.
@@ -190,7 +197,10 @@ void HostLoop::drain()
     // is already drained.
     boost::thread_group threadGroup;
     for (int i = 0; i < GLOOP_THREAD_GROUP_SIZE; ++i) {
-        threadGroup.create_thread(boost::bind(&boost::asio::io_service::run, &m_ioService));
+        threadGroup.create_thread([this] {
+            initializeInThread();
+            m_ioService.run();
+        });
     }
     threadGroup.join_all();
 #endif

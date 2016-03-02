@@ -36,8 +36,8 @@ namespace gloop {
 
 void initialize()
 {
-    static std::once_flag initializeFlag;
-    std::call_once(initializeFlag, []() {
+    // static std::once_flag initializeFlag;
+    // std::call_once(initializeFlag, []() {
         // GLOOP_CUDA_SAFE_CALL(cuInit(0));
         // CUdevice device;
         // GLOOP_CUDA_SAFE_CALL(cuDeviceGet(&device, 0));
@@ -45,8 +45,8 @@ void initialize()
         // CUcontext primaryContext;
         // GLOOP_CUDA_SAFE_CALL(cuCtxCreate(&primaryContext, CU_CTX_MAP_HOST, device));
         // GLOOP_CUDA_SAFE_CALL(cuCtxSetCurrent(primaryContext));
-        GLOOP_CUDA_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceMapHost | cudaDeviceScheduleSpin));
-    });
+        // GLOOP_CUDA_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceMapHost | cudaDeviceScheduleSpin));
+    // });
 }
 
 }  // namespace gloop
