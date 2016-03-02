@@ -27,20 +27,24 @@
 #include "host_memory.cuh"
 namespace gloop {
 
+class HostLoop;
+
 class CopyWork {
 GLOOP_NONCOPYABLE(CopyWork);
 public:
-    CopyWork();
+    CopyWork(HostLoop& hostLoop);
 
-    static std::shared_ptr<CopyWork> create()
+    static std::shared_ptr<CopyWork> create(HostLoop& hostLoop)
     {
-        return std::make_shared<CopyWork>();
+        return std::make_shared<CopyWork>(hostLoop);
     }
 
+    HostLoop& hostLoop() { return m_hostLoop; }
     HostMemory& hostMemory() { return *m_hostMemory; }
     cudaStream_t stream() { return m_worker->stream(); }
 
 private:
+    HostLoop& m_hostLoop;
     std::shared_ptr<HostMemory> m_hostMemory;
     std::unique_ptr<CopyWorker> m_worker;
 };

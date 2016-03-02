@@ -31,6 +31,7 @@
 #include <gpufs/libgpufs/host_loop.h>
 #include <memory>
 #include <sys/mman.h>
+#include "benchmark.h"
 #include "bitwise_cast.h"
 #include "command.h"
 #include "config.h"
@@ -173,7 +174,7 @@ void HostLoop::initialize()
         m_copyWorkPool = make_unique<CopyWorkPool>(m_ioService);
 
         for (int i = 0; i < GLOOP_THREAD_GROUP_SIZE; ++i) {
-            m_copyWorkPool->release(CopyWork::create());
+            m_copyWorkPool->registerCopyWork(CopyWork::create(*this));
         }
 
         CUDA_SAFE_CALL(cudaPeekAtLastError());
@@ -257,7 +258,7 @@ bool HostLoop::handleIO(Command command)
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
             // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
-            std::shared_ptr<CopyWork> copyWork = m_copyWorkPool->acquire();
+            CopyWork* copyWork = m_copyWorkPool->acquire();
             assert(req.u.write.count <= copyWork->hostMemory().size());
 
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(copyWork->hostMemory().hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, copyWork->stream()));
@@ -280,7 +281,7 @@ bool HostLoop::handleIO(Command command)
         m_ioService.post([ipc, req, this]() {
             // GLOOP_DEBUG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
 
-            std::shared_ptr<CopyWork> copyWork = m_copyWorkPool->acquire();
+            CopyWork* copyWork = m_copyWorkPool->acquire();
             assert(req.u.read.count <= copyWork->hostMemory().size());
             ssize_t readCount = ::pread(req.u.read.fd, copyWork->hostMemory().hostPointer(), req.u.read.count, req.u.read.offset);
             __sync_synchronize();
@@ -383,6 +384,7 @@ bool HostLoop::handleIO(Command command)
         boost::asio::ip::tcp::socket* socket = new boost::asio::ip::tcp::socket(m_ioService);
         socket->async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4(req.u.netTCPConnect.address.sin_addr.s_addr), req.u.netTCPConnect.address.sin_port), [ipc, req, socket, this](const boost::system::error_code& error) {
             if (error) {
+                GLOOP_DEBUG("%s\n", error.message().c_str());
                 delete socket;
                 ipc->request()->u.netTCPConnectResult.socket = nullptr;
             } else {
@@ -437,18 +439,26 @@ bool HostLoop::handleIO(Command command)
 
             std::shared_ptr<boost::asio::streambuf> buffer = std::make_shared<boost::asio::streambuf>();
             buffer->prepare(count);
-            boost::asio::async_read(*socket, *buffer, boost::asio::transfer_exactly(count), [buffer, ipc, req, this](const boost::system::error_code& error, size_t receiveCount) {
+            boost::asio::async_read(*socket, *buffer, boost::asio::transfer_at_least(1), [buffer, ipc, req, this](const boost::system::error_code& error, size_t receiveCount) {
                 __sync_synchronize();
                 if (error) {
-                    ipc->request()->u.netTCPReceiveResult.receiveCount = 0;
+                    if ((boost::asio::error::eof == error) || (boost::asio::error::connection_reset == error)) {
+                        ipc->request()->u.netTCPReceiveResult.receiveCount = 0;
+                    } else {
+                        ipc->request()->u.netTCPReceiveResult.receiveCount = -1;
+                    }
                 } else {
                     // boost::asio::buffer(copyWork->hostMemory().hostPointer(), count);
-                    std::shared_ptr<CopyWork> copyWork = m_copyWorkPool->acquire();
+                    gloop::Benchmark benchmark;
+                    benchmark.begin();
+                    CopyWork* copyWork = m_copyWorkPool->acquire();
                     std::memcpy(copyWork->hostMemory().hostPointer(), boost::asio::buffer_cast<const char*>(buffer->data()), receiveCount);
                     GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.netTCPReceive.buffer, copyWork->hostMemory().hostPointer(), receiveCount, cudaMemcpyHostToDevice, copyWork->stream()));
-                    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
                     ipc->request()->u.netTCPReceiveResult.receiveCount = receiveCount;
+                    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
                     m_copyWorkPool->release(copyWork);
+                    benchmark.end();
+                    benchmark.report("receive ");
                 }
                 ipc->emit(Code::Complete);
             });
@@ -462,22 +472,30 @@ bool HostLoop::handleIO(Command command)
         m_ioService.post([ipc, req, this]() {
             // FIXME: This should be reconsidered.
             size_t count = req.u.netTCPSend.count;
-            std::shared_ptr<CopyWork> copyWork = m_copyWorkPool->acquire();
+
+            CopyWork* copyWork = m_copyWorkPool->acquire();
             assert(count <= copyWork->hostMemory().size());
 
+            gloop::Benchmark benchmark;
+            benchmark.begin();
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(copyWork->hostMemory().hostPointer(), req.u.netTCPSend.buffer, count, cudaMemcpyDeviceToHost, copyWork->stream()));
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
-            m_copyWorkPool->release(copyWork);
 
             std::shared_ptr<std::vector<unsigned char>> buffer = std::make_shared<std::vector<unsigned char>>();
             buffer->resize(count);
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
             std::memcpy(buffer->data(), copyWork->hostMemory().hostPointer(), count);
-            __sync_synchronize();
+            m_copyWorkPool->release(copyWork);
+            benchmark.end();
+            benchmark.report("send ");
 
             boost::asio::ip::tcp::socket* socket = reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPSend.socket);
             boost::asio::async_write(*socket, boost::asio::buffer(buffer->data(), buffer->size()), [buffer, ipc, this](const boost::system::error_code& error, size_t sentCount) {
                 if (error) {
-                    ipc->request()->u.netTCPSendResult.sentCount = 0;
+                    if ((boost::asio::error::eof == error) || (boost::asio::error::connection_reset == error)) {
+                        ipc->request()->u.netTCPReceiveResult.receiveCount = 0;
+                    } else {
+                        ipc->request()->u.netTCPReceiveResult.receiveCount = -1;
+                    }
                 } else {
                     ipc->request()->u.netTCPSendResult.sentCount = sentCount;
                 }

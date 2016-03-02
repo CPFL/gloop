@@ -27,31 +27,49 @@
 #include "microbench_util.h"
 
 #define THREADS_PER_TB 256
-#define BLOCKS 36
-#define ITERATION 1000
-#define BUF_SIZE 65536
+#define BLOCKS 1
+// #define ITERATION (1024)
+// #define ITERATION -1
+#define ITERATION (1024)
+// #define BUF_SIZE 65536
+#define BUF_SIZE 524288
+// #define BUF_SIZE 65536
 #define NR_MSG   60000
 #define MSG_SIZE BUF_SIZE
 
 __device__ unsigned char g_message[512][MSG_SIZE];
 
+__device__ void close(gloop::DeviceLoop* loop, gloop::net::Socket* socket)
+{
+    gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop* loop, int error) { });
+}
+
 __device__ void perform(gloop::DeviceLoop* loop, gloop::net::Socket* socket, int iteration)
 {
     if (iteration != ITERATION) {
-        gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
-            gloop::net::tcp::send(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
+        gloop::net::tcp::send(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
+            if (sentCount == 0) {
+                close(loop, socket);
+                return;
+            }
+            gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+                if (receiveCount == 0) {
+                    close(loop, socket);
+                    return;
+                }
                 perform(loop, socket, iteration + 1);
             });
         });
         return;
     }
-    gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop* loop, int error) { });
+    close(loop, socket);
 }
 
 __device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
 {
     gloop::net::tcp::connect(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
         if (!socket) {
+            ERROR("Socket failed.");
             return;
         }
         perform(loop, socket, 0);
@@ -71,6 +89,7 @@ int main(int argc, char** argv)
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
             CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (2 << 20) * 256));
             gpunet_client_init(&addr, &dev_addr, argv[1], argv[2]);
+            printf("address:(%x),port:(%u)\n", ((struct sockaddr_in*)addr)->sin_addr.s_addr, ((struct sockaddr_in*)addr)->sin_port);
         } else {
             gpunet_usage_client(argc, argv);
             exit(1);

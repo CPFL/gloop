@@ -26,18 +26,18 @@
 #include "copy_work_pool.cuh"
 namespace gloop {
 
-std::shared_ptr<CopyWork> CopyWorkPool::acquire()
+CopyWork* CopyWorkPool::acquire()
 {
     boost::unique_lock<boost::mutex> lock(m_mutex);
     while (m_works.empty()) {
         m_conditionVariable.wait(lock);
     }
-    std::shared_ptr<CopyWork> work = m_works.back();
+    CopyWork* work = m_works.back();
     m_works.pop_back();
     return work;
 }
 
-void CopyWorkPool::release(std::shared_ptr<CopyWork> work)
+void CopyWorkPool::release(CopyWork* work)
 {
     boost::unique_lock<boost::mutex> lock(m_mutex);
     m_works.push_back(work);

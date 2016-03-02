@@ -30,21 +30,21 @@ namespace gloop {
 class Benchmark {
 public:
     typedef std::chrono::high_resolution_clock clock;
-    void begin()
+    inline void begin()
     {
         m_begin = clock::now();
     }
 
-    void end()
+    inline void end()
     {
         m_end = clock::now();
     }
 
-    void report()
+    void report(const std::string& prefix = "")
     {
         auto elapsed = m_end - m_begin;
         auto ticks = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
-        std::cout << "result:us(" << ticks << ")" << std::endl;
+        std::cout << prefix << "result:us(" << ticks << ")" << std::endl;
     }
 
 private:

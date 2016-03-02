@@ -37,14 +37,21 @@ public:
     {
     }
 
-    std::shared_ptr<CopyWork> acquire();
-    void release(std::shared_ptr<CopyWork>);
+    CopyWork* acquire();
+    void release(CopyWork*);
+
+    void registerCopyWork(std::shared_ptr<CopyWork> work)
+    {
+        m_holding.push_back(work);
+        m_works.push_back(work.get());
+    }
 
 private:
     boost::asio::io_service& m_ioService;
     boost::mutex m_mutex;
     boost::condition_variable m_conditionVariable;
-    std::vector<std::shared_ptr<CopyWork>> m_works;
+    std::vector<std::shared_ptr<CopyWork>> m_holding;
+    std::vector<CopyWork*> m_works;
 };
 
 }  // namespace gloop
