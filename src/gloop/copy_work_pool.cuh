@@ -38,13 +38,10 @@ public:
     }
 
     CopyWork* acquire();
+    CopyWork* tryAcquire();
     void release(CopyWork*);
 
-    void registerCopyWork(std::shared_ptr<CopyWork> work)
-    {
-        m_holding.push_back(work);
-        m_works.push_back(work.get());
-    }
+    void registerCopyWork(std::shared_ptr<CopyWork> work);
 
 private:
     boost::asio::io_service& m_ioService;

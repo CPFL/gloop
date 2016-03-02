@@ -26,7 +26,7 @@
 #include <gloop/benchmark.h>
 #include "microbench_util.h"
 
-#define THREADS_PER_TB 256
+#define THREADS_PER_TB 512
 #define BLOCKS 1
 #define BUF_SIZE 65536
 #define NR_MSG   60000

@@ -118,6 +118,9 @@ private:
     void drainKernel();
     void performOneTimeResume();
 
+    CopyWork* acquireCopyWork();
+    void releaseCopyWork(CopyWork* copyWork);
+
 
     int m_deviceNumber { 0 };
     uv_loop_t* m_loop { nullptr };

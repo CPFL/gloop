@@ -37,10 +37,28 @@ CopyWork* CopyWorkPool::acquire()
     return work;
 }
 
+CopyWork* CopyWorkPool::tryAcquire()
+{
+    boost::unique_lock<boost::mutex> lock(m_mutex);
+    if (m_works.empty()) {
+        return nullptr;
+    }
+    CopyWork* work = m_works.back();
+    m_works.pop_back();
+    return work;
+}
+
 void CopyWorkPool::release(CopyWork* work)
 {
     boost::unique_lock<boost::mutex> lock(m_mutex);
     m_works.push_back(work);
+}
+
+void CopyWorkPool::registerCopyWork(std::shared_ptr<CopyWork> work)
+{
+    boost::unique_lock<boost::mutex> lock(m_mutex);
+    m_holding.push_back(work);
+    m_works.push_back(work.get());
 }
 
 }  // namespace gloop
