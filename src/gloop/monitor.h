@@ -21,43 +21,32 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
-#include "monitor.h"
+#ifndef GLOOP_MONITOR_H_
+#define GLOOP_MONITOR_H_
+#include <atomic>
+#include <boost/asio.hpp>
 #include "monitor_server.h"
-#include "monitor_session.h"
+#include "noncopyable.h"
 namespace gloop {
 namespace monitor {
 
-Server::Server(Monitor& monitor, uint32_t serverId)
-    : m_monitor(monitor)
-    , m_id(serverId)
-    , m_ioService(monitor.ioService())
-    , m_acceptor(m_ioService, boost::asio::local::stream_protocol::endpoint(Session::createName(GLOOP_ENDPOINT, serverId)))
-{
-    accept();
-}
+class Monitor {
+GLOOP_NONCOPYABLE(Monitor);
+public:
+    Monitor(uint32_t gpus);
 
-void Server::accept()
-{
-    auto* session = new Session(*this, m_monitor.nextId());
-    m_acceptor.async_accept(session->socket(), [=](const boost::system::error_code& error) {
-        if (!error) {
-            session->handShake();
-        } else {
-            delete session;
-        }
-        accept();
-    });
-}
+    boost::asio::io_service& ioService() { return m_ioService; }
 
-void Server::registerSession(Session& session)
-{
-    m_sessionList.push_back(session);
-}
+    void run();
 
-void Server::unregisterSession(Session& session)
-{
-    m_sessionList.erase(SessionList::s_iterator_to(session));
-}
+    uint32_t nextId() { return m_nextId++; }
+
+private:
+    uint32_t m_gpus;
+    boost::asio::io_service m_ioService;
+    std::atomic<uint32_t> m_nextId { 0 };
+    std::vector<std::shared_ptr<Server>> m_servers;
+};
 
 } }  // namsepace gloop::monitor
+#endif  // GLOOP_MONITOR_H_

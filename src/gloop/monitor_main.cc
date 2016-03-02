@@ -22,42 +22,20 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "config.h"
+#include "data_log.h"
 #include "monitor.h"
-#include "monitor_server.h"
-#include "monitor_session.h"
-namespace gloop {
-namespace monitor {
 
-Server::Server(Monitor& monitor, uint32_t serverId)
-    : m_monitor(monitor)
-    , m_id(serverId)
-    , m_ioService(monitor.ioService())
-    , m_acceptor(m_ioService, boost::asio::local::stream_protocol::endpoint(Session::createName(GLOOP_ENDPOINT, serverId)))
+int main(int argc, char** argv)
 {
-    accept();
-}
+    try {
+        int gpus = atoi(argv[1]);
+        GLOOP_DATA_LOG("monitor start %dGPUs\n", gpus);
+        gloop::monitor::Monitor monitor(gpus);
+        monitor.run();
+    } catch (std::exception& e) {
+        GLOOP_DATA_LOG("Exception: %s\n", e.what());
+    }
 
-void Server::accept()
-{
-    auto* session = new Session(*this, m_monitor.nextId());
-    m_acceptor.async_accept(session->socket(), [=](const boost::system::error_code& error) {
-        if (!error) {
-            session->handShake();
-        } else {
-            delete session;
-        }
-        accept();
-    });
+    return 0;
 }
-
-void Server::registerSession(Session& session)
-{
-    m_sessionList.push_back(session);
-}
-
-void Server::unregisterSession(Session& session)
-{
-    m_sessionList.erase(SessionList::s_iterator_to(session));
-}
-
-} }  // namsepace gloop::monitor

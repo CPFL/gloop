@@ -25,7 +25,7 @@
 #define GLOOP_CONFIG_H_
 
 #define GLOOP_VERSION "0.0.1"
-#define GLOOP_ENDPOINT "/tmp/gloop_endpoint"
+#define GLOOP_ENDPOINT "/tmp/gloop_endpoint_"
 #define GLOOP_SHARED_MAIN_QUEUE "gloop_shared_main_queue_"
 #define GLOOP_SHARED_REQUEST_QUEUE "gloop_shared_request_queue_"
 #define GLOOP_SHARED_RESPONSE_QUEUE "gloop_shared_response_queue_"

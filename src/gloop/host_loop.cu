@@ -57,7 +57,7 @@ HostLoop::HostLoop(int deviceNumber)
 {
     // Connect to the gloop monitor.
     {
-        m_monitorConnection.connect(boost::asio::local::stream_protocol::endpoint(GLOOP_ENDPOINT));
+        m_monitorConnection.connect(boost::asio::local::stream_protocol::endpoint(monitor::Session::createName(GLOOP_ENDPOINT, m_deviceNumber)));
         Command command = {
             .type = Command::Type::Initialize,
         };
@@ -163,6 +163,7 @@ void HostLoop::initialize()
     {
         // This ensures that primary GPU context is initialized.
         std::lock_guard<KernelLock> lock(m_kernelLock);
+        GLOOP_CUDA_SAFE_CALL(cudaSetDevice(m_deviceNumber));
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pgraph));
 
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));

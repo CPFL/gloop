@@ -49,6 +49,7 @@ add_library(gloop STATIC
     io.cu
     ipc.cu
     mapped_memory.cu
+    monitor.cc
     monitor_server.cc
     monitor_session.cc
     net.cu
@@ -66,7 +67,7 @@ target_link_libraries(gloop
 )
 
 add_executable(gloop-monitor
-    monitor.cc
+    monitor_main.cc
 )
 target_link_libraries(gloop-monitor
     gloop

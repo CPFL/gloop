@@ -32,12 +32,16 @@
 namespace gloop {
 namespace monitor {
 
+class Monitor;
+
 class Server {
 GLOOP_NONCOPYABLE(Server);
 public:
     typedef boost::intrusive::list<Session> SessionList;
 
-    Server(boost::asio::io_service& ioService, const char* endpoint);
+    Server(Monitor& monitor, uint32_t serverId);
+
+    uint32_t id() const { return m_id; }
 
     boost::asio::io_service& ioService() { return m_ioService; }
     const boost::asio::io_service& ioService() const { return m_ioService; }
@@ -45,13 +49,16 @@ public:
     Lock& kernelLock() { return m_kernelLock; }
     SessionList& sessionList() { return m_sessionList; }
 
+    static std::string createEndpoint(const std::string& prefix, uint32_t id);
+
     void registerSession(Session&);
     void unregisterSession(Session&);
 
 private:
     void accept();
 
-    std::atomic<uint32_t> m_nextId { 0 };
+    Monitor& m_monitor;
+    uint32_t m_id;
     std::atomic<uint32_t> m_waitingCount { 0 };
     Lock m_kernelLock;
     SessionList m_sessionList;

@@ -23,24 +23,28 @@
 */
 
 #include <atomic>
-#include <boost/asio.hpp>
 #include <unistd.h>
 #include "config.h"
-#include "data_log.h"
+#include "monitor.h"
 #include "monitor_server.h"
 #include "monitor_session.h"
+namespace gloop {
+namespace monitor {
 
-int main(int argc, char** argv)
+Monitor::Monitor(uint32_t gpus)
+    : m_gpus(gpus)
 {
-    ::unlink(GLOOP_ENDPOINT);
-    try {
-        GLOOP_DATA_LOG("monitor start\n");
-        boost::asio::io_service ioService;
-        gloop::monitor::Server server(ioService, GLOOP_ENDPOINT);
-        ioService.run();
-    } catch (std::exception& e) {
-        GLOOP_DATA_LOG("Exception: %s\n", e.what());
+    for (uint32_t i = 0; i < m_gpus; ++i) {
+        ::unlink(Session::createName(GLOOP_ENDPOINT, i).c_str());
     }
-
-    return 0;
 }
+
+void Monitor::run()
+{
+    for (uint32_t i = 0; i < m_gpus; ++i) {
+        m_servers.push_back(std::make_shared<Server>(*this, i));
+    }
+    m_ioService.run();
+}
+
+} }  // namsepace gloop::monitor

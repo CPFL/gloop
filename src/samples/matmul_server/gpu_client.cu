@@ -60,7 +60,7 @@ __device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
 int main(int argc, char** argv)
 {
     dim3 blocks(18);
-    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(1);
     std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
 
     struct sockaddr* addr;
