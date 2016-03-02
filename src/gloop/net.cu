@@ -34,22 +34,6 @@ namespace net {
 
 static_assert(sizeof(void*) == sizeof(uint64_t), "In both the host and the device, the size of the pointer should be 64bit.");
 
-__device__ void socketImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetSocket& req, int domain, int type, int protocol)
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    req.domain = domain;
-    req.type = type;
-    req.protocol = protocol;
-    ipc->emit(Code::NetSocket);
-}
-
-__device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetClose& req, Socket* socket)
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    req.socket = socket;
-    ipc->emit(Code::NetClose);
-}
-
 namespace tcp {
 
 __device__ void connectImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPConnect& req, struct sockaddr_in* addr)
@@ -58,6 +42,21 @@ __device__ void connectImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCP
     // FIXME: Fix this part.
     *const_cast<struct sockaddr_in*>(&req.address) = *reinterpret_cast<struct sockaddr_in*>(addr);
     ipc->emit(Code::NetTCPConnect);
+}
+
+__device__ void bindImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPBind& req, struct sockaddr_in* addr)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    // FIXME: Fix this part.
+    *const_cast<struct sockaddr_in*>(&req.address) = *reinterpret_cast<struct sockaddr_in*>(addr);
+    ipc->emit(Code::NetTCPBind);
+}
+
+__device__ void acceptImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPAccept& req, net::Server* server)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.server = server;
+    ipc->emit(Code::NetTCPAccept);
 }
 
 __device__ void receiveImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPReceive& req, net::Socket* socket, size_t count, unsigned char* buffer)

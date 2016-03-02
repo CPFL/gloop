@@ -27,6 +27,7 @@ namespace gloop {
 namespace net {
 
 struct Socket;
+struct Server;
 
 } }  // namespace gloop::net
 #endif  // GLOOP_NET_SOCKET_H_

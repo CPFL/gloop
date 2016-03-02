@@ -155,11 +155,27 @@ struct NetCloseResult {
     int error;
 };
 
-struct NetTCPConnect{
+struct NetTCPConnect {
     struct sockaddr_in address;
 };
 
 struct NetTCPConnectResult {
+    net::Socket* socket;
+};
+
+struct NetTCPBind {
+    struct sockaddr_in address;
+};
+
+struct NetTCPBindResult {
+    net::Server* server;
+};
+
+struct NetTCPAccept {
+    net::Server* server;
+};
+
+struct NetTCPAcceptResult {
     net::Socket* socket;
 };
 
@@ -233,6 +249,12 @@ struct Request {
 
         NetTCPConnect netTCPConnect;
         NetTCPConnectResult netTCPConnectResult;
+
+        NetTCPBind netTCPBind;
+        NetTCPBindResult netTCPBindResult;
+
+        NetTCPAccept netTCPAccept;
+        NetTCPAcceptResult netTCPAcceptResult;
 
         NetTCPReceive netTCPReceive;
         NetTCPReceiveResult netTCPReceiveResult;

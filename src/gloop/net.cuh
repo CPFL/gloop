@@ -34,39 +34,11 @@
 
 namespace gloop {
 namespace net {
-
-__device__ void socketImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetSocket& req, int domain, int type, int protocol);
-__device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetClose& req, Socket* socket);
-
-template<typename Lambda>
-inline __device__ auto socket(DeviceLoop* loop, int domain, int type, int protocol, Lambda callback) -> void
-{
-    BEGIN_SINGLE_THREAD
-    {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
-            callback(loop, const_cast<Socket*>(req->u.netSocketResult.socket));
-        });
-        socketImpl(loop, ipc, ipc->request()->u.netSocket, domain, type, protocol);
-    }
-    END_SINGLE_THREAD
-}
-
-template<typename Lambda>
-inline __device__ auto close(DeviceLoop* loop, Socket* socket, Lambda callback) -> void
-{
-    BEGIN_SINGLE_THREAD
-    {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
-            callback(loop, req->u.netCloseResult.error);
-        });
-        closeImpl(loop, ipc, ipc->request()->u.netClose, socket);
-    }
-    END_SINGLE_THREAD
-}
-
 namespace tcp {
 
 __device__ void connectImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPConnect& req, struct sockaddr_in* addr);
+__device__ void bindImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPBind& req, struct sockaddr_in* addr);
+__device__ void acceptImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPAccept& req, net::Server* server);
 __device__ void receiveImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPReceive& req, net::Socket* socket, size_t count, unsigned char* buffer);
 __device__ void sendImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPSend& req, net::Socket* socket, size_t count, unsigned char* buffer);
 __device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetClose& req, Socket* socket);
@@ -80,6 +52,32 @@ inline __device__ auto connect(DeviceLoop* loop, struct sockaddr_in* addr, Lambd
             callback(loop, const_cast<Socket*>(req->u.netTCPConnectResult.socket));
         });
         connectImpl(loop, ipc, ipc->request()->u.netTCPConnect, addr);
+    }
+    END_SINGLE_THREAD
+}
+
+template<typename Lambda>
+inline __device__ auto bind(DeviceLoop* loop, struct sockaddr_in* addr, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop, const_cast<Server*>(req->u.netTCPBindResult.server));
+        });
+        bindImpl(loop, ipc, ipc->request()->u.netTCPBind, addr);
+    }
+    END_SINGLE_THREAD
+}
+
+template<typename Lambda>
+inline __device__ auto accept(DeviceLoop* loop, net::Server* server, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop, const_cast<Socket*>(req->u.netTCPAcceptResult.socket));
+        });
+        acceptImpl(loop, ipc, ipc->request()->u.netTCPAccept, server);
     }
     END_SINGLE_THREAD
 }

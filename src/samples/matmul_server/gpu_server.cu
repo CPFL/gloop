@@ -34,32 +34,63 @@
 
 __device__ unsigned char g_message[512][MSG_SIZE];
 
-__device__ void perform(gloop::DeviceLoop* loop, gloop::net::Socket* socket, int iteration)
+__device__ void accept(gloop::DeviceLoop* loop, gloop::net::Server* server);
+
+__device__ void perform(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop::net::Socket* socket, int iteration)
 {
     if (iteration != ITERATION) {
-        gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
-            gloop::net::tcp::send(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
-                perform(loop, socket, iteration + 1);
+        gloop::net::tcp::send(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
+            gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+                perform(loop, server, socket, iteration + 1);
             });
         });
         return;
     }
-    gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop* loop, int error) { });
+    gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop* loop, int error) {
+        accept(loop, server);
+    });
 }
 
-__device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
+__device__ void accept(gloop::DeviceLoop* loop, gloop::net::Server* server)
 {
-    gloop::net::tcp::connect(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
+    gloop::net::tcp::accept(loop, server, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
         if (!socket) {
             return;
         }
-        perform(loop, socket, 0);
+        perform(loop, server, socket, 0);
     });
+}
+
+__device__ gloop::net::Server* globalServer = nullptr;
+__device__ volatile INIT_LOCK initLock;
+__device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
+{
+    BEGIN_SINGLE_THREAD
+    {
+        __shared__ int toInit;
+        toInit = initLock.try_wait();
+        if (toInit == 1) {
+            gloop::net::tcp::bind(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Server* server) {
+                assert(server);
+                BEGIN_SINGLE_THREAD
+                {
+                    globalServer = server;
+                    __threadfence();
+                    initLock.signal();
+                }
+                END_SINGLE_THREAD
+                accept(loop, globalServer);
+            });
+            return;
+        }
+    }
+    END_SINGLE_THREAD
+    accept(loop, globalServer);
 }
 
 int main(int argc, char** argv)
 {
-    dim3 blocks(1);
+    dim3 blocks(8);
     std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
     std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
 

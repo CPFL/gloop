@@ -48,6 +48,8 @@ enum class Code : int32_t {
     NetSocket,
     NetClose,
     NetTCPConnect,
+    NetTCPBind,
+    NetTCPAccept,
     NetTCPReceive,
     NetTCPSend,
     NetTCPClose,
