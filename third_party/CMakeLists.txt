@@ -24,3 +24,4 @@ add_dependencies(uv ${EP_TARGET_NAME})
 
 add_subdirectory(backward-cpp)
 add_subdirectory(echo_server)
+add_subdirectory(uv_echo)
