@@ -317,7 +317,7 @@ bool HostLoop::handleIO(Command command)
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
             void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset);
-            GLOOP_DEBUG("mmap:address:(%p),size:(%u),prot:(%d),flags:(%d),fd:(%d),offset:(%d),res:(%p)\n", req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset, host);
+            // GLOOP_DEBUG("mmap:address:(%p),size:(%u),prot:(%d),flags:(%d),fd:(%d),offset:(%d),res:(%p)\n", req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset, host);
             void* device = nullptr;
             // Not sure, but, mapped memory can be accessed immediately from GPU kernel.
             GLOOP_CUDA_SAFE_CALL(cudaHostRegister(host, req.u.mmap.size, cudaHostRegisterMapped));
@@ -336,7 +336,7 @@ bool HostLoop::handleIO(Command command)
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
-            GLOOP_DEBUG("munmap:address:(%p),size:(%u)\n", req.u.munmap.address, req.u.munmap.size);
+            // GLOOP_DEBUG("munmap:address:(%p),size:(%u)\n", req.u.munmap.address, req.u.munmap.size);
             // FIXME: We should schedule this inside this process.
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
@@ -355,7 +355,7 @@ bool HostLoop::handleIO(Command command)
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
-            GLOOP_DEBUG("msync:address:(%p),size:(%u),flags:(%u)\n", req.u.msync.address, req.u.msync.size, req.u.msync.flags);
+            // GLOOP_DEBUG("msync:address:(%p),size:(%u),flags:(%u)\n", req.u.msync.address, req.u.msync.size, req.u.msync.flags);
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
                 void* host = m_currentContext->table().lookupHostByDevice((void*)req.u.msync.address);
@@ -368,7 +368,7 @@ bool HostLoop::handleIO(Command command)
     }
 
     case Code::NetTCPConnect: {
-        GLOOP_DEBUG("net::tcp::connect:address:(%08x),port:(%u)\n", req.u.netTCPConnect.address.sin_addr.s_addr, req.u.netTCPConnect.address.sin_port);
+        // GLOOP_DEBUG("net::tcp::connect:address:(%08x),port:(%u)\n", req.u.netTCPConnect.address.sin_addr.s_addr, req.u.netTCPConnect.address.sin_port);
         boost::asio::ip::tcp::socket* socket = new boost::asio::ip::tcp::socket(m_ioService);
         socket->async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4(req.u.netTCPConnect.address.sin_addr.s_addr), req.u.netTCPConnect.address.sin_port), [ipc, req, socket, this](const boost::system::error_code& error) {
             if (error) {
@@ -383,7 +383,7 @@ bool HostLoop::handleIO(Command command)
     }
 
     case Code::NetTCPBind: {
-        GLOOP_DEBUG("net::tcp::bind:address:(%08x),port:(%u)\n", req.u.netTCPBind.address.sin_addr.s_addr, req.u.netTCPBind.address.sin_port);
+        // GLOOP_DEBUG("net::tcp::bind:address:(%08x),port:(%u)\n", req.u.netTCPBind.address.sin_addr.s_addr, req.u.netTCPBind.address.sin_port);
         boost::asio::ip::tcp::acceptor* acceptor = new boost::asio::ip::tcp::acceptor(m_ioService, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4(req.u.netTCPBind.address.sin_addr.s_addr), req.u.netTCPBind.address.sin_port));
         ipc->request()->u.netTCPBindResult.server = reinterpret_cast<net::Server*>(acceptor);
         ipc->emit(Code::Complete);
@@ -391,7 +391,7 @@ bool HostLoop::handleIO(Command command)
     }
 
     case Code::NetTCPUnbind: {
-        GLOOP_DEBUG("net::tcp::unbind:server:(%p)\n", req.u.netTCPUnbind.server);
+        // GLOOP_DEBUG("net::tcp::unbind:server:(%p)\n", req.u.netTCPUnbind.server);
         assert(reinterpret_cast<boost::asio::ip::tcp::acceptor*>(req.u.netTCPUnbind.server));
         m_ioService.post([ipc, req, this]() {
             delete reinterpret_cast<boost::asio::ip::tcp::acceptor*>(req.u.netTCPUnbind.server);
@@ -402,7 +402,7 @@ bool HostLoop::handleIO(Command command)
     }
 
     case Code::NetTCPAccept: {
-        GLOOP_DEBUG("net::tcp::accept:server:(%p)\n", req.u.netTCPAccept.server);
+        // GLOOP_DEBUG("net::tcp::accept:server:(%p)\n", req.u.netTCPAccept.server);
         boost::asio::ip::tcp::socket* socket = new boost::asio::ip::tcp::socket(m_ioService);
         reinterpret_cast<boost::asio::ip::tcp::acceptor*>(req.u.netTCPAccept.server)->async_accept(*socket, [ipc, req, socket, this](const boost::system::error_code& error) {
             if (error) {
@@ -417,7 +417,7 @@ bool HostLoop::handleIO(Command command)
     }
 
     case Code::NetTCPReceive: {
-        GLOOP_DEBUG("net::tcp::receive:socket:(%p),count:(%u),buffer:(%p)\n", req.u.netTCPReceive.socket, req.u.netTCPReceive.count, req.u.netTCPReceive.buffer);
+        // GLOOP_DEBUG("net::tcp::receive:socket:(%p),count:(%u),buffer:(%p)\n", req.u.netTCPReceive.socket, req.u.netTCPReceive.count, req.u.netTCPReceive.buffer);
         assert(reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPReceive.socket));
         m_ioService.post([ipc, req, this]() {
             // FIXME: This should be reconsidered.
@@ -446,7 +446,7 @@ bool HostLoop::handleIO(Command command)
     }
 
     case Code::NetTCPSend: {
-        GLOOP_DEBUG("net::tcp::send:socket:(%p),count:(%u),buffer:(%p)\n", req.u.netTCPSend.socket, req.u.netTCPSend.count, req.u.netTCPSend.buffer);
+        // GLOOP_DEBUG("net::tcp::send:socket:(%p),count:(%u),buffer:(%p)\n", req.u.netTCPSend.socket, req.u.netTCPSend.count, req.u.netTCPSend.buffer);
         assert(reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPSend.socket));
         m_ioService.post([ipc, req, this]() {
             // FIXME: This should be reconsidered.
@@ -477,7 +477,7 @@ bool HostLoop::handleIO(Command command)
     }
 
     case Code::NetTCPClose: {
-        GLOOP_DEBUG("net::tcp::close:socket:(%p)\n", req.u.netTCPClose.socket);
+        // GLOOP_DEBUG("net::tcp::close:socket:(%p)\n", req.u.netTCPClose.socket);
         assert(reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPClose.socket));
         m_ioService.post([ipc, req, this]() {
             delete reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPClose.socket);
