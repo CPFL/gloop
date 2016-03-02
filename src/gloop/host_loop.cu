@@ -400,6 +400,8 @@ bool HostLoop::handleIO(Command command)
     case Code::NetTCPConnect: {
         // GLOOP_DEBUG("net::tcp::connect:address:(%08x),port:(%u)\n", req.u.netTCPConnect.address.sin_addr.s_addr, req.u.netTCPConnect.address.sin_port);
         boost::asio::ip::tcp::socket* socket = new boost::asio::ip::tcp::socket(m_ioService);
+        // socket->set_option(boost::asio::socket_base::receive_buffer_size(1 << 20));
+        // socket->set_option(boost::asio::socket_base::send_buffer_size(1 << 20));
         socket->async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4(req.u.netTCPConnect.address.sin_addr.s_addr), req.u.netTCPConnect.address.sin_port), [ipc, req, socket, this](const boost::system::error_code& error) {
             if (error) {
                 GLOOP_DEBUG("%s\n", error.message().c_str());
