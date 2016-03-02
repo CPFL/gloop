@@ -1,0 +1,11 @@
+add_executable(echo
+    main.cc
+)
+target_link_libraries(echo
+    dl
+    rt
+    boost_system
+    boost_thread
+    boost_date_time
+    gipc
+    ${GLOOP_CUDA_RUNTIME_LIBS})

@@ -23,3 +23,4 @@ set_target_properties(uv
 add_dependencies(uv ${EP_TARGET_NAME})
 
 add_subdirectory(backward-cpp)
+add_subdirectory(echo_server)
