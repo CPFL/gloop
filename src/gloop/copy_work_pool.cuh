@@ -23,6 +23,7 @@
 */
 #ifndef GLOOP_COPY_WORK_POOL_CU_H_
 #define GLOOP_COPY_WORK_POOL_CU_H_
+#include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include "copy_work.cuh"
@@ -31,11 +32,16 @@ namespace gloop {
 class CopyWorkPool {
 GLOOP_NONCOPYABLE(CopyWorkPool);
 public:
-    CopyWorkPool() = default;
+    CopyWorkPool(boost::asio::io_service& ioService)
+        : m_ioService(ioService)
+    {
+    }
+
     std::shared_ptr<CopyWork> acquire();
     void release(std::shared_ptr<CopyWork>);
 
 private:
+    boost::asio::io_service& m_ioService;
     boost::mutex m_mutex;
     boost::condition_variable m_conditionVariable;
     std::vector<std::shared_ptr<CopyWork>> m_works;

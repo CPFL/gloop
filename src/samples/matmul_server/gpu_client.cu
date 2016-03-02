@@ -27,7 +27,7 @@
 #include "microbench_util.h"
 
 #define THREADS_PER_TB 256
-#define ITERATION 1
+#define ITERATION 1000
 #define BUF_SIZE 65536
 #define NR_MSG   60000
 #define MSG_SIZE BUF_SIZE
@@ -59,7 +59,7 @@ __device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
 
 int main(int argc, char** argv)
 {
-    dim3 blocks(1);
+    dim3 blocks(18);
     std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
     std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
 
