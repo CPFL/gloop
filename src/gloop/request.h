@@ -137,24 +137,6 @@ struct MsyncResult {
     int error;
 };
 
-struct NetSocket {
-    int domain;
-    int type;
-    int protocol;
-};
-
-struct NetSocketResult {
-    net::Socket* socket;
-};
-
-struct NetClose {
-    net::Socket* socket;
-};
-
-struct NetCloseResult {
-    int error;
-};
-
 struct NetTCPConnect {
     struct sockaddr_in address;
 };
@@ -169,6 +151,14 @@ struct NetTCPBind {
 
 struct NetTCPBindResult {
     net::Server* server;
+};
+
+struct NetTCPUnbind {
+    net::Server* server;
+};
+
+struct NetTCPUnbindResult {
+    int error;
 };
 
 struct NetTCPAccept {
@@ -241,17 +231,14 @@ struct Request {
         Msync msync;
         MsyncResult msyncResult;
 
-        NetSocket netSocket;
-        NetSocketResult netSocketResult;
-
-        NetClose netClose;
-        NetCloseResult netCloseResult;
-
         NetTCPConnect netTCPConnect;
         NetTCPConnectResult netTCPConnectResult;
 
         NetTCPBind netTCPBind;
         NetTCPBindResult netTCPBindResult;
+
+        NetTCPUnbind netTCPUnbind;
+        NetTCPUnbindResult netTCPUnbindResult;
 
         NetTCPAccept netTCPAccept;
         NetTCPAcceptResult netTCPAcceptResult;

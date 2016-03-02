@@ -390,6 +390,17 @@ bool HostLoop::handleIO(Command command)
         break;
     }
 
+    case Code::NetTCPUnbind: {
+        GLOOP_DEBUG("net::tcp::unbind:server:(%p)\n", req.u.netTCPUnbind.server);
+        assert(reinterpret_cast<boost::asio::ip::tcp::acceptor*>(req.u.netTCPUnbind.server));
+        m_ioService.post([ipc, req, this]() {
+            delete reinterpret_cast<boost::asio::ip::tcp::acceptor*>(req.u.netTCPUnbind.server);
+            ipc->request()->u.netTCPUnbindResult.error = 0;
+            ipc->emit(Code::Complete);
+        });
+        break;
+    }
+
     case Code::NetTCPAccept: {
         GLOOP_DEBUG("net::tcp::accept:server:(%p)\n", req.u.netTCPAccept.server);
         boost::asio::ip::tcp::socket* socket = new boost::asio::ip::tcp::socket(m_ioService);

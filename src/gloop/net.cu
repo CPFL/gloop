@@ -52,6 +52,13 @@ __device__ void bindImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPBin
     ipc->emit(Code::NetTCPBind);
 }
 
+__device__ void unbindImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPUnbind& req, net::Server* server)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.server = server;
+    ipc->emit(Code::NetTCPUnbind);
+}
+
 __device__ void acceptImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPAccept& req, net::Server* server)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
@@ -77,7 +84,7 @@ __device__ void sendImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPSen
     ipc->emit(Code::NetTCPSend);
 }
 
-__device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetClose& req, net::Socket* socket)
+__device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPClose& req, net::Socket* socket)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.socket = socket;
