@@ -50,6 +50,9 @@ __device__ void perform(gloop::DeviceLoop* loop, gloop::net::Socket* socket, int
 __device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
 {
     gloop::net::tcp::connect(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
+        if (!socket) {
+            return;
+        }
         perform(loop, socket, 0);
     });
 }
