@@ -459,7 +459,7 @@ bool HostLoop::handleIO(Command command)
         assert(count <= GLOOP_SHARED_PAGE_SIZE);
         boost::asio::ip::tcp::socket* socket = reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPReceive.socket);
         CopyWork* copyWork = acquireCopyWork();
-        socket->async_read_some(boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), [=](const boost::system::error_code& error, size_t receiveCount) {
+        boost::asio::async_read(*socket, boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), boost::asio::transfer_at_least(1), [=](const boost::system::error_code& error, size_t receiveCount) {
             if (error) {
                 if ((boost::asio::error::eof == error) || (boost::asio::error::connection_reset == error)) {
                     ipc->request()->u.netTCPReceiveResult.receiveCount = 0;
