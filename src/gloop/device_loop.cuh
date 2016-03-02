@@ -166,18 +166,11 @@ inline __device__ void DeviceLoop::allocOnePage(Lambda lambda)
         int pagePos = freePagePosPlusOne - 1;
         page = pages() + pagePos;
         m_control.freePages &= ~(1ULL << pagePos);
-
-#if 1
-        volatile request::Request request;
-        request.u.allocOnePageResult.page = page;
-        lambda(this, &request);
-#else
         enqueueLater([lambda, page](DeviceLoop* loop, volatile request::Request* req) {
             volatile request::Request request;
             request.u.allocOnePageResult.page = page;
             lambda(loop, &request);
         });
-#endif
     }
 }
 
