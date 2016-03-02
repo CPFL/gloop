@@ -137,7 +137,6 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
             copyNoCache_block(page, reinterpret_cast<volatile uchar*>(buffer), count);
             BEGIN_SINGLE_THREAD
             {
-                void* page = req->u.allocOnePageResult.page;
                 auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
                     BEGIN_SINGLE_THREAD
                     {
@@ -146,7 +145,7 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
                     END_SINGLE_THREAD
                     callback(loop, req->u.netTCPSendResult.sentCount);
                 });
-                tcp::sendImpl(loop, ipc, ipc->request()->u.netTCPSend, socket, count, static_cast<unsigned char*>(page));
+                tcp::sendImpl(loop, ipc, ipc->request()->u.netTCPSend, socket, count, page);
             }
             END_SINGLE_THREAD
         });
