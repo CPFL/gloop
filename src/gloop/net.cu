@@ -57,7 +57,32 @@ __device__ void connectImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCP
     GLOOP_ASSERT_SINGLE_THREAD();
     // FIXME: Fix this part.
     *const_cast<struct sockaddr_in*>(&req.address) = *reinterpret_cast<struct sockaddr_in*>(addr);
-    ipc->emit(Code::NetSocket);
+    ipc->emit(Code::NetTCPConnect);
+}
+
+__device__ void receiveImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPReceive& req, net::Socket* socket, size_t count, unsigned char* buffer)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.socket = socket;
+    req.count = count;
+    req.buffer = buffer;
+    ipc->emit(Code::NetTCPReceive);
+}
+
+__device__ void sendImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPSend& req, net::Socket* socket, size_t count, unsigned char* buffer)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.socket = socket;
+    req.count = count;
+    req.buffer = buffer;
+    ipc->emit(Code::NetTCPSend);
+}
+
+__device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetClose& req, net::Socket* socket)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    req.socket = socket;
+    ipc->emit(Code::NetTCPClose);
 }
 
 }  // namespace gloop::net::tcp

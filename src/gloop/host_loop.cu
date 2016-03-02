@@ -384,6 +384,77 @@ bool HostLoop::handleIO(Command command)
         break;
     }
 
+    case Code::NetTCPConnect: {
+        boost::asio::ip::tcp::socket* socket = new boost::asio::ip::tcp::socket(m_ioService);
+        socket->async_connect(boost::asio::ip::tcp::endpoint(), [ipc, req, socket, this](const boost::system::error_code& error) {
+            if (error) {
+                delete socket;
+                ipc->request()->u.netSocketResult.socket = nullptr;
+            } else {
+                ipc->request()->u.netSocketResult.socket = reinterpret_cast<net::Socket*>(socket);
+            }
+            ipc->emit(Code::Complete);
+        });
+        break;
+    }
+
+    case Code::NetTCPReceive: {
+        m_ioService.post([ipc, req, this]() {
+            // FIXME: This should be reconsidered.
+            std::shared_ptr<CopyWork> copyWork = m_copyWorkPool->acquire();
+            assert(req.u.netTCPReceive.count <= copyWork->hostMemory().size());
+            size_t count = req.u.netTCPReceive.count;
+            boost::asio::ip::tcp::socket* socket = reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPReceive.socket);
+            boost::asio::async_read(*socket, boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), boost::asio::transfer_exactly(req.u.netTCPReceive.count), [=](const boost::system::error_code& error, size_t receiveCount) {
+                __sync_synchronize();
+                if (error) {
+                    ipc->request()->u.netTCPReceiveResult.receiveCount = 0;
+                } else {
+                    GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.netTCPReceive.buffer, copyWork->hostMemory().hostPointer(), receiveCount, cudaMemcpyHostToDevice, copyWork->stream()));
+                    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
+                    m_copyWorkPool->release(copyWork);
+                    ipc->request()->u.netTCPReceiveResult.receiveCount = receiveCount;
+                }
+                ipc->emit(Code::Complete);
+            });
+        });
+        break;
+    }
+
+    case Code::NetTCPSend: {
+        m_ioService.post([ipc, req, this]() {
+            // FIXME: This should be reconsidered.
+            std::shared_ptr<CopyWork> copyWork = m_copyWorkPool->acquire();
+            assert(req.u.netTCPSend.count <= copyWork->hostMemory().size());
+
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(copyWork->hostMemory().hostPointer(), req.u.netTCPSend.buffer, req.u.netTCPSend.count, cudaMemcpyDeviceToHost, copyWork->stream()));
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
+            __sync_synchronize();
+
+            size_t count = req.u.netTCPSend.count;
+            boost::asio::ip::tcp::socket* socket = reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPSend.socket);
+            boost::asio::async_write(*socket, boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), [=](const boost::system::error_code& error, size_t sentCount) {
+                if (error) {
+                    ipc->request()->u.netTCPSendResult.sentCount = 0;
+                } else {
+                    m_copyWorkPool->release(copyWork);
+                    ipc->request()->u.netTCPSendResult.sentCount = sentCount;
+                }
+                ipc->emit(Code::Complete);
+            });
+        });
+        break;
+    }
+
+    case Code::NetTCPClose: {
+        m_ioService.post([ipc, req, this]() {
+            delete reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPClose.socket);
+            ipc->request()->u.netTCPCloseResult.error = 0;
+            ipc->emit(Code::Complete);
+        });
+        break;
+    }
+
     }
     return false;
 }

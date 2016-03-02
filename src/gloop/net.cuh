@@ -67,6 +67,9 @@ inline __device__ auto close(DeviceLoop* loop, Socket* socket, Lambda callback) 
 namespace tcp {
 
 __device__ void connectImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPConnect& req, struct sockaddr_in* addr);
+__device__ void receiveImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPReceive& req, net::Socket* socket, size_t count, unsigned char* buffer);
+__device__ void sendImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPSend& req, net::Socket* socket, size_t count, unsigned char* buffer);
+__device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetClose& req, Socket* socket);
 
 template<typename Lambda>
 inline __device__ auto connect(DeviceLoop* loop, struct sockaddr_in* addr, Lambda callback) -> void
@@ -77,6 +80,77 @@ inline __device__ auto connect(DeviceLoop* loop, struct sockaddr_in* addr, Lambd
             callback(loop, const_cast<Socket*>(req->u.netTCPConnectResult.socket));
         });
         connectImpl(loop, ipc, ipc->request()->u.netTCPConnect, addr);
+    }
+    END_SINGLE_THREAD
+}
+
+template<typename Lambda>
+inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
+{
+    GPU_ASSERT(count <= GLOOP_SHARED_PAGE_SIZE);
+    BEGIN_SINGLE_THREAD
+    {
+        loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
+            BEGIN_SINGLE_THREAD
+            {
+                void* page = req->u.allocOnePageResult.page;
+                auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+                    ssize_t receiveCount = req->u.netTCPReceiveResult.receiveCount;
+                    __threadfence_system();
+                    GPU_ASSERT(receiveCount <= GLOOP_SHARED_PAGE_SIZE);
+                    copyNoCache_block(buffer, reinterpret_cast<volatile uchar*>(page), receiveCount);
+                    BEGIN_SINGLE_THREAD
+                    {
+                        loop->freeOnePage(page);
+                    }
+                    END_SINGLE_THREAD
+                    callback(loop, receiveCount);
+                });
+                receiveImpl(loop, ipc, ipc->request()->u.netTCPReceive, socket, count, static_cast<unsigned char*>(page));
+            }
+            END_SINGLE_THREAD
+        });
+    }
+    END_SINGLE_THREAD
+}
+
+template<typename Lambda>
+inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
+{
+    GPU_ASSERT(count <= GLOOP_SHARED_PAGE_SIZE);
+    BEGIN_SINGLE_THREAD
+    {
+        loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
+            unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
+            copyNoCache_block(page, reinterpret_cast<volatile uchar*>(buffer), count);
+            BEGIN_SINGLE_THREAD
+            {
+                void* page = req->u.allocOnePageResult.page;
+                auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+                    BEGIN_SINGLE_THREAD
+                    {
+                        loop->freeOnePage(page);
+                    }
+                    END_SINGLE_THREAD
+                    callback(loop, req->u.netTCPSendResult.sentCount);
+                });
+                sendImpl(loop, ipc, ipc->request()->u.netTCPSend, socket, count, static_cast<unsigned char*>(page));
+            }
+            END_SINGLE_THREAD
+        });
+    }
+    END_SINGLE_THREAD
+}
+
+template<typename Lambda>
+inline __device__ auto close(DeviceLoop* loop, Socket* socket, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop, req->u.netCloseResult.error);
+        });
+        tcp::closeImpl(loop, ipc, ipc->request()->u.netClose, socket);
     }
     END_SINGLE_THREAD
 }

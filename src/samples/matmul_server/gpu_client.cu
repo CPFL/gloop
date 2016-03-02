@@ -27,32 +27,31 @@
 #include "microbench_util.h"
 
 #define THREADS_PER_TB 256
+#define ITERATION 1
+#define BUF_SIZE 65536
+#define NR_MSG   60000
+#define MSG_SIZE BUF_SIZE
 
-__device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in *addr) {
+__device__ unsigned char g_message[512][MSG_SIZE];
+
+__device__ void perform(gloop::DeviceLoop* loop, gloop::net::Socket* socket, int iteration)
+{
+    if (iteration != ITERATION) {
+        gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+            gloop::net::tcp::send(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
+                perform(loop, socket, iteration + 1);
+            });
+        });
+        return;
+    }
+    gloop::net::close(loop, socket, [=](gloop::DeviceLoop* loop, int error) { });
+}
+
+__device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
+{
     gloop::net::tcp::connect(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
+        perform(loop, socket, 0);
     });
-#if 0
-	__shared__ int sock;
-	int ret;
-	sock = gconnect_in(addr);
-	if (sock < 0) {
-		BEGIN_SINGLE_THREAD_PART {
-			gprintf4_single("ERROR: gconnect_in sock: %d", sock, 0, 0, 0);
-		} END_SINGLE_THREAD_PART;
-		return;
-	}
-
-
-	if (ret = gbench_send_recv_bw<BUF_SIZE, NR_MSG>(sock)) {
-		printf("gbench_send_recv_bw ret: %d\n", ret);
-		goto out;
-	}
-
-out:
-	BEGIN_SINGLE_THREAD_PART {
-		single_thread_gclose(sock);
-	} END_SINGLE_THREAD_PART;
-#endif
 }
 
 int main(int argc, char** argv)

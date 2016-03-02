@@ -163,6 +163,34 @@ struct NetTCPConnectResult {
     net::Socket* socket;
 };
 
+struct NetTCPReceive {
+    net::Socket* socket;
+    size_t count;
+    unsigned char* buffer;
+};
+
+struct NetTCPReceiveResult {
+    ssize_t receiveCount;
+};
+
+struct NetTCPSend {
+    net::Socket* socket;
+    size_t count;
+    unsigned char* buffer;
+};
+
+struct NetTCPSendResult {
+    ssize_t sentCount;
+};
+
+struct NetTCPClose {
+    net::Socket* socket;
+};
+
+struct NetTCPCloseResult {
+    int error;
+};
+
 struct Request {
     int32_t code;
     union {
@@ -205,6 +233,15 @@ struct Request {
 
         NetTCPConnect netTCPConnect;
         NetTCPConnectResult netTCPConnectResult;
+
+        NetTCPReceive netTCPReceive;
+        NetTCPReceiveResult netTCPReceiveResult;
+
+        NetTCPSend netTCPSend;
+        NetTCPSendResult netTCPSendResult;
+
+        NetTCPClose netTCPClose;
+        NetTCPCloseResult netTCPCloseResult;
     } u;
 };
 
