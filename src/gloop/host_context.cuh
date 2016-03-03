@@ -48,7 +48,8 @@ public:
 
     dim3 blocks() const { return m_blocks; }
 
-    __host__ IPC* tryPeekRequest();
+    template<typename Callback>
+    __host__ bool tryPeekRequest(const Callback& callback);
 
     FileDescriptorTable& table() { return m_table; }
 
@@ -87,6 +88,25 @@ private:
     bool m_exitHandlerScheduled { false };
 };
 
+template<typename Callback>
+inline bool HostContext::tryPeekRequest(const Callback& callback)
+{
+    bool found = false;
+    __sync_synchronize();
+    int blocks = m_blocks.x * m_blocks.y;
+    for (int i = 0; i < blocks; ++i) {
+        for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
+            auto& channel = m_ipc[i * GLOOP_SHARED_SLOT_SIZE + j];
+            Code code = channel.peek();
+            if (IsOperationCode(code)) {
+                found = true;
+                callback(&channel);
+            }
+        }
+    }
+    __sync_synchronize();
+    return found;
+}
 
 }  // namespace gloop
 #endif  // GLOOP_HOST_CONTEXT_CU_H_

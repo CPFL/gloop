@@ -144,7 +144,7 @@ void HostLoop::pollerMain()
 {
     uint32_t count = 0;
     while (true) {
-        if (IPC* ipc = m_currentContext->tryPeekRequest()) {
+        bool found = m_currentContext->tryPeekRequest([&](IPC* ipc) {
             request::Request req { };
             memcpy(&req, (request::Request*)ipc->request(), sizeof(request::Request));
             ipc->emit(Code::None);
@@ -153,6 +153,8 @@ void HostLoop::pollerMain()
                 .payload = bitwise_cast<uintptr_t>(ipc),
                 .request = req,
             });
+        });
+        if (found) {
             count = 0;
             continue;
         }

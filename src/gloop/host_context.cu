@@ -92,23 +92,4 @@ void HostContext::prepareForLaunch()
     __sync_synchronize();
 }
 
-IPC* HostContext::tryPeekRequest()
-{
-    IPC* result = nullptr;
-    __sync_synchronize();
-    int blocks = m_blocks.x * m_blocks.y;
-    for (int i = 0; i < blocks; ++i) {
-        for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
-            auto& channel = m_ipc[i * GLOOP_SHARED_SLOT_SIZE + j];
-            Code code = channel.peek();
-            if (IsOperationCode(code)) {
-                result = &channel;
-                break;
-            }
-        }
-    }
-    __sync_synchronize();
-    return result;
-}
-
 }  // namespace gloop
