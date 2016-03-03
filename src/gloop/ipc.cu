@@ -29,16 +29,6 @@
 
 namespace gloop {
 
-__host__ __device__ void IPC::emit(Code code)
-{
-    syncWrite(&m_request.code, static_cast<int32_t>(code));
-}
-
-__device__ __host__ Code IPC::peek()
-{
-    return static_cast<Code>(m_request.code);
-}
-
 #if 0
 __device__ void IPC::lock()
 {
