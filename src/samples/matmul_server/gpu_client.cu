@@ -31,8 +31,8 @@
 // #define ITERATION (1024)
 // #define ITERATION -1
 #define ITERATION (1024)
-// #define BUF_SIZE 65536
-#define BUF_SIZE 524288
+#define BUF_SIZE 65536
+// #define BUF_SIZE 524288
 // #define BUF_SIZE 65536
 #define NR_MSG   60000
 #define MSG_SIZE BUF_SIZE
@@ -79,7 +79,7 @@ __device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
 int main(int argc, char** argv)
 {
     dim3 blocks(BLOCKS);
-    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(1);
+    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
     std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
 
     struct sockaddr* addr;
