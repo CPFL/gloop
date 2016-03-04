@@ -27,8 +27,6 @@
 #include <cassert>
 #include <cstdio>
 #include <cuda.h>
-#include <gpufs/libgpufs/fs_initializer.cu.h>
-#include <gpufs/libgpufs/host_loop.h>
 #include <memory>
 #include <sys/mman.h>
 #include "benchmark.h"
@@ -238,7 +236,7 @@ void HostLoop::prologue(HostContext& hostContext, dim3 threads)
 void HostLoop::epilogue()
 {
     stopPoller();
-    logGPUfsDone();
+    // logGPUfsDone();
     m_currentContext = nullptr;
 }
 

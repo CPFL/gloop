@@ -21,7 +21,6 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include <gpufs/libgpufs/fs_calls.cu.h>
 #include "device_context.cuh"
 #include "device_loop.cuh"
 #include "dump_memory.cuh"
