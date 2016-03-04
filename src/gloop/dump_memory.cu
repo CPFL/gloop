@@ -25,9 +25,9 @@
 #include <cstdio>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <gpufs/libgpufs/util.cu.h>
 #include "dump_memory.cuh"
 #include "utility.h"
+#include "utility/util.cu.h"
 namespace gloop {
 
 __device__ void dumpMemoryInternal(const void* ptr, std::size_t size)

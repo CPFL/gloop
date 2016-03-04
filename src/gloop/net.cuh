@@ -31,6 +31,7 @@
 #include "memcpy_io.cuh"
 #include "net_socket.h"
 #include "request.h"
+#include "utility/util.cu.h"
 
 namespace gloop {
 namespace net {
@@ -110,7 +111,7 @@ inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t cou
                     ssize_t receiveCount = req->u.netTCPReceiveResult.receiveCount;
                     __threadfence_system();
                     GPU_ASSERT(receiveCount <= GLOOP_SHARED_PAGE_SIZE);
-                    copyNoCache_block(buffer, reinterpret_cast<volatile uchar*>(page), receiveCount);
+                    gpunet::copy_block_src_volatile(buffer, reinterpret_cast<volatile uchar*>(page), receiveCount);
                     BEGIN_SINGLE_THREAD
                     {
                         loop->freeOnePage(page);
@@ -134,7 +135,7 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
     {
         loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
             unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
-            copyNoCache_block(page, reinterpret_cast<volatile uchar*>(buffer), count);
+            gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, count);
             BEGIN_SINGLE_THREAD
             {
                 auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {

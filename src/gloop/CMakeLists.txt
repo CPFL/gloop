@@ -4,7 +4,7 @@ ExternalProject_Get_Property(LIBUV_LIB_EP SOURCE_DIR)
 include_directories("${SOURCE_DIR}/include")
 include_directories(".")
 include_directories("../")
-include_directories("../gpufs/gpufs_con_lib.user/")
+# include_directories("../gpufs/gpufs_con_lib.user/")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 set(CUDA_RUNTIME_API_HEADER)
@@ -55,6 +55,7 @@ add_library(gloop STATIC
     net.cu
     process.cu
     system_initialize.cu
+    utility/util.cu
 )
 target_link_libraries(gloop
     dl

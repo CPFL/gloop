@@ -52,7 +52,7 @@ __device__ void entry(gloop::DeviceLoop* loop, char* filename)
     BEGIN_SINGLE_THREAD
     {
         scratch=(uchar*)malloc(GLOOP_SHARED_PAGE_SIZE);
-        GPU_ASSERT(scratch!=NULL);
+        GLOOP_ASSERT(scratch!=NULL);
     }
     END_SINGLE_THREAD
 

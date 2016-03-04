@@ -99,7 +99,7 @@ __device__ void gpuMain(gloop::DeviceLoop* loop, char* src, char* dst)
         pairedBuffers.buffers[1] = allBuffers + GLOOP_SHARED_PAGE_SIZE;
         pairedBuffers.guard = (int*)(allBuffers + GLOOP_SHARED_PAGE_SIZE * 2);
         *pairedBuffers.guard = 0;
-        GPU_ASSERT(allBuffers != NULL);
+        GLOOP_ASSERT(allBuffers != NULL);
     }
     END_SINGLE_THREAD
 

@@ -31,7 +31,7 @@ __device__ void gpuMain(gloop::DeviceLoop* loop, char* src, char* dst)
 
     BEGIN_SINGLE_THREAD
         scratch = (uchar*)malloc(GLOOP_SHARED_PAGE_SIZE);
-        GPU_ASSERT(scratch != NULL);
+        GLOOP_ASSERT(scratch != NULL);
     END_SINGLE_THREAD
 
     gloop::fs::open(loop, src, O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd) {

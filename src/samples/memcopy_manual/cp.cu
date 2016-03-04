@@ -123,7 +123,7 @@ __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
     __shared__ uchar* scratch;
     BEGIN_SINGLE_THREAD
         scratch=(uchar*)malloc(FS_BLOCKSIZE);
-        GPU_ASSERT(scratch!=NULL);
+        GLOOP_ASSERT(scratch!=NULL);
     END_SINGLE_THREAD
 
     gloop::open(loop, src, O_GRDONLY, (struct Open1Data) {

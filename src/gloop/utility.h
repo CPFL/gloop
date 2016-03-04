@@ -23,7 +23,7 @@
 */
 #ifndef GLOOP_UTILITY_H_
 #define GLOOP_UTILITY_H_
-#include <cassert>
+#include <assert.h>
 
 #define GLOOP_CONCAT1(x, y) x##y
 #define GLOOP_CONCAT(x, y) GLOOP_CONCAT1(x, y)
@@ -60,7 +60,7 @@
 
 #define GLOOP_UNREACHABLE() GLOOP_ASSERT(0)
 
-#define GLOOP_ASSERT_SINGLE_THREAD() GPU_ASSERT(threadIdx.x+threadIdx.y+threadIdx.z ==0)
+#define GLOOP_ASSERT_SINGLE_THREAD() GLOOP_ASSERT(threadIdx.x+threadIdx.y+threadIdx.z ==0)
 
 #define GLOOP_CUDA_SAFE_CALL(x) if((x) != cudaSuccess) {\
         fprintf(stderr, "CUDA ERROR %s: %d %s\n", __FILE__, __LINE__, cudaGetErrorString(cudaGetLastError()));\
@@ -76,5 +76,8 @@
 #define GLOOP_TID() (threadIdx.x + threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y)
 #define GLOOP_TMAX() (blockDim.x * blockDim.y * blockDim.z)
 #define GLOOP_BID() (blockIdx.x + blockIdx.y * gridDim.x)
+
+// #define GLOOP_ERROR(str) do { __assert_fail(str,__FILE__,__LINE__,__func__); } while (0)
+#define GLOOP_ERROR(str) GLOOP_ASSERT(0)
 
 #endif  // GLOOP_UTILITY_H_

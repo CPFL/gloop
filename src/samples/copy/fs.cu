@@ -53,8 +53,8 @@ void stdavg(double *avg_time, double *avg_thpt, double* std_time, double *std_th
 char*  update_filename(const char* h_filename){
     int n=strlen(h_filename);
     assert(n>0);
-    if (n>FILENAME_SIZE) {
-        fprintf(stderr,"Filname %s too long, should be only %d symbols including \\0",h_filename,FILENAME_SIZE);
+    if (n>GLOOP_FILENAME_SIZE) {
+        fprintf(stderr,"Filname %s too long, should be only %d symbols including \\0",h_filename,GLOOP_FILENAME_SIZE);
         exit (-1);
     }
     char* d_filename;
@@ -66,7 +66,7 @@ char*  update_filename(const char* h_filename){
 #include <assert.h>
 
 // size of the output used for data staging
-int output_size=FS_BLOCKSIZE;
+int output_size=GLOOP_SHARED_PAGE_SIZE;
 
 #define MAX_TRIALS (10)
 double time_res[MAX_TRIALS];

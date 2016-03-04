@@ -37,7 +37,7 @@ __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
 
     BEGIN_SINGLE_THREAD
         scratch=(uchar*)malloc(FS_BLOCKSIZE);
-        GPU_ASSERT(scratch!=NULL);
+        GLOOP_ASSERT(scratch!=NULL);
     END_SINGLE_THREAD
 
     gloop::fs::open(loop, src, O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd) {

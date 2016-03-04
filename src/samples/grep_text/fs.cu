@@ -36,8 +36,8 @@ void init_app();
 char*  update_filename(const char* h_filename){
 	int n=strlen(h_filename);
 	assert(n>0);
-	if (n>FILENAME_SIZE) {
-		fprintf(stderr,"Filname %s too long, should be only %d symbols including \\0",h_filename,FILENAME_SIZE);
+	if (n>GLOOP_FILENAME_SIZE) {
+		fprintf(stderr,"Filname %s too long, should be only %d symbols including \\0",h_filename,GLOOP_FILENAME_SIZE);
 		exit (-1);
 	}
 	char* d_filename;

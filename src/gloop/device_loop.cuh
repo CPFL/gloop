@@ -25,7 +25,6 @@
 #define GLOOP_DEVICE_LOOP_H_
 #include <cstdint>
 #include <gipc/gipc.cuh>
-#include <gpufs/libgpufs/util.cu.h>
 #include <type_traits>
 #include "code.cuh"
 #include "config.h"
@@ -33,6 +32,7 @@
 #include "ipc.cuh"
 #include "request.h"
 #include "utility.h"
+#include "utility/util.cu.h"
 namespace gloop {
 
 __device__ extern IPC* g_channel;

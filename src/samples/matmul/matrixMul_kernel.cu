@@ -146,7 +146,7 @@ performInnerLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int per
     gloop::fs::mmap(loop, NULL,wA*BLOCK_SIZE*sizeof(float), PROT_READ | PROT_WRITE, MAP_SHARED, f_b, bBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
         volatile float* ptr_b = (volatile float*)res;
         //        volatile float * ptr_b=tmp_b;
-        //        if (ptr_b==GMAP_FAILED) ERROR("GMMAP failed with m_b");
+        //        if (ptr_b==GMAP_FAILED) GLOOP_ERROR("GMMAP failed with m_b");
 
         // Block index
 
@@ -234,14 +234,14 @@ performOuterLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int per
     gloop::fs::mmap(loop, NULL,wA*BLOCK_SIZE*sizeof(float),PROT_READ | PROT_WRITE, MAP_SHARED, f_c,cBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
         volatile float* ptr_c=(volatile float*)res;
         //    volatile float * ptr_c=tmp_c;
-        if (ptr_c==GMAP_FAILED) ERROR("GMMAP failed with m_c");
+        if (ptr_c==GMAP_FAILED) GLOOP_ERROR("GMMAP failed with m_c");
 
         int aBegin = wA*BLOCK_SIZE*by*sizeof(float);
 
         gloop::fs::mmap(loop, NULL,wA*BLOCK_SIZE*sizeof(float),PROT_READ | PROT_WRITE, MAP_SHARED, f_a,aBegin, [=](gloop::DeviceLoop* loop, volatile void* res) {
             volatile float* ptr_a=(volatile float*)res;
             //      volatile float* ptr_a=tmp_a;
-            if (ptr_a==GMAP_FAILED) ERROR("GMMAP failed with m_a");
+            if (ptr_a==GMAP_FAILED) GLOOP_ERROR("GMMAP failed with m_a");
 
 #if 0
             gloop::fs::munmap(loop, ptr_c, wA*BLOCK_SIZE*sizeof(float), [=](gloop::DeviceLoop* loop, int error) {
@@ -269,18 +269,18 @@ matrixMul(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY,
 {
     gloop::fs::open(loop, "mtx_a", O_RDWR, [=](gloop::DeviceLoop* loop, int f_a) {
         if (f_a<0) {
-            ERROR("Failed to open a");
+            GLOOP_ERROR("Failed to open a");
         }
 
         gloop::fs::open(loop, "mtx_b", O_RDWR, [=](gloop::DeviceLoop* loop, int f_b) {
             if (f_b<0) {
-                ERROR("Failed to open B");
+                GLOOP_ERROR("Failed to open B");
             }
 
             char out[6]="mtx_c"; out[0]=n;
             gloop::fs::open(loop, out, O_RDWR, [=](gloop::DeviceLoop* loop, int f_c) {
                 if (f_c<0) {
-                    ERROR("Failed to open c");
+                    GLOOP_ERROR("Failed to open c");
                 }
                 performOperation<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c);
             });

@@ -69,7 +69,7 @@ __device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
 {
     gloop::net::tcp::connect(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
         if (!socket) {
-            ERROR("Socket failed.");
+            GLOOP_ERROR("Socket failed.");
             return;
         }
         perform(loop, socket, 0);

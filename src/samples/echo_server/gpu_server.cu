@@ -71,7 +71,7 @@ __device__ void accept(gloop::DeviceLoop* loop, gloop::net::Server* server)
 }
 
 __device__ gloop::net::Server* globalServer = nullptr;
-__device__ volatile INIT_LOCK initLock;
+__device__ volatile gpunet::INIT_LOCK initLock;
 __device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
 {
     BEGIN_SINGLE_THREAD

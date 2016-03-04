@@ -65,7 +65,7 @@ __global__ void gpuserver(struct sockaddr_in *addr, volatile int* tb_alloc_tbl, 
 			server_done = 0;
 
 			sock = single_thread_gbind_in(addr);
-			GPU_ASSERT(sock == 0);
+			GLOOP_ASSERT(sock == 0);
 		} END_SINGLE_THREAD_PART;
 
 		do {

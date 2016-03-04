@@ -30,4 +30,5 @@
 #include "host_context.cuh"
 #include "host_loop.cuh"
 #include "net.cuh"
+#include "utility/util.cu.h"
 #endif  // GLOOP_GLOOP_H_

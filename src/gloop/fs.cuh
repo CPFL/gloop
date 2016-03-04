@@ -29,6 +29,7 @@
 #include "device_loop.cuh"
 #include "memcpy_io.cuh"
 #include "request.h"
+#include "utility/util.cu.h"
 
 namespace gloop {
 namespace fs {
@@ -140,7 +141,7 @@ inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offse
         });
     }
 
-    copyNoCache_block(buffer + (requestedOffset - offset), reinterpret_cast<volatile uchar*>(page), readCount);
+    gpunet::copy_block_src_volatile(buffer + (requestedOffset - offset), reinterpret_cast<volatile uchar*>(page), readCount);
     BEGIN_SINGLE_THREAD
     {
         loop->freeOnePage(page);
@@ -169,7 +170,7 @@ inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, siz
     {
         loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
             unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
-            copyNoCache_block(page, reinterpret_cast<volatile uchar*>(buffer), transferringSize);
+            gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, transferringSize);
             BEGIN_SINGLE_THREAD
             {
                 auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {

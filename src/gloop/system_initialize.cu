@@ -26,7 +26,6 @@
 #include <cuda_runtime_api.h>
 #include <mutex>
 #include <thread>
-#include <gpufs/libgpufs/util.cu.h>
 #include <unistd.h>
 #include "system_initialize.h"
 #include "utility.h"

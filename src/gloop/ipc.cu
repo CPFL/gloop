@@ -23,7 +23,6 @@
 */
 
 #include <cassert>
-#include <gpufs/libgpufs/util.cu.h>
 #include "ipc.cuh"
 #include "sync_read_write.h"
 
