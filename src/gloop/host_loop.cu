@@ -156,7 +156,7 @@ void HostLoop::pollerMain()
             count = 0;
             continue;
         }
-        if ((count++ % 4096) == 0) {
+        if ((++count % 4096) == 0) {
             boost::this_thread::interruption_point();
         }
     }
