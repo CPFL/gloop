@@ -40,11 +40,14 @@ public:
         m_end = clock::now();
     }
 
+    std::chrono::microseconds ticks()
+    {
+        return std::chrono::duration_cast<std::chrono::microseconds>(m_end - m_begin);
+    }
+
     void report(const std::string& prefix = "")
     {
-        auto elapsed = m_end - m_begin;
-        auto ticks = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
-        std::cout << prefix << "result:us(" << ticks << ")" << std::endl;
+        std::cout << prefix << "result:us(" << ticks().count() << ")" << std::endl;
     }
 
 private:
