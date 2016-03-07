@@ -76,7 +76,8 @@ public:
     __device__ DeviceLoop(volatile uint32_t* signal, DeviceContext, size_t size);
 
     __device__ IPC* enqueueIPC(Callback lambda);
-    __device__ void enqueueLater(Callback lambda);
+    template<typename Lambda>
+    __device__ void enqueueLater(Lambda lambda);
 
     template<typename Lambda>
     __device__ void allocOnePage(Lambda lambda);
@@ -172,6 +173,13 @@ inline __device__ void DeviceLoop::allocOnePage(Lambda lambda)
             lambda(loop, &request);
         });
     }
+
+template<typename Lambda>
+inline __device__ void DeviceLoop::enqueueLater(Lambda lambda)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    uint32_t pos = enqueueSleep(lambda);
+    m_control.wakeup |= (1ULL << pos);
 }
 
 }  // namespace gloop

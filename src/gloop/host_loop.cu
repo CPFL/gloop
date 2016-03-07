@@ -524,6 +524,12 @@ bool HostLoop::handleIO(Command command)
         break;
     }
 
+    case Code::Exit: {
+        ipc->emit(Code::ExitRequired);
+        m_currentContext->addExitRequired(ipc);
+        break;
+    }
+
     }
     return false;
 }

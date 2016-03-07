@@ -55,6 +55,8 @@ enum class Code : int32_t {
     NetTCPSend,
     NetTCPClose,
 
+    Exit,
+
     Stop
 };
 

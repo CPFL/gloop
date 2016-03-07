@@ -51,13 +51,6 @@ __device__ IPC* DeviceLoop::enqueueIPC(Callback lambda)
     return result;
 }
 
-__device__ void DeviceLoop::enqueueLater(Callback lambda)
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    uint32_t pos = enqueueSleep(lambda);
-    m_control.wakeup |= (1ULL << pos);
-}
-
 __device__ auto DeviceLoop::dequeue(bool& shouldExit) -> Callback*
 {
     GLOOP_ASSERT_SINGLE_THREAD();

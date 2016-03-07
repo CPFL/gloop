@@ -40,5 +40,18 @@ inline __device__ auto postTask(DeviceLoop* loop, Lambda callback) -> void
     END_SINGLE_THREAD
 }
 
+template<typename Lambda>
+inline __device__ auto forceExit(DeviceLoop* loop, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        IPC* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop);
+        });
+        ipc->emit(Code::Exit);
+    }
+    END_SINGLE_THREAD
+}
+
 } }  // namespace gloop::loop
 #endif  // GLOOP_LOOP_CU_H_
