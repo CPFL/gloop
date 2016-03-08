@@ -92,7 +92,6 @@ template<typename Callback>
 inline bool HostContext::tryPeekRequest(const Callback& callback)
 {
     bool found = false;
-    __sync_synchronize();
     int blocks = m_blocks.x * m_blocks.y;
     for (int i = 0; i < blocks; ++i) {
         for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
@@ -104,7 +103,6 @@ inline bool HostContext::tryPeekRequest(const Callback& callback)
             }
         }
     }
-    __sync_synchronize();
     return found;
 }
 

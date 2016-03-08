@@ -151,28 +151,30 @@ __device__ auto DeviceLoop::pages() const -> OnePage*
 template<typename Lambda>
 inline __device__ void DeviceLoop::allocOnePage(Lambda lambda)
 {
-    GLOOP_ASSERT_SINGLE_THREAD();
-    void* page = nullptr;
-    int freePagePosPlusOne = __ffsll(m_control.freePages);
-    if (freePagePosPlusOne == 0) {
-        uint32_t pos = enqueueSleep([lambda](DeviceLoop* loop, volatile request::Request* req) {
-            BEGIN_SINGLE_THREAD
-            {
+    __shared__ void* page;
+    BEGIN_SINGLE_THREAD
+    {
+        page = nullptr;
+        int freePagePosPlusOne = __ffsll(m_control.freePages);
+        if (freePagePosPlusOne == 0) {
+            uint32_t pos = enqueueSleep([lambda](DeviceLoop* loop, volatile request::Request* req) {
                 loop->allocOnePage(lambda);
-            }
-            END_SINGLE_THREAD
-        });
-        m_control.m_pageSleep |= (1ULL << pos);
-    } else {
-        int pagePos = freePagePosPlusOne - 1;
-        page = pages() + pagePos;
-        m_control.freePages &= ~(1ULL << pagePos);
-        enqueueLater([lambda, page](DeviceLoop* loop, volatile request::Request* req) {
-            volatile request::Request request;
-            request.u.allocOnePageResult.page = page;
-            lambda(loop, &request);
-        });
+            });
+            m_control.m_pageSleep |= (1ULL << pos);
+        } else {
+            int pagePos = freePagePosPlusOne - 1;
+            page = pages() + pagePos;
+            m_control.freePages &= ~(1ULL << pagePos);
+        }
     }
+    END_SINGLE_THREAD
+    if (!page)
+        return;
+
+    volatile request::Request request;
+    request.u.allocOnePageResult.page = page;
+    lambda(this, &request);
+}
 
 template<typename Lambda>
 inline __device__ void DeviceLoop::enqueueLater(Lambda lambda)

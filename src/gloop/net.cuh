@@ -101,57 +101,76 @@ template<typename Lambda>
 inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     GPU_ASSERT(count <= GLOOP_SHARED_PAGE_SIZE);
+#if 0
+    __shared__ long long t1;
     BEGIN_SINGLE_THREAD
     {
-        loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
-            BEGIN_SINGLE_THREAD
-            {
-                void* page = req->u.allocOnePageResult.page;
-                auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
-                    ssize_t receiveCount = req->u.netTCPReceiveResult.receiveCount;
-                    __threadfence_system();
-                    GPU_ASSERT(receiveCount <= GLOOP_SHARED_PAGE_SIZE);
-                    gpunet::copy_block_src_volatile(buffer, reinterpret_cast<volatile uchar*>(page), receiveCount);
-                    BEGIN_SINGLE_THREAD
-                    {
-                        loop->freeOnePage(page);
-                    }
-                    END_SINGLE_THREAD
-                    callback(loop, receiveCount);
-                });
-                tcp::receiveImpl(loop, ipc, ipc->request()->u.netTCPReceive, socket, count, static_cast<unsigned char*>(page));
-            }
-            END_SINGLE_THREAD
-        });
+        t1 = clock64();
     }
     END_SINGLE_THREAD
+#endif
+
+    loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
+        BEGIN_SINGLE_THREAD
+        {
+            void* page = req->u.allocOnePageResult.page;
+            auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+                ssize_t receiveCount = req->u.netTCPReceiveResult.receiveCount;
+                __threadfence_system();
+                GPU_ASSERT(receiveCount <= GLOOP_SHARED_PAGE_SIZE);
+                gpunet::copy_block_src_volatile(buffer, reinterpret_cast<volatile uchar*>(page), receiveCount);
+                BEGIN_SINGLE_THREAD
+                {
+                    loop->freeOnePage(page);
+                }
+                END_SINGLE_THREAD
+                callback(loop, receiveCount);
+            });
+            tcp::receiveImpl(loop, ipc, ipc->request()->u.netTCPReceive, socket, count, static_cast<unsigned char*>(page));
+#if 0
+            long long t2 = clock64();
+            printf("receive clocks %ld, size: %d\n", t2-t1, (int)count);
+#endif
+        }
+        END_SINGLE_THREAD
+    });
 }
 
 template<typename Lambda>
 inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     GPU_ASSERT(count <= GLOOP_SHARED_PAGE_SIZE);
+#if 0
+    __shared__ long long t1;
     BEGIN_SINGLE_THREAD
     {
-        loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
-            unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
-            gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, count);
-            BEGIN_SINGLE_THREAD
-            {
-                auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
-                    BEGIN_SINGLE_THREAD
-                    {
-                        loop->freeOnePage(page);
-                    }
-                    END_SINGLE_THREAD
-                    callback(loop, req->u.netTCPSendResult.sentCount);
-                });
-                tcp::sendImpl(loop, ipc, ipc->request()->u.netTCPSend, socket, count, page);
-            }
-            END_SINGLE_THREAD
-        });
+        t1 = clock64();
     }
     END_SINGLE_THREAD
+#endif
+    loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
+        unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
+        gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, count);
+        // __threadfence_system();
+        BEGIN_SINGLE_THREAD
+        {
+            auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+                BEGIN_SINGLE_THREAD
+                {
+                    loop->freeOnePage(page);
+                }
+                END_SINGLE_THREAD
+                callback(loop, req->u.netTCPSendResult.sentCount);
+            });
+            tcp::sendImpl(loop, ipc, ipc->request()->u.netTCPSend, socket, count, page);
+#if 0
+            long long t1 = clock64();
+            long long t2 = clock64();
+            printf("send clocks %ld\n", t2-t1);
+#endif
+        }
+        END_SINGLE_THREAD
+    });
 }
 
 template<typename Lambda>

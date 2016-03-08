@@ -156,7 +156,7 @@ void HostLoop::pollerMain()
             count = 0;
             continue;
         }
-        if ((++count % 4096) == 0) {
+        if ((++count % 100000) == 0) {
             boost::this_thread::interruption_point();
         }
     }
@@ -180,6 +180,12 @@ void HostLoop::initialize()
         }
 
         CUDA_SAFE_CALL(cudaPeekAtLastError());
+
+        cudaDeviceProp deviceProp;
+        CUDA_SAFE_CALL(cudaGetDeviceProperties(&deviceProp, m_deviceNumber));
+#if 1
+        printf("clock rate:(%d)\n", deviceProp.clockRate);
+#endif
     }
 }
 

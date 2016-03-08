@@ -99,25 +99,21 @@ inline __device__ auto ftruncate(DeviceLoop* loop, int fd, off_t offset, Lambda 
 template<typename Lambda>
 inline __device__ auto readOnePage(DeviceLoop* loop, int fd, size_t offset, size_t count, Lambda callback) -> void
 {
-    BEGIN_SINGLE_THREAD
-    {
-        loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
-            BEGIN_SINGLE_THREAD
-            {
-                void* page = req->u.allocOnePageResult.page;
-                auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
-                    volatile request::Request oneTimeRequest;
-                    oneTimeRequest.u.readOnePageResult.page = page;
-                    oneTimeRequest.u.readOnePageResult.readCount = req->u.readResult.readCount;
-                    __threadfence();
-                    callback(loop, &oneTimeRequest);
-                });
-                readImpl(loop, ipc, ipc->request()->u.read, fd, offset, count, static_cast<unsigned char*>(page));
-            }
-            END_SINGLE_THREAD
-        });
-    }
-    END_SINGLE_THREAD
+    loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
+        BEGIN_SINGLE_THREAD
+        {
+            void* page = req->u.allocOnePageResult.page;
+            auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+                volatile request::Request oneTimeRequest;
+                oneTimeRequest.u.readOnePageResult.page = page;
+                oneTimeRequest.u.readOnePageResult.readCount = req->u.readResult.readCount;
+                __threadfence();
+                callback(loop, &oneTimeRequest);
+            });
+            readImpl(loop, ipc, ipc->request()->u.read, fd, offset, count, static_cast<unsigned char*>(page));
+        }
+        END_SINGLE_THREAD
+    });
 }
 
 template<typename Lambda>
@@ -166,29 +162,25 @@ inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t coun
 template<typename Lambda>
 inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, size_t transferringSize, unsigned char* buffer, Lambda callback) -> void
 {
-    BEGIN_SINGLE_THREAD
-    {
-        loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
-            unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
-            gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, transferringSize);
-            BEGIN_SINGLE_THREAD
-            {
-                auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
-                    BEGIN_SINGLE_THREAD
-                    {
-                        loop->freeOnePage(page);
-                    }
-                    END_SINGLE_THREAD
-                    volatile request::Request oneTimeRequest;
-                    oneTimeRequest.u.writeOnePageResult.writtenCount = req->u.writeResult.writtenCount;
-                    callback(loop, &oneTimeRequest);
-                });
-                writeImpl(loop, ipc, ipc->request()->u.write, fd, offset, transferringSize, page);
-            }
-            END_SINGLE_THREAD
-        });
-    }
-    END_SINGLE_THREAD
+    loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
+        unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
+        gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, transferringSize);
+        BEGIN_SINGLE_THREAD
+        {
+            auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+                BEGIN_SINGLE_THREAD
+                {
+                    loop->freeOnePage(page);
+                }
+                END_SINGLE_THREAD
+                volatile request::Request oneTimeRequest;
+                oneTimeRequest.u.writeOnePageResult.writtenCount = req->u.writeResult.writtenCount;
+                callback(loop, &oneTimeRequest);
+            });
+            writeImpl(loop, ipc, ipc->request()->u.write, fd, offset, transferringSize, page);
+        }
+        END_SINGLE_THREAD
+    });
 }
 
 template<typename Lambda>

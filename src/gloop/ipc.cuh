@@ -61,7 +61,7 @@ GLOOP_ALWAYS_INLINE __host__ __device__ void IPC::emit(Code code)
 
 GLOOP_ALWAYS_INLINE __device__ __host__ Code IPC::peek()
 {
-    return static_cast<Code>(m_request.code);
+    return readNoCache<Code>(&m_request.code);
 }
 
 }  // namespace gloop

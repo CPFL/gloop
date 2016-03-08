@@ -54,7 +54,7 @@ __device__ IPC* DeviceLoop::enqueueIPC(Callback lambda)
 __device__ auto DeviceLoop::dequeue(bool& shouldExit) -> Callback*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    __threadfence_system();
+    // __threadfence_system();
     for (int i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
         // Look into ICP status to run callbacks.
         uint64_t bit = 1ULL << i;
@@ -109,43 +109,43 @@ __device__ void DeviceLoop::drain()
             }
         }
         END_SINGLE_THREAD
-        __threadfence_block();
+        // __threadfence_block();
 
         if (!pending) {
             break;
         }
 
         if (callback) {
-            __threadfence_system();  // IPC and Callback.
+            // __threadfence_system();  // IPC and Callback.
+            // __threadfence_block();
             __syncthreads();  // FIXME
-            __threadfence_block();
             (*callback)(this, ipc->request());
             __syncthreads();  // FIXME
-            __threadfence_block();
+            // __threadfence_block();
             deallocate(callback);
         }
 
         __shared__ bool signaled;
-        __threadfence_block();
+        // __threadfence_block();
         BEGIN_SINGLE_THREAD
         {
             // FIXME: Sometimes, we should execute this. Taking tick in GPU kernel is nice.
             signaled = gloop::readNoCache<uint32_t>(m_signal) != 0;
         }
         END_SINGLE_THREAD
-        __threadfence_block();
+        // __threadfence_block();
         if (signaled) {
             break;
         }
         // break;
     }
-    __threadfence_block();
+    // __threadfence_block();
     BEGIN_SINGLE_THREAD
     {
         suspend();
     }
     END_SINGLE_THREAD
-    __threadfence_block();
+    // __threadfence_block();
 }
 
 __device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
@@ -183,7 +183,7 @@ __device__ void DeviceLoop::suspend()
 {
     // FIXME: always save.
     GLOOP_ASSERT_SINGLE_THREAD();
-    __threadfence_system();  // FIXME
+    // __threadfence_system();  // FIXME
     PerBlockContext* blockContext = context();
     blockContext->control = m_control;
     if (m_control.pending) {
@@ -195,10 +195,10 @@ __device__ void DeviceLoop::suspend()
 __device__ void DeviceLoop::resume()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    __threadfence_system();  // FIXME
+    // __threadfence_system();  // FIXME
     PerBlockContext* blockContext = context();
     m_control = blockContext->control;
-    __threadfence_system();  // FIXME
+    // __threadfence_system();  // FIXME
 }
 
 __device__ uint32_t DeviceLoop::enqueueSleep(const Callback& lambda)
