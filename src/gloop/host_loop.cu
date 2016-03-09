@@ -480,7 +480,7 @@ bool HostLoop::handleIO(Command command)
             releaseCopyWork(copyWork);
             ipc->emit(Code::Complete);
 //             benchmark->end();
-//             benchmark->report("receive ");
+//             std::printf("receive: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
         });
         break;
     }
@@ -499,8 +499,6 @@ bool HostLoop::handleIO(Command command)
 //             benchmark->begin();
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(copyWork->hostMemory().hostPointer(), req.u.netTCPSend.buffer, count, cudaMemcpyDeviceToHost, copyWork->stream()));
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
-//             benchmark->end();
-//             benchmark->report("send ");
             boost::asio::ip::tcp::socket* socket = reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPSend.socket);
             boost::asio::async_write(*socket, boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), [=](const boost::system::error_code& error, size_t sentCount) {
                 releaseCopyWork(copyWork);
@@ -514,6 +512,8 @@ bool HostLoop::handleIO(Command command)
                     ipc->request()->u.netTCPSendResult.sentCount = sentCount;
                 }
                 ipc->emit(Code::Complete);
+//                 benchmark->end();
+//                 std::printf("send: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
             });
         });
         break;
