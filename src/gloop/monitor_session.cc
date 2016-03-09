@@ -128,6 +128,7 @@ bool Session::handle(Command& command)
             std::lock_guard<Lock> guard(m_lock);
             m_attemptToLaunch.store(true);
             m_kernelLock.lock();
+            m_benchmark.begin();
             m_attemptToLaunch.store(false);
             configureTick(m_timer);
         }
@@ -139,6 +140,8 @@ bool Session::handle(Command& command)
         {
             std::lock_guard<Lock> guard(m_lock);
             m_timer.cancel();
+            m_benchmark.end();
+            m_used += m_benchmark.ticks();
             m_kernelLock.unlock();
         }
         return false;

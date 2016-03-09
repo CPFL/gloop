@@ -23,16 +23,19 @@
 */
 #ifndef GLOOP_MONITOR_SESSION_H_
 #define GLOOP_MONITOR_SESSION_H_
+#include <atomic>
 #include <boost/asio.hpp>
 #include <boost/asio/high_resolution_timer.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/intrusive/list_hook.hpp>
 #include <boost/thread.hpp>
-#include <string>
-#include <type_traits>
+#include <chrono>
 #include <memory>
 #include <mutex>
+#include <string>
+#include <type_traits>
+#include "benchmark.h"
 #include "command.h"
 #include "config.h"
 #include "monitor_lock.h"
@@ -45,6 +48,7 @@ class Server;
 class Session : public boost::intrusive::list_base_hook<> {
 GLOOP_NONCOPYABLE(Session);
 public:
+    typedef std::chrono::microseconds Duration;
     Session(Server&, uint32_t id);
     ~Session();
 
@@ -87,6 +91,11 @@ private:
     std::unique_ptr<boost::interprocess::mapped_region> m_signal;
     std::unique_lock<Lock> m_kernelLock;
     boost::asio::high_resolution_timer m_timer;
+
+    // Scheduler members.
+    Benchmark m_benchmark;
+    Duration m_budget;
+    Duration m_used;
 };
 
 } }  // namsepace gloop::monitor
