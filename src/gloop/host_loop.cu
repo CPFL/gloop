@@ -221,15 +221,18 @@ void HostLoop::prepareForLaunch()
     syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 0);
 }
 
-void HostLoop::resume()
+bool HostLoop::resume()
 {
-    std::lock_guard<KernelLock> lock(m_kernelLock);
+    m_kernelLock.lock();
     prepareForLaunch();
     tryLaunch([&] {
         gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext());
     });
     GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
+    bool acquireLockSoon = m_currentContext->pending();
+    m_kernelLock.unlock(acquireLockSoon);
     // GLOOP_DEBUG("resume\n");
+    return acquireLockSoon;
 }
 
 void HostLoop::prologue(HostContext& hostContext, dim3 threads)
@@ -252,6 +255,8 @@ CopyWork* HostLoop::acquireCopyWork()
         return work;
     }
 
+    // FIXME: Should acquire lock in the kernel thread.
+    // This is a bug.
     std::lock_guard<KernelLock> lock(m_kernelLock);
     std::shared_ptr<CopyWork> work = CopyWork::create(*this);
     m_copyWorkPool->registerCopyWork(work);

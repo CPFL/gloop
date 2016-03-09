@@ -123,11 +123,18 @@ bool Session::handle(Command& command)
         return false;
 
     case Command::Type::Lock: {
-        GLOOP_DEBUG("[%u] Lock kernel token.\n", m_id);
+        GLOOP_DEBUG("[%u] Attempt to lock kernel token.\n", m_id);
         {
             std::lock_guard<Lock> guard(m_lock);
             m_attemptToLaunch.store(true);
+
             m_kernelLock.lock();
+            while (!m_server.isAllowed(*this)) {
+                GLOOP_DEBUG("[%u] Sleep\n", m_id);
+                m_server.condition().wait(m_kernelLock);
+            }
+            GLOOP_DEBUG("[%u] Lock kernel token.\n", m_id);
+
             m_benchmark.begin();
             m_attemptToLaunch.store(false);
             configureTick(m_timer);
@@ -136,13 +143,22 @@ bool Session::handle(Command& command)
     }
 
     case Command::Type::Unlock: {
-        GLOOP_DEBUG("[%u] Unlock kernel token.\n", m_id);
         {
             std::lock_guard<Lock> guard(m_lock);
             m_timer.cancel();
             m_benchmark.end();
             m_used += m_benchmark.ticks();
+
+            bool acquireLockSoon = static_cast<bool>(command.payload);
+            if (acquireLockSoon) {
+                // This flag makes the current ready to schedule.
+                m_attemptToLaunch.store(true);
+            }
+
+            m_server.calculateNextSession();
             m_kernelLock.unlock();
+            m_server.condition().notify_all();
+            GLOOP_DEBUG("[%u] Unlock kernel token, used:(%llu).\n", m_id, (long long unsigned)m_used.count());
         }
         return false;
     }

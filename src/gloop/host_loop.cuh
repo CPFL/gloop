@@ -81,6 +81,11 @@ public:
             m_hostLoop.unlockLaunch();
         }
 
+        void unlock(bool acquireLockSoon)
+        {
+            m_hostLoop.unlockLaunch(acquireLockSoon);
+        }
+
     private:
         HostLoop& m_hostLoop;
     };
@@ -106,10 +111,10 @@ private:
     bool handleIO(Command);
     void send(Command);
 
-    void resume();
+    bool resume();
 
     void lockLaunch();
-    void unlockLaunch();
+    void unlockLaunch(bool acquireLockSoon = false);
 
     void prepareForLaunch();
 
@@ -164,8 +169,8 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
                 }
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             }
-            while (m_currentContext->pending()) {
-                resume();
+            if (m_currentContext->pending()) {
+                while (resume());
             }
             kernelWork.reset();
         });
@@ -186,10 +191,11 @@ inline void HostLoop::lockLaunch()
     m_responseQueue->receive(&command, sizeof(Command), size, priority);
 }
 
-inline void HostLoop::unlockLaunch()
+inline void HostLoop::unlockLaunch(bool acquireLockSoon)
 {
     Command command {
-        .type = Command::Type::Unlock
+        .type = Command::Type::Unlock,
+        .payload = static_cast<uint64_t>(acquireLockSoon)
     };
     m_requestQueue->send(&command, sizeof(Command), 0);
 }

@@ -22,6 +22,7 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "data_log.h"
 #include "monitor.h"
 #include "monitor_server.h"
 #include "monitor_session.h"
@@ -58,6 +59,34 @@ void Server::registerSession(Session& session)
 void Server::unregisterSession(Session& session)
 {
     m_sessionList.erase(SessionList::s_iterator_to(session));
+}
+
+Session* Server::calculateNextSession()
+{
+    Session* target = nullptr;
+    for (auto& session : sessionList()) {
+        if (session.isAttemptingToLaunch()) {
+            GLOOP_DEBUG("  candidate[%u], ticks:(%llu)\n", session.id(), (long long unsigned)session.used().count());
+            if (!target) {
+                target = &session;
+            } else {
+                if (target->used() > session.used())
+                    target = &session;
+            }
+        }
+    }
+#if 0
+    // No scheduling.
+    m_toBeAllowed = anySessionAllowed();
+#else
+    if (!target) {
+        m_toBeAllowed = anySessionAllowed();
+    } else {
+        m_toBeAllowed = target->id();
+    }
+    GLOOP_DEBUG("Next ID[%u]\n", m_toBeAllowed);
+    return target;
+#endif
 }
 
 } }  // namsepace gloop::monitor

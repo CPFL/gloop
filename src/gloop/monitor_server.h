@@ -26,9 +26,11 @@
 #include <atomic>
 #include <boost/asio.hpp>
 #include <boost/intrusive/list.hpp>
+#include <boost/thread.hpp>
 #include "monitor_lock.h"
 #include "monitor_session.h"
 #include "noncopyable.h"
+#include "utility.h"
 namespace gloop {
 namespace monitor {
 
@@ -39,6 +41,8 @@ GLOOP_NONCOPYABLE(Server);
 public:
     typedef boost::intrusive::list<Session> SessionList;
 
+    constexpr static uint32_t anySessionAllowed() { return UINT32_MAX; }
+
     Server(Monitor& monitor, uint32_t serverId);
 
     uint32_t id() const { return m_id; }
@@ -46,7 +50,7 @@ public:
     boost::asio::io_service& ioService() { return m_ioService; }
     const boost::asio::io_service& ioService() const { return m_ioService; }
 
-    Lock& kernelLock() { return m_kernelLock; }
+    ServerLock& kernelLock() { return m_kernelLock; }
     SessionList& sessionList() { return m_sessionList; }
 
     static std::string createEndpoint(const std::string& prefix, uint32_t id);
@@ -54,17 +58,30 @@ public:
     void registerSession(Session&);
     void unregisterSession(Session&);
 
+    bool isAllowed(Session& session) const;
+
+    boost::condition_variable_any& condition() { return m_condition; }
+
+    Session* calculateNextSession();
+
 private:
     void accept();
 
     Monitor& m_monitor;
     uint32_t m_id;
     std::atomic<uint32_t> m_waitingCount { 0 };
-    Lock m_kernelLock;
+    ServerLock m_kernelLock;
     SessionList m_sessionList;
     boost::asio::io_service& m_ioService;
     boost::asio::local::stream_protocol::acceptor m_acceptor;
+    boost::condition_variable_any m_condition;
+    uint32_t m_toBeAllowed { anySessionAllowed() };
 };
+
+GLOOP_ALWAYS_INLINE bool Server::isAllowed(Session& session) const
+{
+    return m_toBeAllowed == anySessionAllowed() || m_toBeAllowed == session.id();
+}
 
 } }  // namsepace gloop::monitor
 #endif  // GLOOP_MONITOR_SERVER_H_

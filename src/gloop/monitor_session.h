@@ -64,6 +64,9 @@ public:
     static std::unique_ptr<boost::interprocess::message_queue> createQueue(const std::string& prefix, uint32_t id, bool create);
     static std::unique_ptr<boost::interprocess::shared_memory_object> createMemory(const std::string& prefix, uint32_t id, std::size_t sharedMemorySize, bool create);
 
+    const Duration& used() const { return m_used; }
+    const Duration& budget() const { return m_budget; }
+
 private:
     Command* buffer() { return reinterpret_cast<Command*>(&m_buffer); }
 
@@ -89,13 +92,13 @@ private:
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
     std::unique_ptr<boost::interprocess::shared_memory_object> m_sharedMemory;
     std::unique_ptr<boost::interprocess::mapped_region> m_signal;
-    std::unique_lock<Lock> m_kernelLock;
+    std::unique_lock<ServerLock> m_kernelLock;
     boost::asio::high_resolution_timer m_timer;
 
     // Scheduler members.
     Benchmark m_benchmark;
-    Duration m_budget;
-    Duration m_used;
+    Duration m_budget { 0 };
+    Duration m_used { 0 };
 };
 
 } }  // namsepace gloop::monitor
