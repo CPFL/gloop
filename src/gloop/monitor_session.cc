@@ -162,6 +162,10 @@ bool Session::handle(Command& command)
         }
         return false;
     }
+
+    case Command::Type::IO: {
+        GLOOP_UNREACHABLE();
+    }
     }
     return false;
 }
