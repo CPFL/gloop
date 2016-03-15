@@ -70,8 +70,9 @@ Session* Server::calculateNextSession()
             if (!target) {
                 target = &session;
             } else {
-                if (target->used() > session.used())
+                if (target->used() > session.used()) {
                     target = &session;
+                }
             }
         }
     }

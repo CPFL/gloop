@@ -51,6 +51,7 @@ HostLoop::HostLoop(int deviceNumber)
     : m_deviceNumber(deviceNumber)
     , m_loop(uv_loop_new())
     , m_ioService()
+    , m_kernelService()
     , m_monitorConnection(m_ioService)
     , m_kernelLock(*this)
 {
@@ -221,18 +222,25 @@ void HostLoop::prepareForLaunch()
     syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 0);
 }
 
-bool HostLoop::resume()
+void HostLoop::resume()
 {
-    m_kernelLock.lock();
-    prepareForLaunch();
-    tryLaunch([&] {
-        gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext());
-    });
-    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
-    bool acquireLockSoon = m_currentContext->pending();
-    m_kernelLock.unlock(acquireLockSoon);
     // GLOOP_DEBUG("resume\n");
-    return acquireLockSoon;
+    m_kernelService.post([&] {
+        bool acquireLockSoon = false;
+        {
+            m_kernelLock.lock();
+            prepareForLaunch();
+            tryLaunch([&] {
+                gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext());
+            });
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
+            acquireLockSoon = m_currentContext->pending();
+            m_kernelLock.unlock(acquireLockSoon);
+        }
+        if (acquireLockSoon) {
+            resume();
+        }
+    });
 }
 
 void HostLoop::prologue(HostContext& hostContext, dim3 threads)

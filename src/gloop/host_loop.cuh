@@ -111,7 +111,7 @@ private:
     bool handleIO(Command);
     void send(Command);
 
-    bool resume();
+    void resume();
 
     void lockLaunch();
     void unlockLaunch(bool acquireLockSoon = false);
@@ -119,8 +119,6 @@ private:
     void prepareForLaunch();
 
     void drain();
-    void drainKernel();
-    void performOneTimeResume();
 
     CopyWork* acquireCopyWork();
     void releaseCopyWork(CopyWork* copyWork);
@@ -135,6 +133,7 @@ private:
 
     uint32_t m_id { 0 };
     boost::asio::io_service m_ioService;
+    boost::asio::io_service m_kernelService;
     boost::asio::local::stream_protocol::socket m_monitorConnection;
     std::unique_ptr<boost::interprocess::message_queue> m_requestQueue;
     std::unique_ptr<boost::interprocess::message_queue> m_responseQueue;
@@ -155,23 +154,26 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
         std::unique_ptr<boost::asio::io_service::work> kernelWork = make_unique<boost::asio::io_service::work>(m_ioService);
         std::unique_ptr<boost::thread> kernelThread = make_unique<boost::thread>([&] {
             initializeInThread();
-            {
-                std::lock_guard<KernelLock> lock(m_kernelLock);
-                prepareForLaunch();
-                while (true) {
-                    gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, arguments);
-                    cudaError_t error = cudaGetLastError();
-                    if (cudaErrorLaunchOutOfResources == error) {
-                        continue;
+            m_kernelService.post([&] {
+                {
+                    std::lock_guard<KernelLock> lock(m_kernelLock);
+                    prepareForLaunch();
+                    while (true) {
+                        gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, arguments);
+                        cudaError_t error = cudaGetLastError();
+                        if (cudaErrorLaunchOutOfResources == error) {
+                            continue;
+                        }
+                        GLOOP_CUDA_SAFE_CALL(error);
+                        break;
                     }
-                    GLOOP_CUDA_SAFE_CALL(error);
-                    break;
+                    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
                 }
-                GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
-            }
-            if (m_currentContext->pending()) {
-                while (resume());
-            }
+                if (m_currentContext->pending()) {
+                    resume();
+                }
+            });
+            m_kernelService.run();
             kernelWork.reset();
         });
         drain();
