@@ -157,6 +157,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
             m_kernelService.post([&] {
                 {
                     std::lock_guard<KernelLock> lock(m_kernelLock);
+                    // GLOOP_DATA_LOG("acquire for launch\n");
                     prepareForLaunch();
                     while (true) {
                         gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, arguments);

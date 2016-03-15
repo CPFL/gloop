@@ -62,15 +62,19 @@ public:
 
     boost::condition_variable_any& condition() { return m_condition; }
 
-    Session* calculateNextSession();
+    Session* calculateNextSession(std::lock_guard<Lock>&);
+    Lock& serverStatusLock() { return m_serverStatusLock; }
 
 private:
     void accept();
+
+    void progressCurrentVirtualTime(std::lock_guard<Lock>&);
 
     Monitor& m_monitor;
     uint32_t m_id;
     std::atomic<uint32_t> m_waitingCount { 0 };
     ServerLock m_kernelLock;
+    Lock m_serverStatusLock;
     SessionList m_sessionList;
     boost::asio::io_service& m_ioService;
     boost::asio::local::stream_protocol::acceptor m_acceptor;

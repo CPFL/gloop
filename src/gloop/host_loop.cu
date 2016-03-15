@@ -49,7 +49,7 @@ namespace gloop {
 
 HostLoop::HostLoop(int deviceNumber)
     : m_deviceNumber(deviceNumber)
-    , m_loop(uv_loop_new())
+    // , m_loop(uv_loop_new())
     , m_ioService()
     , m_kernelService()
     , m_monitorConnection(m_ioService)
@@ -96,11 +96,13 @@ HostLoop::HostLoop(int deviceNumber)
 
 HostLoop::~HostLoop()
 {
-    uv_loop_close(m_loop);
-    stopPoller();
-
+    // uv_loop_close(m_loop);
+    // GLOOP_DATA_LOG("let's cleanup\n");
     {
         std::lock_guard<KernelLock> lock(m_kernelLock);
+        // GLOOP_DATA_LOG("let's cleanup acquire\n");
+
+        stopPoller();
 
         // Before destroying the primary GPU context,
         // we should clear all the GPU resources.
@@ -110,6 +112,7 @@ HostLoop::~HostLoop()
         GLOOP_CUDA_SAFE_CALL(cuDeviceGet(&device, 0));
         GLOOP_CUDA_SAFE_CALL(cuDevicePrimaryCtxRelease(device));
     }
+    // GLOOP_DATA_LOG("let's cleanup done\n");
 }
 
 std::unique_ptr<HostLoop> HostLoop::create(int deviceNumber)
@@ -229,6 +232,7 @@ void HostLoop::resume()
         bool acquireLockSoon = false;
         {
             m_kernelLock.lock();
+            // GLOOP_DATA_LOG("acquire for resume\n");
             prepareForLaunch();
             tryLaunch([&] {
                 gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext());

@@ -50,10 +50,17 @@ HostContext::HostContext(HostLoop& hostLoop, dim3 blocks, uint32_t pageCount)
 
 HostContext::~HostContext()
 {
-    if (m_context.context) {
+    // GLOOP_DATA_LOG("let's cleanup context\n");
+    {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(m_hostLoop.kernelLock());
-        cudaFree(m_context.context);
+        // GLOOP_DATA_LOG("let's cleanup context lock acquire\n");
+        if (m_context.context) {
+            cudaFree(m_context.context);
+        }
+        m_ipc.reset();
+        m_pending.reset();
     }
+    // GLOOP_DATA_LOG("let's cleanup context done\n");
 }
 
 bool HostContext::initialize(HostLoop& hostLoop)

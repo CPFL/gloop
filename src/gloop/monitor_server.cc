@@ -51,23 +51,48 @@ void Server::accept()
     });
 }
 
-void Server::registerSession(Session& session)
+void Server::progressCurrentVirtualTime(std::lock_guard<Lock>&)
 {
-    m_sessionList.push_back(session);
+    Session* target = nullptr;
+    for (auto& session : sessionList()) {
+        if (!target) {
+            target = &session;
+        } else {
+            if (target->used() > session.used()) {
+                target = &session;
+            }
+        }
+    }
+    if (target) {
+        // Burn utilizations to align to the virtual time.
+        Session::Duration smallest = target->used();
+        for (auto& session : sessionList()) {
+            session.burnUsed(smallest);
+            // GLOOP_DATA_LOG("  session[%u], ticks:(%llu)\n", session.id(), (long long unsigned)session.used().count());
+        }
+    }
+}
+
+void Server::registerSession(Session& newSession)
+{
+    std::lock_guard<Lock> guard(m_serverStatusLock);
+    progressCurrentVirtualTime(guard);
+    m_sessionList.push_back(newSession);
 }
 
 void Server::unregisterSession(Session& session)
 {
+    std::lock_guard<Lock> guard(m_serverStatusLock);
     m_sessionList.erase(SessionList::s_iterator_to(session));
+    progressCurrentVirtualTime(guard);
 }
 
-Session* Server::calculateNextSession()
+Session* Server::calculateNextSession(std::lock_guard<Lock>& locker)
 {
     Session* target = nullptr;
-    Session::Duration smallest(0);
     for (auto& session : sessionList()) {
         if (session.isAttemptingToLaunch()) {
-            GLOOP_DEBUG("  candidate[%u], ticks:(%llu)\n", session.id(), (long long unsigned)session.used().count());
+            // GLOOP_DATA_LOG("  candidate[%u], ticks:(%llu)\n", session.id(), (long long unsigned)session.used().count());
             if (!target) {
                 target = &session;
             } else {
@@ -76,14 +101,9 @@ Session* Server::calculateNextSession()
                 }
             }
         }
-        smallest = std::min(session.used(), smallest);
     }
 
-    // Burn utilizations to align to the virtual time.
-    for (auto& session : sessionList()) {
-        session.burnUsed(smallest);
-    }
-
+    progressCurrentVirtualTime(locker);
 #if 0
     // No scheduling.
     m_toBeAllowed = anySessionAllowed();
@@ -93,7 +113,7 @@ Session* Server::calculateNextSession()
     } else {
         m_toBeAllowed = target->id();
     }
-    GLOOP_DEBUG("Next ID[%u]\n", m_toBeAllowed);
+    // GLOOP_DATA_LOG("Next ID[%u]\n", m_toBeAllowed);
     return target;
 #endif
 }

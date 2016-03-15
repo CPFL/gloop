@@ -41,8 +41,6 @@ Session::Session(Server& server, uint32_t id)
     , m_kernelLock(server.kernelLock(), std::defer_lock)
     , m_timer(server.ioService())
 {
-    // NOTE: This constructor is always executed in single thread.
-    m_server.registerSession(*this);
 }
 
 Session::~Session()
@@ -147,7 +145,6 @@ bool Session::handle(Command& command)
             std::lock_guard<Lock> guard(m_lock);
             m_timer.cancel();
             m_benchmark.end();
-            m_used += m_benchmark.ticks();
 
             bool acquireLockSoon = static_cast<bool>(command.payload);
             if (acquireLockSoon) {
@@ -155,7 +152,11 @@ bool Session::handle(Command& command)
                 m_attemptToLaunch.store(true);
             }
 
-            m_server.calculateNextSession();
+            {
+                std::lock_guard<Lock> serverStatusGuard(m_server.serverStatusLock());
+                m_used += m_benchmark.ticks();
+                m_server.calculateNextSession(serverStatusGuard);
+            }
             m_kernelLock.unlock();
             m_server.condition().notify_all();
             GLOOP_DEBUG("[%u] Unlock kernel token, used:(%llu).\n", m_id, (long long unsigned)m_used.count());
@@ -180,6 +181,8 @@ bool Session::initialize(Command& command)
     assert(m_requestQueue);
     assert(m_responseQueue);
 
+    // NOTE: This initialize method is always executed in the single event loop thread.
+    m_server.registerSession(*this);
     m_thread = make_unique<boost::thread>(&Session::main, this);
 
     command = (Command) {
@@ -245,7 +248,14 @@ void Session::main()
 
 void Session::burnUsed(const Duration& currentVirtualTime)
 {
-    m_used = std::max(Duration(0), m_used - currentVirtualTime);
+    m_used -= currentVirtualTime;
+    if (m_used < Duration(0))
+        m_used = Duration(0);
+}
+
+void Session::setUsed(const Duration& used)
+{
+    m_used = used;
 }
 
 } }  // namsepace gloop::monitor
