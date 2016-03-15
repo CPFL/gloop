@@ -67,6 +67,8 @@ public:
     const Duration& used() const { return m_used; }
     const Duration& budget() const { return m_budget; }
 
+    void burnUsed(const Duration&);
+
 private:
     Command* buffer() { return reinterpret_cast<Command*>(&m_buffer); }
 

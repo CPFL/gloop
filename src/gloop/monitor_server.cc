@@ -64,6 +64,7 @@ void Server::unregisterSession(Session& session)
 Session* Server::calculateNextSession()
 {
     Session* target = nullptr;
+    Session::Duration smallest(0);
     for (auto& session : sessionList()) {
         if (session.isAttemptingToLaunch()) {
             GLOOP_DEBUG("  candidate[%u], ticks:(%llu)\n", session.id(), (long long unsigned)session.used().count());
@@ -75,7 +76,14 @@ Session* Server::calculateNextSession()
                 }
             }
         }
+        smallest = std::min(session.used(), smallest);
     }
+
+    // Burn utilizations to align to the virtual time.
+    for (auto& session : sessionList()) {
+        session.burnUsed(smallest);
+    }
+
 #if 0
     // No scheduling.
     m_toBeAllowed = anySessionAllowed();

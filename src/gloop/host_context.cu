@@ -26,6 +26,7 @@
 #include "device_context.cuh"
 #include "ipc.cuh"
 #include "host_context.cuh"
+#include "host_loop.cuh"
 #include "make_unique.h"
 #include "sync_read_write.h"
 
@@ -33,15 +34,16 @@ namespace gloop {
 
 std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 blocks, uint32_t pageCount)
 {
-    std::unique_ptr<HostContext> hostContext(new HostContext(blocks, pageCount));
-    if (!hostContext->initialize()) {
+    std::unique_ptr<HostContext> hostContext(new HostContext(hostLoop, blocks, pageCount));
+    if (!hostContext->initialize(hostLoop)) {
         return nullptr;
     }
     return hostContext;
 }
 
-HostContext::HostContext(dim3 blocks, uint32_t pageCount)
-    : m_blocks(blocks)
+HostContext::HostContext(HostLoop& hostLoop, dim3 blocks, uint32_t pageCount)
+    : m_hostLoop(hostLoop)
+    , m_blocks(blocks)
     , m_pageCount(pageCount)
 {
 }
@@ -49,22 +51,27 @@ HostContext::HostContext(dim3 blocks, uint32_t pageCount)
 HostContext::~HostContext()
 {
     if (m_context.context) {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(m_hostLoop.kernelLock());
         cudaFree(m_context.context);
     }
 }
 
-bool HostContext::initialize()
+bool HostContext::initialize(HostLoop& hostLoop)
 {
-    m_ipc = make_unique<IPC[]>(m_blocks.x * m_blocks.y * GLOOP_SHARED_SLOT_SIZE);
-    m_pending = MappedMemory::create(sizeof(uint32_t));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
 
-    GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.channels, m_ipc.get(), 0));
+        m_ipc = make_unique<IPC[]>(m_blocks.x * m_blocks.y * GLOOP_SHARED_SLOT_SIZE);
+        m_pending = MappedMemory::create(sizeof(uint32_t));
 
-    GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.pending, m_pending->mappedPointer(), 0));
+        GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.channels, m_ipc.get(), 0));
 
-    GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceLoop::PerBlockContext) * m_blocks.x * m_blocks.y));
-    if (m_pageCount) {
-        GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceLoop::OnePage) * m_pageCount * m_blocks.x * m_blocks.y));
+        GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.pending, m_pending->mappedPointer(), 0));
+
+        GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceLoop::PerBlockContext) * m_blocks.x * m_blocks.y));
+        if (m_pageCount) {
+            GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceLoop::OnePage) * m_pageCount * m_blocks.x * m_blocks.y));
+        }
     }
     return true;
 }

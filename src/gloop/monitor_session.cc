@@ -243,4 +243,9 @@ void Session::main()
     }
 }
 
+void Session::burnUsed(const Duration& currentVirtualTime)
+{
+    m_used = std::max(Duration(0), m_used - currentVirtualTime);
+}
+
 } }  // namsepace gloop::monitor

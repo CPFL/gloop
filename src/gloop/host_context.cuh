@@ -73,9 +73,10 @@ public:
     }
 
 private:
-    HostContext(dim3 blocks, uint32_t pageCount);
-    bool initialize();
+    HostContext(HostLoop& hostLoop, dim3 blocks, uint32_t pageCount);
+    bool initialize(HostLoop&);
 
+    HostLoop& m_hostLoop;
     Mutex m_mutex;
     FileDescriptorTable m_table { };
     std::unique_ptr<IPC[]> m_ipc { nullptr };
