@@ -133,7 +133,7 @@ bool Session::handle(Command& command)
             }
             GLOOP_DEBUG("[%u] Lock kernel token.\n", m_id);
 
-            m_benchmark.begin();
+            m_timeWatch.begin();
             m_attemptToLaunch.store(false);
             configureTick(m_timer);
         }
@@ -144,7 +144,7 @@ bool Session::handle(Command& command)
         {
             std::lock_guard<Lock> guard(m_lock);
             m_timer.cancel();
-            m_benchmark.end();
+            m_timeWatch.end();
 
             bool acquireLockSoon = static_cast<bool>(command.payload);
             if (acquireLockSoon) {
@@ -154,7 +154,7 @@ bool Session::handle(Command& command)
 
             {
                 std::lock_guard<Lock> serverStatusGuard(m_server.serverStatusLock());
-                m_used += m_benchmark.ticks();
+                m_used += (m_timeWatch.ticks() / m_costPerBit);
                 m_server.calculateNextSession(serverStatusGuard);
             }
             m_kernelLock.unlock();

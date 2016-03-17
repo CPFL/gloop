@@ -55,5 +55,7 @@ private:
     clock::time_point m_end { };
 };
 
+typedef Benchmark TimeWatch;
+
 }  // namespace gloop
 #endif  // GLOOP_BENCHMARK_H_

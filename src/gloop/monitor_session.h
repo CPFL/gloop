@@ -65,7 +65,6 @@ public:
     static std::unique_ptr<boost::interprocess::shared_memory_object> createMemory(const std::string& prefix, uint32_t id, std::size_t sharedMemorySize, bool create);
 
     const Duration& used() const { return m_used; }
-    const Duration& budget() const { return m_budget; }
 
     void burnUsed(const Duration&);
     void setUsed(const Duration&);
@@ -99,9 +98,9 @@ private:
     boost::asio::high_resolution_timer m_timer;
 
     // Scheduler members.
-    Benchmark m_benchmark;
-    Duration m_budget { 0 };
+    TimeWatch m_timeWatch;
     Duration m_used { 0 };
+    uint64_t m_costPerBit { 1 };
 };
 
 } }  // namsepace gloop::monitor

@@ -64,7 +64,7 @@ void Server::progressCurrentVirtualTime(std::lock_guard<Lock>&)
         }
     }
     if (target) {
-        // Burn utilizations to align to the virtual time.
+        // Burn the used. This always aligns CVT to 0.
         Session::Duration smallest = target->used();
         for (auto& session : sessionList()) {
             session.burnUsed(smallest);
