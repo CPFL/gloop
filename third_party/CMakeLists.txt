@@ -38,7 +38,7 @@ set_target_properties(protobuf
     IMPORTED_LOCATION ${PROTOBUF_LOCATION}
 )
 add_dependencies(protobuf ${EP_TARGET_NAME})
-set(PROTOC ${PROJECT_BINARY_DIR}/bin/protoc)
+set(PROTOC ${PROJECT_BINARY_DIR}/bin/protoc PARENT_SCOPE)
 
 add_subdirectory(backward-cpp)
 add_subdirectory(echo_server)

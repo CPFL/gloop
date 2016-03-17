@@ -14,16 +14,16 @@ endif()
 
 add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/redirector.cuh"
-    COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/extract-apis.py redirector-header ${CUDA_RUNTIME_API_HEADER} > ${CMAKE_CURRENT_BINARY_DIR}/redirector.cuh
-    IMPLICIT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/extract-apis.py
+    COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/extract-apis.py" redirector-header ${CUDA_RUNTIME_API_HEADER} > "${CMAKE_CURRENT_BINARY_DIR}/redirector.cuh"
+    IMPLICIT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/extract-apis.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
 add_custom_command(
     OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/redirector.cu"
-    COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/extract-apis.py redirector-implementation ${CUDA_RUNTIME_API_HEADER} > ${CMAKE_CURRENT_BINARY_DIR}/redirector.cu
+    COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/extract-apis.py" redirector-implementation "${CUDA_RUNTIME_API_HEADER}" > "${CMAKE_CURRENT_BINARY_DIR}/redirector.cu"
     DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/redirector.cuh"
-    IMPLICIT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/extract-apis.py
+    IMPLICIT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/extract-apis.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
@@ -35,7 +35,7 @@ add_custom_target(redirector
 
 add_library(gloop STATIC
     # gloop_device.cu
-    ${CMAKE_CURRENT_BINARY_DIR}/redirector.cu
+    "${CMAKE_CURRENT_BINARY_DIR}/redirector.cu"
     copy_work.cu
     copy_work_pool.cu
     copy_worker.cu
@@ -64,14 +64,51 @@ target_link_libraries(gloop
     boost_date_time
     gipc
 )
+add_dependencies(gloop uv redirector)
+
+set(GRPC_CPP_PLUGIN_PATH "/usr/local/bin/grpc_cpp_plugin")
+
+add_custom_command(
+    OUTPUT
+        "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.pb.cc"
+        "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.pb.h"
+    COMMAND
+        ${PROTOC} "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" --proto_path="${CMAKE_CURRENT_SOURCE_DIR}" --cpp_out="${CMAKE_CURRENT_BINARY_DIR}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto"
+    IMPLICIT_DEPENDS protobuf
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_custom_command(
+    OUTPUT
+        "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.grpc.pb.cc"
+        "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.grpc.pb.h"
+    COMMAND
+        ${PROTOC} "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" --proto_path="${CMAKE_CURRENT_SOURCE_DIR}" --grpc_out="${CMAKE_CURRENT_BINARY_DIR}" --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN_PATH}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto"
+    IMPLICIT_DEPENDS protobuf
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_custom_target(monitor-service
+    DEPENDS
+        "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.pb.cc"
+        "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.pb.h"
+        "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.grpc.pb.cc"
+        "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.grpc.pb.h"
+)
 
 add_executable(gloop-monitor
     monitor.cc
     monitor_main.cc
     monitor_server.cc
     monitor_session.cc
+    "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.pb.cc"
+    "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.grpc.pb.cc"
 )
 target_link_libraries(gloop-monitor
+    grpc++_unsecure
+    grpc
     protobuf
     gloop
     rt
@@ -80,4 +117,4 @@ target_link_libraries(gloop-monitor
     boost_thread
     boost_date_time
 )
-add_dependencies(gloop uv redirector)
+add_dependencies(gloop-monitor protobuf monitor-service)

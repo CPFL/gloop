@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+  Copyright (C) 2016 Yusuke Suzuki <utatane.tea@gmail.com>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -21,39 +21,19 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_MONITOR_H_
-#define GLOOP_MONITOR_H_
-#include <atomic>
-#include <boost/asio.hpp>
-#include <grpc++/grpc++.h>
-#include "monitor_server.h"
-#include "monitor_service.pb.h"
-#include "monitor_service.grpc.pb.h"
-#include "noncopyable.h"
-namespace gloop {
-namespace monitor {
 
-#define GLOOP_MONITOR_ENDPOINT "/tmp/gloop_monitor_endpoint"
+var grpc = require('grpc');
 
-class Monitor final : private proto::Monitor::Service {
-GLOOP_NONCOPYABLE(Monitor);
-public:
-    Monitor(uint32_t gpus);
+var proto = grpc.load('../../src/gloop/monitor_service.proto').proto;
+var monitor = new proto.Monitor('unix:/tmp/gloop_monitor_endpoint', grpc.credentials.createInsecure());
+var call = monitor.listSessions({});
+call.on('data', function (session) {
+    console.log(session);
+});
+call.on('end', function () { });
+call.on('status', function (status) {
+    console.log(status);
+});
 
-    boost::asio::io_service& ioService() { return m_ioService; }
 
-    void run();
-
-    uint32_t nextId() { return m_nextId++; }
-
-private:
-    grpc::Status listSessions(grpc::ServerContext* context, const proto::ListSessionRequest* request, grpc::ServerWriter<proto::Session>* writer) override;
-
-    uint32_t m_gpus;
-    boost::asio::io_service m_ioService;
-    std::atomic<uint32_t> m_nextId { 0 };
-    std::vector<std::shared_ptr<Server>> m_servers;
-};
-
-} }  // namsepace gloop::monitor
-#endif  // GLOOP_MONITOR_H_
+/* vim: set sw=4 ts=4 et tw=80 : */

@@ -23,10 +23,15 @@
 */
 
 #include <atomic>
+#include <boost/thread.hpp>
+#include <grpc++/grpc++.h>
 #include <unistd.h>
 #include "config.h"
+#include "make_unique.h"
 #include "monitor.h"
 #include "monitor_server.h"
+#include "monitor_service.pb.h"
+#include "monitor_service.grpc.pb.h"
 #include "monitor_session.h"
 #include "monitor_utility.h"
 namespace gloop {
@@ -38,6 +43,7 @@ Monitor::Monitor(uint32_t gpus)
     for (uint32_t i = 0; i < m_gpus; ++i) {
         ::unlink(createName(GLOOP_ENDPOINT, i).c_str());
     }
+    ::unlink(GLOOP_MONITOR_ENDPOINT);
 }
 
 void Monitor::run()
@@ -45,7 +51,34 @@ void Monitor::run()
     for (uint32_t i = 0; i < m_gpus; ++i) {
         m_servers.push_back(std::make_shared<Server>(*this, i));
     }
+
+    grpc::ServerBuilder builder;
+    std::string endpoint("unix:");
+    endpoint.append(GLOOP_MONITOR_ENDPOINT);
+    builder.AddListeningPort(endpoint, grpc::InsecureServerCredentials());
+    builder.RegisterService(this);
+    std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
+    std::unique_ptr<boost::thread> monitoringThread = make_unique<boost::thread>([&] {
+        server->Wait();
+    });
+
     m_ioService.run();
+    server->Shutdown();
+}
+
+grpc::Status Monitor::listSessions(grpc::ServerContext* context, const proto::ListSessionRequest* request, grpc::ServerWriter<proto::Session>* writer)
+{
+    for (auto& server : m_servers) {
+        std::lock_guard<Lock> locker(server->serverStatusLock());
+        for (auto& session : server->sessionList()) {
+            proto::Session result;
+            result.set_id(session.id());
+            result.set_server(server->id());
+            result.set_used(session.used().count());
+            writer->Write(result);
+        }
+    }
+    return grpc::Status::OK;
 }
 
 } }  // namsepace gloop::monitor

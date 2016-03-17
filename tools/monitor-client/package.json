@@ -1,0 +1,36 @@
+{
+  "name": "gloop-monitor-client",
+  "version": "0.0.1",
+  "description": "GLoop monitor client",
+  "author": "Yusuke SUZUKI",
+  "homepage": "https://github.com/CPFL/gloop/tools/monitor-client",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CPFL/gloop.git"
+  },
+  "main": "lib/index.js",
+  "bin": {
+    "gloop-monitor-client": "./bin/gloop-monitor-client.js"
+  },
+  "maintainers": [
+    {
+      "name": "Yusuke SUZUKI",
+      "email": "utatane.tea@gmail.com",
+      "web": "http://github.com/Constellation"
+    }
+  ],
+  "files": [
+    "lib"
+  ],
+  "scripts": {},
+  "dependencies": {
+    "grpc": "^0.13.0"
+  },
+  "devDependencies": {},
+  "keywords": [],
+  "licenses": [
+    {
+      "type": "BSD"
+    }
+  ]
+}
