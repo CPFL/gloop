@@ -47,7 +47,7 @@
 #include "utility.h"
 namespace gloop {
 
-HostLoop::HostLoop(int deviceNumber)
+HostLoop::HostLoop(int deviceNumber, uint64_t costPerBit)
     : m_deviceNumber(deviceNumber)
     // , m_loop(uv_loop_new())
     , m_ioService()
@@ -60,6 +60,7 @@ HostLoop::HostLoop(int deviceNumber)
         m_monitorConnection.connect(boost::asio::local::stream_protocol::endpoint(monitor::createName(GLOOP_ENDPOINT, m_deviceNumber)));
         Command command = {
             .type = Command::Type::Initialize,
+            .payload = costPerBit,
         };
         Command result { };
         while (true) {
@@ -115,10 +116,10 @@ HostLoop::~HostLoop()
     // GLOOP_DATA_LOG("let's cleanup done\n");
 }
 
-std::unique_ptr<HostLoop> HostLoop::create(int deviceNumber)
+std::unique_ptr<HostLoop> HostLoop::create(int deviceNumber, uint64_t costPerBit)
 {
     gloop::initialize();
-    std::unique_ptr<HostLoop> hostLoop(new HostLoop(deviceNumber));
+    std::unique_ptr<HostLoop> hostLoop(new HostLoop(deviceNumber, costPerBit));
     hostLoop->initialize();
     return hostLoop;
 }

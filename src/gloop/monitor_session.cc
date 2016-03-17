@@ -155,7 +155,7 @@ bool Session::handle(Command& command)
 
             {
                 std::lock_guard<Lock> serverStatusGuard(m_server.serverStatusLock());
-                m_used += (m_timeWatch.ticks() / m_costPerBit);
+                m_used += (m_timeWatch.ticks() * m_costPerBit);
                 m_server.calculateNextSession(serverStatusGuard);
             }
             m_kernelLock.unlock();
@@ -181,6 +181,12 @@ bool Session::initialize(Command& command)
 
     assert(m_requestQueue);
     assert(m_responseQueue);
+
+    // FIXME: This is not correct manner. Just for testing.
+    uint64_t costPerBit = command.payload;
+    if (costPerBit != 0)
+        m_costPerBit = costPerBit;
+    GLOOP_DATA_LOG("[%u] costPerBit:(%u)\n", (unsigned)id(), (unsigned)costPerBit);
 
     // NOTE: This initialize method is always executed in the single event loop thread.
     m_server.registerSession(*this);

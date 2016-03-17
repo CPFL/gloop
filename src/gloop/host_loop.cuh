@@ -61,7 +61,7 @@ public:
 
     uint32_t id() const { return m_id; }
 
-    static std::unique_ptr<HostLoop> create(int deviceNumber);
+    static std::unique_ptr<HostLoop> create(int deviceNumber, uint64_t costPerBit = 1);
 
     template<typename DeviceLambda, class... Args>
     __host__ void launch(HostContext& context, dim3 threads, const DeviceLambda& callback, Args... args);
@@ -93,7 +93,7 @@ public:
     KernelLock& kernelLock() { return m_kernelLock; }
 
 private:
-    HostLoop(int deviceNumber);
+    HostLoop(int deviceNumber, uint64_t costPerBit);
 
     void prologue(HostContext&, dim3 threads);
     void epilogue();
