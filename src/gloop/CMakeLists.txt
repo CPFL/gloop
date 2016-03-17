@@ -66,7 +66,13 @@ target_link_libraries(gloop
 )
 add_dependencies(gloop uv redirector)
 
-set(GRPC_CPP_PLUGIN_PATH "/usr/local/bin/grpc_cpp_plugin")
+find_program(GRPC_CPP_PLUGIN_PATH
+    NAMES "grpc_cpp_plugin"
+)
+message("GRPC:${GRPC_CPP_PLUGIN_PATH}")
+if("${GRPC_CPP_PLUGIN_PATH}" STREQUAL "GRPC_CPP_PLUGIN_PATH-NOTFOUND")
+    message(FATAL_ERROR "GRPC: grpc_cpp_plugin is not found.")
+endif()
 
 add_custom_command(
     OUTPUT
