@@ -80,8 +80,7 @@ add_custom_command(
         "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.pb.h"
     COMMAND
         ${PROTOC} "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" --proto_path="${CMAKE_CURRENT_SOURCE_DIR}" --cpp_out="${CMAKE_CURRENT_BINARY_DIR}"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto"
-    IMPLICIT_DEPENDS protobuf
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" protobuf
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
@@ -91,8 +90,7 @@ add_custom_command(
         "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.grpc.pb.h"
     COMMAND
         ${PROTOC} "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" --proto_path="${CMAKE_CURRENT_SOURCE_DIR}" --grpc_out="${CMAKE_CURRENT_BINARY_DIR}" --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN_PATH}"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto"
-    IMPLICIT_DEPENDS protobuf
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" protobuf
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
