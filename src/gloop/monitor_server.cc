@@ -26,6 +26,7 @@
 #include "monitor.h"
 #include "monitor_server.h"
 #include "monitor_session.h"
+#include "monitor_utility.h"
 namespace gloop {
 namespace monitor {
 
@@ -33,7 +34,7 @@ Server::Server(Monitor& monitor, uint32_t serverId)
     : m_monitor(monitor)
     , m_id(serverId)
     , m_ioService(monitor.ioService())
-    , m_acceptor(m_ioService, boost::asio::local::stream_protocol::endpoint(Session::createName(GLOOP_ENDPOINT, serverId)))
+    , m_acceptor(m_ioService, boost::asio::local::stream_protocol::endpoint(createName(GLOOP_ENDPOINT, serverId)))
 {
     accept();
 }

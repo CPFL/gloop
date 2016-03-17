@@ -29,6 +29,7 @@
 #include "make_unique.h"
 #include "monitor_server.h"
 #include "monitor_session.h"
+#include "monitor_utility.h"
 #include "sync_read_write.h"
 
 namespace gloop {
@@ -173,9 +174,9 @@ bool Session::handle(Command& command)
 
 bool Session::initialize(Command& command)
 {
-    m_requestQueue = Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, id(), true);
-    m_responseQueue = Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, id(), true);
-    m_sharedMemory = Session::createMemory(GLOOP_SHARED_MEMORY, id(), GLOOP_SHARED_MEMORY_SIZE, true);
+    m_requestQueue = createQueue(GLOOP_SHARED_REQUEST_QUEUE, id(), true);
+    m_responseQueue = createQueue(GLOOP_SHARED_RESPONSE_QUEUE, id(), true);
+    m_sharedMemory = createMemory(GLOOP_SHARED_MEMORY, id(), GLOOP_SHARED_MEMORY_SIZE, true);
     m_signal = make_unique<boost::interprocess::mapped_region>(*m_sharedMemory.get(), boost::interprocess::read_write, /* Offset. */ 0, GLOOP_SHARED_MEMORY_SIZE);
 
     assert(m_requestQueue);
@@ -191,43 +192,6 @@ bool Session::initialize(Command& command)
     };
     return true;
 }
-
-std::string Session::createName(const std::string& prefix, uint32_t id)
-{
-    std::vector<char> name(prefix.size() + 100);
-    const int ret = std::snprintf(name.data(), name.size() - 1, "%s%u", prefix.c_str(), id);
-    if (ret < 0) {
-        std::perror(nullptr);
-        std::exit(1);
-    }
-    name[ret] = '\0';
-    return std::string(name.data(), ret);
-}
-
-std::unique_ptr<boost::interprocess::message_queue> Session::createQueue(const std::string& prefix, uint32_t id, bool create)
-{
-    const std::string name = createName(prefix, id);
-    if (create) {
-        boost::interprocess::message_queue::remove(name.c_str());
-        return make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only, name.c_str(), 0x1000, sizeof(Command));
-    }
-    return make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, name.c_str());
-}
-
-std::unique_ptr<boost::interprocess::shared_memory_object> Session::createMemory(const std::string& prefix, uint32_t id, std::size_t sharedMemorySize, bool create)
-{
-    const std::string name = createName(prefix, id);
-    std::unique_ptr<boost::interprocess::shared_memory_object> memory;
-    if (create) {
-        boost::interprocess::shared_memory_object::remove(name.c_str());
-        memory = make_unique<boost::interprocess::shared_memory_object>(boost::interprocess::create_only, name.c_str(), boost::interprocess::read_write);
-    } else {
-        memory = make_unique<boost::interprocess::shared_memory_object>(boost::interprocess::open_only, name.c_str(), boost::interprocess::read_write);
-    }
-    memory->truncate(sharedMemorySize);
-    return memory;
-}
-
 
 void Session::main()
 {

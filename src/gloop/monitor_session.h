@@ -60,9 +60,6 @@ public:
     bool isAttemptingToLaunch() const { return m_attemptToLaunch.load(); }
 
     void handShake();
-    static std::string createName(const std::string& prefix, uint32_t id);
-    static std::unique_ptr<boost::interprocess::message_queue> createQueue(const std::string& prefix, uint32_t id, bool create);
-    static std::unique_ptr<boost::interprocess::shared_memory_object> createMemory(const std::string& prefix, uint32_t id, std::size_t sharedMemorySize, bool create);
 
     const Duration& used() const { return m_used; }
 

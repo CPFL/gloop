@@ -21,31 +21,20 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
-#include <atomic>
-#include <unistd.h>
-#include "config.h"
-#include "monitor.h"
-#include "monitor_server.h"
-#include "monitor_session.h"
-#include "monitor_utility.h"
+#ifndef GLOOP_MONITOR_UTILITY_H_
+#define GLOOP_MONITOR_UTILITY_H_
+#include <boost/interprocess/ipc/message_queue.hpp>
+#include <boost/interprocess/shared_memory_object.hpp>
+#include <memory>
+#include <string>
 namespace gloop {
 namespace monitor {
 
-Monitor::Monitor(uint32_t gpus)
-    : m_gpus(gpus)
-{
-    for (uint32_t i = 0; i < m_gpus; ++i) {
-        ::unlink(createName(GLOOP_ENDPOINT, i).c_str());
-    }
-}
+std::string createName(const std::string& prefix, uint32_t id);
+std::unique_ptr<boost::interprocess::message_queue> createQueue(const std::string& prefix, uint32_t id, bool create);
+std::unique_ptr<boost::interprocess::shared_memory_object> createMemory(const std::string& prefix, uint32_t id, std::size_t sharedMemorySize, bool create);
 
-void Monitor::run()
-{
-    for (uint32_t i = 0; i < m_gpus; ++i) {
-        m_servers.push_back(std::make_shared<Server>(*this, i));
-    }
-    m_ioService.run();
-}
+
 
 } }  // namsepace gloop::monitor
+#endif  // GLOOP_MONITOR_UTILITY_H_

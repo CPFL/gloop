@@ -40,7 +40,7 @@
 #include "ipc.cuh"
 #include "make_unique.h"
 #include "memcpy_io.cuh"
-#include "monitor_session.h"
+#include "monitor_utility.h"
 #include "request.h"
 #include "sync_read_write.h"
 #include "system_initialize.h"
@@ -57,7 +57,7 @@ HostLoop::HostLoop(int deviceNumber)
 {
     // Connect to the gloop monitor.
     {
-        m_monitorConnection.connect(boost::asio::local::stream_protocol::endpoint(monitor::Session::createName(GLOOP_ENDPOINT, m_deviceNumber)));
+        m_monitorConnection.connect(boost::asio::local::stream_protocol::endpoint(monitor::createName(GLOOP_ENDPOINT, m_deviceNumber)));
         Command command = {
             .type = Command::Type::Initialize,
         };
@@ -87,9 +87,9 @@ HostLoop::HostLoop(int deviceNumber)
         }
         m_id = result.payload;
     }
-    m_requestQueue = monitor::Session::createQueue(GLOOP_SHARED_REQUEST_QUEUE, m_id, false);
-    m_responseQueue = monitor::Session::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, m_id, false);
-    m_sharedMemory = monitor::Session::createMemory(GLOOP_SHARED_MEMORY, m_id, GLOOP_SHARED_MEMORY_SIZE, false);
+    m_requestQueue = monitor::createQueue(GLOOP_SHARED_REQUEST_QUEUE, m_id, false);
+    m_responseQueue = monitor::createQueue(GLOOP_SHARED_RESPONSE_QUEUE, m_id, false);
+    m_sharedMemory = monitor::createMemory(GLOOP_SHARED_MEMORY, m_id, GLOOP_SHARED_MEMORY_SIZE, false);
     m_signal = make_unique<boost::interprocess::mapped_region>(*m_sharedMemory.get(), boost::interprocess::read_write, /* Offset. */ 0, GLOOP_SHARED_MEMORY_SIZE);
     GLOOP_DEBUG("id:(%u)\n", m_id);
 }
