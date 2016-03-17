@@ -72,6 +72,7 @@ add_executable(gloop-monitor
     monitor_session.cc
 )
 target_link_libraries(gloop-monitor
+    protobuf
     gloop
     rt
     ${CMAKE_THREAD_LIBS_INIT}
