@@ -103,8 +103,6 @@ Session* Server::calculateNextSession(std::lock_guard<Lock>& locker)
             }
         }
     }
-
-    progressCurrentVirtualTime(locker);
 #if 0
     // No scheduling.
     m_toBeAllowed = anySessionAllowed();

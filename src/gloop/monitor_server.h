@@ -27,6 +27,7 @@
 #include <boost/asio.hpp>
 #include <boost/intrusive/list.hpp>
 #include <boost/thread.hpp>
+#include <queue>
 #include "monitor_lock.h"
 #include "monitor_session.h"
 #include "noncopyable.h"
@@ -35,6 +36,13 @@ namespace gloop {
 namespace monitor {
 
 class Monitor;
+
+struct SessionPriorityFunctor {
+    bool operator()(Session* left, Session* right)
+    {
+        return left->used() > right->used();
+    }
+};
 
 class Server {
 GLOOP_NONCOPYABLE(Server);
@@ -80,6 +88,7 @@ private:
     boost::asio::local::stream_protocol::acceptor m_acceptor;
     boost::condition_variable_any m_condition;
     uint32_t m_toBeAllowed { anySessionAllowed() };
+    // std::priority_queue<Session*, std::vector<Session*>, SessionPriorityFunctor> m_priorityQueue;
 };
 
 GLOOP_ALWAYS_INLINE bool Server::isAllowed(Session& session) const
