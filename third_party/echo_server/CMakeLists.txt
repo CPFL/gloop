@@ -7,5 +7,4 @@ target_link_libraries(echo
     boost_system
     boost_thread
     boost_date_time
-    gipc
     ${GLOOP_CUDA_RUNTIME_LIBS})

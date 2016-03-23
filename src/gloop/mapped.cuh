@@ -21,54 +21,40 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#ifndef GLOOP_MAPPED_CU_H_
+#define GLOOP_MAPPED_CU_H_
+#include <cuda_runtime.h>
+#include <cstdlib>
+#include <cstdio>
+#include "utility.h"
+namespace gloop {
 
-#include <cassert>
-#include <gpufs/libgpufs/util.cu.h>
-#include "gipc.cuh"
-
-namespace gipc {
-
-__device__ void Channel::emit()
-{
-    lock();
+class Mapped {
+public:
+    inline void* operator new(std::size_t size)
     {
-        GPU_ASSERT(m_status == Wait);
-        __threadfence_system();
-        m_status = Status::Emit;
-        __threadfence_system();
-        WAIT_ON_MEM_NE(m_status, Status::Wait);
+        void* result = nullptr;
+        GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&result, size, cudaHostAllocMapped));
+        return result;
     }
-    unlock();
-}
 
-__host__ void Channel::stop()
-{
-    __sync_synchronize();
-    m_status = Status::Emit;
-    __sync_synchronize();
-}
+    inline void* operator new[](std::size_t size)
+    {
+        void* result = nullptr;
+        GLOOP_CUDA_SAFE_CALL(cudaHostAlloc(&result, size, cudaHostAllocMapped));
+        return result;
+    }
 
-__host__ void Channel::wait()
-{
-    while (m_status == Status::Wait);
-    __sync_synchronize();
-    m_status = Status::Wait;
-    __sync_synchronize();
-}
+    inline void operator delete(void* ptr)
+    {
+        GLOOP_CUDA_SAFE_CALL(cudaFreeHost(ptr));
+    }
 
-__device__ __host__ bool Channel::peek()
-{
-    return m_status == Status::Emit;
-}
+    inline void operator delete[](void* ptr)
+    {
+        GLOOP_CUDA_SAFE_CALL(cudaFreeHost(ptr));
+    }
+};
 
-__device__ void Channel::lock()
-{
-    MUTEX_LOCK(m_lock);
-}
-
-__device__ void Channel::unlock()
-{
-    MUTEX_UNLOCK(m_lock);
-}
-
-}  // namespace gpic
+}  // namespace gloop
+#endif  // GLOOP_MAPPED_CU_H_

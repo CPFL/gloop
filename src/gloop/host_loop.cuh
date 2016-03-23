@@ -29,7 +29,6 @@
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/thread.hpp>
 #include <deque>
-#include <gipc/gipc.cuh>
 #include <memory>
 #include <mutex>
 #include <string>

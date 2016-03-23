@@ -24,7 +24,6 @@
 #ifndef GLOOP_DEVICE_LOOP_H_
 #define GLOOP_DEVICE_LOOP_H_
 #include <cstdint>
-#include <gipc/gipc.cuh>
 #include <type_traits>
 #include "code.cuh"
 #include "config.h"

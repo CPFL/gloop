@@ -24,8 +24,8 @@
 #ifndef GLOOP_IPC_CU_H_
 #define GLOOP_IPC_CU_H_
 #include <cstdint>
-#include <gipc/mapped.cuh>
 #include "code.cuh"
+#include "mapped.cuh"
 #include "noncopyable.h"
 #include "request.h"
 #include "sync_read_write.h"
@@ -33,7 +33,7 @@
 
 namespace gloop {
 
-class IPC : public gipc::Mapped {
+class IPC : public Mapped {
 GLOOP_NONCOPYABLE(IPC)
 public:
     __host__ IPC() : m_request { 0 } { }
