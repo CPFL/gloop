@@ -60,6 +60,8 @@ public:
 
     uint32_t id() const { return m_id; }
 
+    uint64_t killClock() const { return m_deviceProperties.clockRate * GLOOP_KILL_TIME; }
+
     static std::unique_ptr<HostLoop> create(int deviceNumber, uint64_t costPerBit = 1);
 
     template<typename DeviceLambda, class... Args>
@@ -142,6 +144,7 @@ private:
     cudaStream_t m_pgraph;
     std::unique_ptr<CopyWorkPool> m_copyWorkPool;
     KernelLock m_kernelLock;
+    cudaDeviceProp m_deviceProperties;
 };
 
 template<typename DeviceLambda, class... Args>

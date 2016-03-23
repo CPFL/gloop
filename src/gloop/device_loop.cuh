@@ -70,6 +70,7 @@ public:
         IPC* channels;
         OnePage* pages;
         uint32_t* pending;
+        uint64_t killClock;
     };
 
     __device__ DeviceLoop(volatile uint32_t* signal, DeviceContext, size_t size);

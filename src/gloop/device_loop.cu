@@ -85,6 +85,7 @@ __device__ auto DeviceLoop::dequeue(bool& shouldExit) -> Callback*
 
 __device__ void DeviceLoop::drain()
 {
+    uint64_t start = clock64();
     while (true) {
         __shared__ uint32_t pending;
         __shared__ Callback* callback;
@@ -129,8 +130,12 @@ __device__ void DeviceLoop::drain()
         // __threadfence_block();
         BEGIN_SINGLE_THREAD
         {
-            // FIXME: Sometimes, we should execute this. Taking tick in GPU kernel is nice.
-            signaled = gloop::readNoCache<uint32_t>(m_signal) != 0;
+            signaled = false;
+            uint64_t now = clock64();
+            if ((now - start) > m_deviceContext.killClock) {
+                signaled = gloop::readNoCache<uint32_t>(m_signal) != 0;
+                start = now;
+            }
         }
         END_SINGLE_THREAD
         // __threadfence_block();

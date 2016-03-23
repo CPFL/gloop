@@ -71,6 +71,7 @@ bool HostContext::initialize(HostLoop& hostLoop)
         m_ipc = make_unique<IPC[]>(m_blocks.x * m_blocks.y * GLOOP_SHARED_SLOT_SIZE);
         m_pending = MappedMemory::create(sizeof(uint32_t));
 
+        m_context.killClock = hostLoop.killClock();
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.channels, m_ipc.get(), 0));
 
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.pending, m_pending->mappedPointer(), 0));

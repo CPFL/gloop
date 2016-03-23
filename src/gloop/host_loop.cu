@@ -186,10 +186,9 @@ void HostLoop::initialize()
 
         CUDA_SAFE_CALL(cudaPeekAtLastError());
 
-        cudaDeviceProp deviceProp;
-        CUDA_SAFE_CALL(cudaGetDeviceProperties(&deviceProp, m_deviceNumber));
+        CUDA_SAFE_CALL(cudaGetDeviceProperties(&m_deviceProperties, m_deviceNumber));
 #if 1
-        printf("clock rate:(%d)\n", deviceProp.clockRate);
+        printf("clock rate:(%d)\n", m_deviceProperties.clockRate);
 #endif
     }
 }
