@@ -80,11 +80,7 @@ public:
     __device__ void allocOnePage(Lambda lambda);
     __device__ void freeOnePage(void* page);
 
-    __device__ Callback* dequeue(bool& shouldExit);
-
     __device__ void drain();
-
-    __device__ void deallocate(Callback* callback);
 
     __device__ void resume();
 
@@ -92,6 +88,10 @@ private:
     __device__ uint32_t enqueueSleep(const Callback& lambda);
 
     __device__ uint32_t allocate(const Callback* lambda);
+
+    __device__ void deallocate(Callback* callback);
+
+    __device__ Callback* dequeue(bool& shouldExit);
 
     __device__ void suspend();
 
