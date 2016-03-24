@@ -170,6 +170,20 @@ void HostLoop::pollerMain()
     }
 }
 
+bool HostLoop::threadReady()
+{
+    // The IO threads and the kernel thread.
+    boost::unique_lock<boost::mutex> lock(m_threadGroupMutex);
+    if (++m_threadGroupReadyCount == (GLOOP_THREAD_GROUP_SIZE + 1)) {
+        m_threadGroupReadyNotify.notify_one();
+    }
+    m_threadGroupNotify.wait(lock);
+    if (m_stopThreadGroup) {
+        return false;
+    }
+    return true;
+}
+
 void HostLoop::initialize()
 {
     initializeInThread();
@@ -204,20 +218,24 @@ void HostLoop::initialize()
             m_threadGroup.create_thread([this] {
                 initializeInThread();
                 while (true) {
-                    {
-                        boost::unique_lock<boost::mutex> lock(m_threadGroupMutex);
-                        if (++m_threadGroupReadyCount == GLOOP_THREAD_GROUP_SIZE) {
-                            m_threadGroupReadyNotify.notify_one();
-                        }
-                        m_threadGroupNotify.wait(lock);
-                        if (m_stopThreadGroup) {
-                            return;
-                        }
+                    if (!threadReady()) {
+                        return;
                     }
                     m_ioService.run();
                 }
             });
         }
+
+        m_threadGroup.create_thread([this] {
+            initializeInThread();
+            while (true) {
+                if (!threadReady()) {
+                    return;
+                }
+                m_kernelService.run();
+            }
+        });
+
         m_threadGroupReadyNotify.wait(lock);
         m_threadGroupReadyCount = 0;
     }
@@ -230,17 +248,12 @@ void HostLoop::initializeInThread()
 
 void HostLoop::drain()
 {
-    // Host main loop.
-#if 0
-    // Run in main thread.
-    m_ioService.run();
-#else
     {
         boost::unique_lock<boost::mutex> lock(m_threadGroupMutex);
         m_threadGroupNotify.notify_all();
         m_threadGroupReadyNotify.wait(lock);
+        m_threadGroupReadyCount = 0;
     }
-#endif
 }
 
 void HostLoop::prepareForLaunch()
@@ -267,7 +280,9 @@ void HostLoop::resume()
         }
         if (acquireLockSoon) {
             resume();
+            return;
         }
+        derefKernel();
     });
 }
 
@@ -283,6 +298,16 @@ void HostLoop::epilogue()
     stopPoller();
     // logGPUfsDone();
     m_currentContext = nullptr;
+}
+
+void HostLoop::refKernel()
+{
+    m_kernelWork = make_unique<boost::asio::io_service::work>(m_ioService);
+}
+
+void HostLoop::derefKernel()
+{
+    m_kernelWork.reset();
 }
 
 CopyWork* HostLoop::acquireCopyWork()

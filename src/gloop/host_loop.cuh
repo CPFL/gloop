@@ -100,6 +100,9 @@ private:
     void prologue(HostContext&, dim3 threads);
     void epilogue();
 
+    void refKernel();
+    void derefKernel();
+
     // System initialization.
     void initialize();
 
@@ -125,6 +128,7 @@ private:
     CopyWork* acquireCopyWork();
     void releaseCopyWork(CopyWork* copyWork);
 
+    bool threadReady();
 
     int m_deviceNumber { 0 };
     uv_loop_t* m_loop { nullptr };
@@ -153,43 +157,44 @@ private:
     boost::condition_variable m_threadGroupReadyNotify;
     int m_threadGroupReadyCount { 0 };
     bool m_stopThreadGroup { false };
+
+    std::unique_ptr<boost::asio::io_service::work> m_kernelWork;
 };
 
 template<typename DeviceLambda, class... Args>
 inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
 {
+    std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
+    benchmark->begin();
     prologue(hostContext, threads);
     {
         auto arguments = thrust::make_tuple(std::forward<Args>(args)...);
-        std::unique_ptr<boost::asio::io_service::work> kernelWork = make_unique<boost::asio::io_service::work>(m_ioService);
-        std::unique_ptr<boost::thread> kernelThread = make_unique<boost::thread>([&] {
-            initializeInThread();
-            m_kernelService.post([&] {
-                {
-                    std::lock_guard<KernelLock> lock(m_kernelLock);
-                    // GLOOP_DATA_LOG("acquire for launch\n");
-                    prepareForLaunch();
-                    while (true) {
-                        gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, arguments);
-                        cudaError_t error = cudaGetLastError();
-                        if (cudaErrorLaunchOutOfResources == error) {
-                            continue;
-                        }
-                        GLOOP_CUDA_SAFE_CALL(error);
-                        break;
+        refKernel();
+        m_kernelService.post([&] {
+            {
+                std::lock_guard<KernelLock> lock(m_kernelLock);
+                // GLOOP_DATA_LOG("acquire for launch\n");
+                prepareForLaunch();
+                while (true) {
+                    gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, arguments);
+                    cudaError_t error = cudaGetLastError();
+                    if (cudaErrorLaunchOutOfResources == error) {
+                        continue;
                     }
-                    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
+                    GLOOP_CUDA_SAFE_CALL(error);
+                    break;
                 }
-                if (m_currentContext->pending()) {
-                    resume();
-                }
-            });
-            m_kernelService.run();
-            kernelWork.reset();
+                GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
+            }
+
+            if (m_currentContext->pending()) {
+                resume();
+                return;
+            }
+            derefKernel();
         });
         drain();
     }
-    std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
     epilogue();
 }
 
