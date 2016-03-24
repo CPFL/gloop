@@ -164,9 +164,9 @@ void HostLoop::pollerMain()
             count = 0;
             continue;
         }
-        if ((++count % 100000) == 0) {
+        // if ((++count % 100000) == 0) {
             boost::this_thread::interruption_point();
-        }
+        // }
     }
 }
 
