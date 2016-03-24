@@ -47,15 +47,12 @@ public:
 
     static_assert(GLOOP_SHARED_PAGE_COUNT != 64, "Should not be 64");
     struct DeviceLoopControl {
-        uint32_t put { 0 };
-        uint32_t get { 0 };
         uint32_t pending { 0 };
         uint64_t free { static_cast<decltype(free)>(-1) };
         uint64_t sleep { 0 };
         uint64_t wakeup { 0 };
         uint64_t freePages { (1ULL << GLOOP_SHARED_PAGE_COUNT) - 1 };
         uint64_t m_pageSleep { 0 };
-        uint8_t queue[GLOOP_SHARED_SLOT_SIZE];
     };
 
     struct PerBlockContext {

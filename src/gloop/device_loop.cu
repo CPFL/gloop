@@ -44,9 +44,7 @@ __device__ IPC* DeviceLoop::enqueueIPC(Callback lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = allocate(&lambda);
-    m_control.queue[m_control.put++ % GLOOP_SHARED_SLOT_SIZE] = pos;
     IPC* result = channel() + pos;
-    GPU_ASSERT(m_control.put != m_control.get);
     GPU_ASSERT(pos < GLOOP_SHARED_SLOT_SIZE);
     return result;
 }
@@ -123,13 +121,16 @@ __device__ void DeviceLoop::drain()
             (*callback)(this, ipc->request());
             __syncthreads();  // FIXME
             // __threadfence_block();
-            deallocate(callback);
         }
 
         __shared__ bool signaled;
         // __threadfence_block();
         BEGIN_SINGLE_THREAD
         {
+            if (callback) {
+                deallocate(callback);
+            }
+
             signaled = false;
             uint64_t now = clock64();
             if ((now - start) > m_deviceContext.killClock) {
@@ -169,19 +170,16 @@ __device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
 
 __device__ void DeviceLoop::deallocate(Callback* callback)
 {
-    BEGIN_SINGLE_THREAD
-    {
-        uint32_t pos = position(callback);
-        // printf("pos:(%u)\n", (unsigned)pos);
-        GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
-        GPU_ASSERT(!(m_control.free & (1ULL << pos)));
+    GLOOP_ASSERT_SINGLE_THREAD();
+    uint32_t pos = position(callback);
+    // printf("pos:(%u)\n", (unsigned)pos);
+    GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
+    GPU_ASSERT(!(m_control.free & (1ULL << pos)));
 
-        callback->~Callback();
+    callback->~Callback();
 
-        m_control.free |= (1ULL << pos);
-        m_control.pending -= 1;
-    }
-    END_SINGLE_THREAD
+    m_control.free |= (1ULL << pos);
+    m_control.pending -= 1;
 }
 
 __device__ void DeviceLoop::suspend()
@@ -210,7 +208,6 @@ __device__ uint32_t DeviceLoop::enqueueSleep(const Callback& lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = allocate(&lambda);
-    m_control.queue[m_control.put++ % GLOOP_SHARED_SLOT_SIZE] = pos;
     m_control.sleep |= (1ULL << pos);
     return pos;
 }

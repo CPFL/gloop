@@ -164,7 +164,6 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
             });
             tcp::sendImpl(loop, ipc, ipc->request()->u.netTCPSend, socket, count, page);
 #if 0
-            long long t1 = clock64();
             long long t2 = clock64();
             printf("send clocks %ld\n", t2-t1);
 #endif
