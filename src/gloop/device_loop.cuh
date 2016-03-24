@@ -49,10 +49,10 @@ public:
     struct DeviceLoopControl {
         uint32_t pending { 0 };
         uint32_t freePages { (1UL << GLOOP_SHARED_PAGE_COUNT) - 1 };
-        uint64_t free { static_cast<decltype(free)>(-1) };
-        uint64_t sleep { 0 };
-        uint64_t wakeup { 0 };
-        uint64_t m_pageSleep { 0 };
+        uint64_t freeSlots { static_cast<decltype(freeSlots)>(-1) };
+        uint64_t sleepSlots { 0 };
+        uint64_t wakeupSlots { 0 };
+        uint64_t pageSleepSlots { 0 };
     };
 
     struct PerBlockContext {
@@ -157,7 +157,7 @@ inline __device__ void DeviceLoop::allocOnePage(Lambda lambda)
             uint32_t pos = enqueueSleep([lambda](DeviceLoop* loop, volatile request::Request* req) {
                 loop->allocOnePage(lambda);
             });
-            m_control.m_pageSleep |= (1ULL << pos);
+            m_control.pageSleepSlots |= (1ULL << pos);
         } else {
             int pagePos = freePagePosPlusOne - 1;
             page = pages() + pagePos;
@@ -175,7 +175,7 @@ inline __device__ void DeviceLoop::enqueueLater(Lambda lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = enqueueSleep(lambda);
-    m_control.wakeup |= (1ULL << pos);
+    m_control.wakeupSlots |= (1ULL << pos);
 }
 
 }  // namespace gloop

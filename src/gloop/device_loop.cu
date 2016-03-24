@@ -56,13 +56,13 @@ __device__ auto DeviceLoop::dequeue(bool& shouldExit) -> Callback*
     for (int i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
         // Look into ICP status to run callbacks.
         uint64_t bit = 1ULL << i;
-        if (m_control.sleep & bit) {
-            if (m_control.wakeup & bit) {
-                m_control.sleep &= ~bit;
-                m_control.wakeup &= ~bit;
+        if (m_control.sleepSlots & bit) {
+            if (m_control.wakeupSlots & bit) {
+                m_control.sleepSlots &= ~bit;
+                m_control.wakeupSlots &= ~bit;
                 return m_slots + i;
             }
-        } else if (!(m_control.free & bit)) {
+        } else if (!(m_control.freeSlots & bit)) {
             IPC* ipc = channel() + i;
             Code code = ipc->peek();
             if (code == Code::Complete) {
@@ -157,10 +157,10 @@ __device__ void DeviceLoop::drain()
 __device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    int pos = __ffsll(m_control.free) - 1;
+    int pos = __ffsll(m_control.freeSlots) - 1;
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
-    GPU_ASSERT(m_control.free & (1ULL << pos));
-    m_control.free &= ~(1ULL << pos);
+    GPU_ASSERT(m_control.freeSlots & (1ULL << pos));
+    m_control.freeSlots &= ~(1ULL << pos);
 
     new (m_slots + pos) Callback(*lambda);
     m_control.pending += 1;
@@ -174,11 +174,11 @@ __device__ void DeviceLoop::deallocate(Callback* callback)
     uint32_t pos = position(callback);
     // printf("pos:(%u)\n", (unsigned)pos);
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
-    GPU_ASSERT(!(m_control.free & (1ULL << pos)));
+    GPU_ASSERT(!(m_control.freeSlots & (1ULL << pos)));
 
     callback->~Callback();
 
-    m_control.free |= (1ULL << pos);
+    m_control.freeSlots |= (1ULL << pos);
     m_control.pending -= 1;
 }
 
@@ -208,7 +208,7 @@ __device__ uint32_t DeviceLoop::enqueueSleep(const Callback& lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = allocate(&lambda);
-    m_control.sleep |= (1ULL << pos);
+    m_control.sleepSlots |= (1ULL << pos);
     return pos;
 }
 
@@ -218,9 +218,9 @@ __device__ void DeviceLoop::freeOnePage(void* aPage)
     uint32_t pos = position(static_cast<OnePage*>(aPage));
     m_control.freePages |= (1UL << pos);
     GPU_ASSERT(pos < GLOOP_SHARED_PAGE_COUNT);
-    int freePageWaitingCallbackPlusOne = __ffsll(m_control.m_pageSleep);
+    int freePageWaitingCallbackPlusOne = __ffsll(m_control.pageSleepSlots);
     if (freePageWaitingCallbackPlusOne) {
-        m_control.wakeup |= (1ULL << (freePageWaitingCallbackPlusOne - 1));
+        m_control.wakeupSlots |= (1ULL << (freePageWaitingCallbackPlusOne - 1));
     }
 }
 
