@@ -59,17 +59,16 @@ private:
     template<typename Lambda>
     inline __device__ uint32_t allocate(Lambda lambda);
 
-    __device__ void deallocate(DeviceCallback* callback);
+    __device__ void deallocate(DeviceCallback* callback, uint32_t pos);
 
     __device__ uint32_t dequeue(bool& shouldExit);
 
     __device__ void suspend();
 
-    GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots() const;
+    GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots(uint32_t position);
     GLOOP_ALWAYS_INLINE __device__ IPC* channel() const;
     GLOOP_ALWAYS_INLINE __device__ DeviceContext::PerBlockContext* context() const;
     GLOOP_ALWAYS_INLINE __device__ DeviceContext::OnePage* pages() const;
-    GLOOP_ALWAYS_INLINE __device__ uint32_t position(DeviceCallback*);
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(IPC*);
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(DeviceContext::OnePage*);
 
@@ -79,14 +78,12 @@ private:
     DeviceCallback* m_slots;
     DeviceContext::DeviceLoopControl m_control;
     volatile uint32_t* m_signal;
+    uint32_t m_scratchIndex1 { invalidPosition() };
+    uint32_t m_scratchIndex2 { invalidPosition() };
+    UninitializedDeviceCallbackStorage m_scratch1;
+    UninitializedDeviceCallbackStorage m_scratch2;
 };
 static_assert(std::is_trivially_destructible<DeviceLoop>::value, "DeviceLoop is trivially destructible");
-
-__device__ uint32_t DeviceLoop::position(DeviceCallback* callback)
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    return callback - m_slots;
-}
 
 __device__ uint32_t DeviceLoop::position(IPC* ipc)
 {
@@ -100,10 +97,16 @@ __device__ uint32_t DeviceLoop::position(DeviceContext::OnePage* page)
     return page - pages();
 }
 
-__device__ auto DeviceLoop::slots() const -> DeviceCallback*
+__device__ auto DeviceLoop::slots(uint32_t position) -> DeviceCallback*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    return m_slots;
+    if (position == m_scratchIndex1) {
+        return reinterpret_cast<DeviceCallback*>(&m_scratch1);
+    }
+    if (position == m_scratchIndex2) {
+        return reinterpret_cast<DeviceCallback*>(&m_scratch2);
+    }
+    return m_slots + position;
 }
 
 __device__ auto DeviceLoop::channel() const -> IPC*
@@ -185,7 +188,16 @@ __device__ uint32_t DeviceLoop::allocate(Lambda lambda)
     GPU_ASSERT(m_control.freeSlots & (1ULL << pos));
     m_control.freeSlots &= ~(1ULL << pos);
 
-    new (m_slots + pos) DeviceCallback(lambda);
+    void* target = m_slots + pos;
+    if (m_scratchIndex1 == invalidPosition()) {
+        m_scratchIndex1 = pos;
+        target = &m_scratch1;
+    } else if (m_scratchIndex2 == invalidPosition()) {
+        m_scratchIndex2 = pos;
+        target = &m_scratch2;
+    }
+
+    new (target) DeviceCallback(lambda);
     m_control.pending += 1;
 
     return pos;

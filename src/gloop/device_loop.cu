@@ -79,6 +79,7 @@ __device__ void DeviceLoop::drain()
     uint64_t start = clock64();
     while (true) {
         __shared__ uint32_t pending;
+        __shared__ uint32_t position;
         __shared__ DeviceCallback* callback;
         __shared__ IPC* ipc;
         BEGIN_SINGLE_THREAD
@@ -87,9 +88,9 @@ __device__ void DeviceLoop::drain()
 
             if (pending) {
                 bool shouldExit = false;
-                uint32_t position = dequeue(shouldExit);
+                position = dequeue(shouldExit);
                 if (position != invalidPosition()) {
-                    callback = slots() + position;
+                    callback = slots(position);
                     ipc = channel() + position;
                 } else {
                     callback = nullptr;
@@ -122,7 +123,7 @@ __device__ void DeviceLoop::drain()
         BEGIN_SINGLE_THREAD
         {
             if (callback) {
-                deallocate(callback);
+                deallocate(callback, position);
             }
 
             signaled = false;
@@ -148,15 +149,19 @@ __device__ void DeviceLoop::drain()
     // __threadfence_block();
 }
 
-__device__ void DeviceLoop::deallocate(DeviceCallback* callback)
+__device__ void DeviceLoop::deallocate(DeviceCallback* callback, uint32_t pos)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    uint64_t pos = position(callback);
     // printf("pos:(%u)\n", (unsigned)pos);
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
     GPU_ASSERT(!(m_control.freeSlots & (1ULL << pos)));
 
     callback->~DeviceCallback();
+    if (pos == m_scratchIndex1) {
+        m_scratchIndex1 = invalidPosition();
+    } else if (pos == m_scratchIndex2) {
+        m_scratchIndex2 = invalidPosition();
+    }
 
     m_control.freeSlots |= (1ULL << pos);
     m_control.pending -= 1;
@@ -171,6 +176,14 @@ __device__ void DeviceLoop::suspend()
     blockContext->control = m_control;
     if (m_control.pending) {
         atomicAdd(m_deviceContext.pending, 1);
+    }
+    if (m_scratchIndex1 != invalidPosition()) {
+        new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_scratchIndex1) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_scratch1));
+        reinterpret_cast<DeviceCallback*>(&m_scratch1)->~DeviceCallback();
+    }
+    if (m_scratchIndex2 != invalidPosition()) {
+        new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_scratchIndex2) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_scratch2));
+        reinterpret_cast<DeviceCallback*>(&m_scratch2)->~DeviceCallback();
     }
     __threadfence_system();  // FIXME
 }
