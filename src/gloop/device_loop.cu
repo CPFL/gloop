@@ -113,8 +113,10 @@ __device__ void DeviceLoop::drain()
             // __threadfence_system();  // IPC and Callback.
             // __threadfence_block();
             __syncthreads();  // FIXME
+            // One shot function always destroys the function and syncs threads.
             (*callback)(this, ipc->request());
-            __syncthreads();  // FIXME
+
+            // __syncthreads();  // FIXME
             // __threadfence_block();
         }
 

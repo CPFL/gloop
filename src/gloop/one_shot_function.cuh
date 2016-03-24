@@ -1,4 +1,32 @@
 /*
+  Partially modified.
+
+  OneShotFunction is highly tuned for GLoop's callback.
+  This cannot be used in the other purpose. Use gloop::function instead.
+
+  Copyright (C) 2015-2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+/*
  * Copyright 2014 NVIDIA Corporation.  All rights reserved.
  *
  * NOTICE TO LICENSEE:
@@ -46,36 +74,12 @@
  * comments to the code, the above Disclaimer and U.S. Government End
  * Users Notice.
  */
-/*
-  Partially modified.
-
-  Copyright (C) 2015-2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
-
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
-  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
 
 #ifndef GLOOP__ONE_SHOT_FUNCTION_NV_LIBCXX_FUNCTIONAL_H__
 #define GLOOP__ONE_SHOT_FUNCTION_NV_LIBCXX_FUNCTIONAL_H__
 #include "config.h"
 #include "utility.h"
+#include "utility/util.cu.h"
 #include "function.cuh"
 
 #if __cplusplus < 201103L
@@ -216,18 +220,6 @@ private:
     }
   };
 
-    template<class FunctionType, class _F>
-    class __Destroyer {
-    public:
-        GLOOP_ALWAYS_INLINE __device__ __host__ __Destroyer(FunctionType* func) : m_function(func) { }
-        GLOOP_ALWAYS_INLINE __device__ __host__ ~__Destroyer() {
-          __make_destructor<_F>::__destruct(m_function);
-          m_function->__obj = nullptr;
-        }
-    private:
-        FunctionType* m_function;
-    };
-
   // We cannot simple define __make_functor in the following way:
   // template <class _T, _F>
   // __make_functor;
@@ -240,12 +232,17 @@ private:
   {
     typedef _RetType1 type;
 
+    static_assert(std::is_same<_RetType1, void>::value, "Assume void.");
+
     __device__
     static _RetType1 __invoke(FunctionType* function, void *__d, _ArgTypes1... __args)
     {
-      __Destroyer<FunctionType, _F> destroyer(function);
-      return __get_functor<_F>(__d)(
-               internal::forward<_ArgTypes1>(__args)...);
+      __get_functor<_F>(__d)(internal::forward<_ArgTypes1>(__args)...);
+      BEGIN_SINGLE_THREAD
+      {
+          __make_destructor<_F>::__destruct(function);
+      }
+      END_SINGLE_THREAD
     }
   };
 
@@ -253,14 +250,19 @@ private:
   struct __make_functor<FunctionType, _RetType1, _M _C::*,_ArgTypes1...>
   {
     typedef _RetType1 type;
-    typedef _RetType1(*_Fn)(_ArgTypes1...);
+    typedef _RetType1(*_F)(_ArgTypes1...);
+
+    static_assert(std::is_same<_RetType1, void>::value, "Assume void.");
 
     __device__
     static _RetType1 __invoke(FunctionType* function, void *__d, _ArgTypes1... __args)
     {
-      __Destroyer<FunctionType, _Fn> destroyer(function);
-      return __get_functor<_Fn>(__d)(
-               internal::forward<_ArgTypes1>(__args)...);
+      __get_functor<_F>(__d)(internal::forward<_ArgTypes1>(__args)...);
+      BEGIN_SINGLE_THREAD
+      {
+          __make_destructor<_F>::__destruct(function);
+      }
+      END_SINGLE_THREAD
     }
   };
 
