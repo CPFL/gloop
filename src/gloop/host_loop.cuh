@@ -109,7 +109,7 @@ private:
     void stopPoller();
     void pollerMain();
 
-    bool handleIO(Command);
+    bool handleIO(IPC*, request::Request);
     void send(Command);
 
     void resume();

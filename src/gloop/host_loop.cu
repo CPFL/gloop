@@ -151,11 +151,7 @@ void HostLoop::pollerMain()
             request::Request req { };
             memcpy(&req, (request::Request*)ipc->request(), sizeof(request::Request));
             ipc->emit(Code::None);
-            handleIO({
-                .type = Command::Type::IO,
-                .payload = bitwise_cast<uintptr_t>(ipc),
-                .request = req,
-            });
+            handleIO(ipc, req);
         });
         if (found) {
             count = 0;
@@ -280,12 +276,8 @@ void HostLoop::releaseCopyWork(CopyWork* copyWork)
     m_copyWorkPool->release(copyWork);
 }
 
-bool HostLoop::handleIO(Command command)
+bool HostLoop::handleIO(IPC* ipc, request::Request req)
 {
-    assert(command.type == Command::Type::IO);
-    request::Request req = command.request;
-    IPC* ipc = bitwise_cast<IPC*>(command.payload);
-
     switch (static_cast<Code>(req.code)) {
     case Code::Open: {
         int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
