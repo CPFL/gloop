@@ -113,6 +113,13 @@ HostLoop::~HostLoop()
         GLOOP_CUDA_SAFE_CALL(cuDeviceGet(&device, 0));
         GLOOP_CUDA_SAFE_CALL(cuDevicePrimaryCtxRelease(device));
     }
+
+    {
+        boost::unique_lock<boost::mutex> lock(m_threadGroupMutex);
+        m_stopThreadGroup = true;
+        m_threadGroupNotify.notify_all();
+    }
+    m_threadGroup.join_all();
     // GLOOP_DATA_LOG("let's cleanup done\n");
 }
 
@@ -187,6 +194,33 @@ void HostLoop::initialize()
         printf("clock rate:(%d)\n", m_deviceProperties.clockRate);
 #endif
     }
+
+    // Since kernel work is already held by kernel executing thread,
+    // when joining threads, we can say that all the events produced by ASIO
+    // is already drained.
+    {
+        boost::unique_lock<boost::mutex> lock(m_threadGroupMutex);
+        for (int i = 0; i < GLOOP_THREAD_GROUP_SIZE; ++i) {
+            m_threadGroup.create_thread([this] {
+                initializeInThread();
+                while (true) {
+                    {
+                        boost::unique_lock<boost::mutex> lock(m_threadGroupMutex);
+                        if (++m_threadGroupReadyCount == GLOOP_THREAD_GROUP_SIZE) {
+                            m_threadGroupReadyNotify.notify_one();
+                        }
+                        m_threadGroupNotify.wait(lock);
+                        if (m_stopThreadGroup) {
+                            return;
+                        }
+                    }
+                    m_ioService.run();
+                }
+            });
+        }
+        m_threadGroupReadyNotify.wait(lock);
+        m_threadGroupReadyCount = 0;
+    }
 }
 
 void HostLoop::initializeInThread()
@@ -201,17 +235,11 @@ void HostLoop::drain()
     // Run in main thread.
     m_ioService.run();
 #else
-    // Since kernel work is already held by kernel executing thread,
-    // when joining threads, we can say that all the events produced by ASIO
-    // is already drained.
-    boost::thread_group threadGroup;
-    for (int i = 0; i < GLOOP_THREAD_GROUP_SIZE; ++i) {
-        threadGroup.create_thread([this] {
-            initializeInThread();
-            m_ioService.run();
-        });
+    {
+        boost::unique_lock<boost::mutex> lock(m_threadGroupMutex);
+        m_threadGroupNotify.notify_all();
+        m_threadGroupReadyNotify.wait(lock);
     }
-    threadGroup.join_all();
 #endif
 }
 

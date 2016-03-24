@@ -36,6 +36,7 @@
 #include <thrust/tuple.h>
 #include <unordered_map>
 #include <uv.h>
+#include "benchmark.h"
 #include "command.h"
 #include "copy_work_pool.cuh"
 #include "copy_worker.cuh"
@@ -145,6 +146,13 @@ private:
     std::unique_ptr<CopyWorkPool> m_copyWorkPool;
     KernelLock m_kernelLock;
     cudaDeviceProp m_deviceProperties;
+
+    boost::thread_group m_threadGroup;
+    boost::mutex m_threadGroupMutex { };
+    boost::condition_variable m_threadGroupNotify;
+    boost::condition_variable m_threadGroupReadyNotify;
+    int m_threadGroupReadyCount { 0 };
+    bool m_stopThreadGroup { false };
 };
 
 template<typename DeviceLambda, class... Args>
@@ -181,6 +189,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
         });
         drain();
     }
+    std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
     epilogue();
 }
 
