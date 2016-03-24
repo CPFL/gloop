@@ -78,6 +78,7 @@ private:
     GLOOP_ALWAYS_INLINE __device__ static bool isValidPosition(uint32_t position);
 
     DeviceContext m_deviceContext;
+    IPC* m_channels;
     DeviceCallback* m_slots;
     DeviceContext::DeviceLoopControl m_control;
     volatile uint32_t* m_signal;
@@ -120,7 +121,7 @@ __device__ auto DeviceLoop::slots(uint32_t position) -> DeviceCallback*
 __device__ auto DeviceLoop::channel() const -> IPC*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    return m_deviceContext.channels + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
+    return m_channels;
 }
 
 __device__ auto DeviceLoop::context() const -> DeviceContext::PerBlockContext*
@@ -174,6 +175,7 @@ __device__ uint32_t DeviceLoop::enqueueSleep(Lambda lambda)
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = allocate(lambda);
     m_control.sleepSlots |= (1ULL << pos);
+    m_control.wakeupSlots &= ~(1ULL << pos);
     return pos;
 }
 

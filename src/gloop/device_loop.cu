@@ -37,12 +37,18 @@ __device__ DeviceLoop::DeviceLoop(volatile uint32_t* signal, DeviceContext devic
     , m_signal(signal)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
+    m_channels = deviceContext.channels + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
     GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
 }
 
 __device__ auto DeviceLoop::dequeue() -> uint32_t
 {
     GLOOP_ASSERT_SINGLE_THREAD();
+
+    if (!m_control.pending) {
+        return shouldExitPosition();
+    }
+
     // __threadfence_system();
     bool shouldExit = false;
     for (uint32_t i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
@@ -52,7 +58,6 @@ __device__ auto DeviceLoop::dequeue() -> uint32_t
             if (m_control.sleepSlots & bit) {
                 if (m_control.wakeupSlots & bit) {
                     m_control.sleepSlots &= ~bit;
-                    m_control.wakeupSlots &= ~bit;
                     return i;
                 }
             } else {
@@ -90,16 +95,11 @@ __device__ void DeviceLoop::drain()
     BEGIN_SINGLE_THREAD
     {
         start = clock64();
-        if (m_control.pending) {
-            position = dequeue();
-            if (isValidPosition(position)) {
-                callback = slots(position);
-                ipc = channel() + position;
-            } else {
-                callback = nullptr;
-            }
-        } else {
-            position = shouldExitPosition();
+        callback = nullptr;
+        position = dequeue();
+        if (isValidPosition(position)) {
+            callback = slots(position);
+            ipc = channel() + position;
         }
     }
     END_SINGLE_THREAD
@@ -108,8 +108,9 @@ __device__ void DeviceLoop::drain()
         if (callback) {
             // __threadfence_system();  // IPC and Callback.
             // __threadfence_block();
-            __syncthreads();  // FIXME
+            // __syncthreads();  // FIXME
 
+            // printf("%llu %u\n", (unsigned long long)(clock64() - start), (unsigned)position);
             // One shot function always destroys the function and syncs threads.
             (*callback)(this, ipc->request());
 
@@ -133,16 +134,11 @@ __device__ void DeviceLoop::drain()
             }
 
             if (position != shouldExitPosition()) {
-                if (m_control.pending) {
-                    position = dequeue();
-                    if (isValidPosition(position)) {
-                        callback = slots(position);
-                        ipc = channel() + position;
-                    } else {
-                        callback = nullptr;
-                    }
-                } else {
-                    position = shouldExitPosition();
+                callback = nullptr;
+                position = dequeue();
+                if (isValidPosition(position)) {
+                    callback = slots(position);
+                    ipc = channel() + position;
                 }
             }
         }
