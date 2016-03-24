@@ -62,7 +62,7 @@ private:
 
     __device__ void deallocate(DeviceCallback* callback, uint32_t pos);
 
-    __device__ uint32_t dequeue(bool& shouldExit);
+    __device__ uint32_t dequeue();
 
     __device__ void suspend();
 
@@ -73,7 +73,9 @@ private:
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(IPC*);
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(DeviceContext::OnePage*);
 
+    __device__ static constexpr uint32_t shouldExitPosition() { return UINT32_MAX - 1; }
     __device__ static constexpr uint32_t invalidPosition() { return UINT32_MAX; }
+    GLOOP_ALWAYS_INLINE __device__ static bool isValidPosition(uint32_t position);
 
     DeviceContext m_deviceContext;
     DeviceCallback* m_slots;
@@ -96,6 +98,11 @@ __device__ uint32_t DeviceLoop::position(DeviceContext::OnePage* page)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return page - pages();
+}
+
+__device__ bool DeviceLoop::isValidPosition(uint32_t position)
+{
+    return position < GLOOP_SHARED_SLOT_SIZE;
 }
 
 __device__ auto DeviceLoop::slots(uint32_t position) -> DeviceCallback*

@@ -40,10 +40,11 @@ __device__ DeviceLoop::DeviceLoop(volatile uint32_t* signal, DeviceContext devic
     GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
 }
 
-__device__ auto DeviceLoop::dequeue(bool& shouldExit) -> uint32_t
+__device__ auto DeviceLoop::dequeue() -> uint32_t
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     // __threadfence_system();
+    bool shouldExit = false;
     for (uint32_t i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
         // Look into ICP status to run callbacks.
         uint64_t bit = 1ULL << i;
@@ -64,12 +65,17 @@ __device__ auto DeviceLoop::dequeue(bool& shouldExit) -> uint32_t
                     return i;
                 }
 
-                // FIXME: More careful exit decision.
+                // FIXME: More careful exit routine.
+                // Let's exit to meet ExitRequired requirements.
                 if (code == Code::ExitRequired) {
                     shouldExit = true;
                 }
             }
         }
+    }
+
+    if (shouldExit) {
+        return shouldExitPosition();
     }
     return invalidPosition();
 }
@@ -78,34 +84,26 @@ __device__ void DeviceLoop::drain()
 {
     uint64_t start = clock64();
     while (true) {
-        __shared__ uint32_t pending;
         __shared__ uint32_t position;
         __shared__ DeviceCallback* callback;
         __shared__ IPC* ipc;
         BEGIN_SINGLE_THREAD
         {
-            pending = m_control.pending;
-
-            if (pending) {
-                bool shouldExit = false;
-                position = dequeue(shouldExit);
-                if (position != invalidPosition()) {
+            if (m_control.pending) {
+                position = dequeue();
+                if (isValidPosition(position)) {
                     callback = slots(position);
                     ipc = channel() + position;
                 } else {
                     callback = nullptr;
-                    // FIXME: More careful exit routine.
-                    // Let's exit to meet ExitRequired requirements.
-                    if (shouldExit) {
-                        pending = 0;
-                    }
                 }
+            } else {
+                position = shouldExitPosition();
             }
         }
         END_SINGLE_THREAD
         // __threadfence_block();
-
-        if (!pending) {
+        if (position == shouldExitPosition()) {
             break;
         }
 
@@ -120,7 +118,6 @@ __device__ void DeviceLoop::drain()
             // __threadfence_block();
         }
 
-        __shared__ bool signaled;
         // __threadfence_block();
         BEGIN_SINGLE_THREAD
         {
@@ -128,18 +125,21 @@ __device__ void DeviceLoop::drain()
                 deallocate(callback, position);
             }
 
-            signaled = false;
             uint64_t now = clock64();
             if ((now - start) > m_deviceContext.killClock) {
-                signaled = gloop::readNoCache<uint32_t>(m_signal) != 0;
+                if (gloop::readNoCache<uint32_t>(m_signal) != 0) {
+                    position = shouldExitPosition();
+                }
                 start = now;
             }
         }
         END_SINGLE_THREAD
         // __threadfence_block();
-        if (signaled) {
+        if (position == shouldExitPosition()) {
             break;
         }
+
+        // Always exit case.
         // break;
     }
     // __threadfence_block();
