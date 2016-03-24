@@ -83,34 +83,32 @@ __device__ auto DeviceLoop::dequeue() -> uint32_t
 __device__ void DeviceLoop::drain()
 {
     uint64_t start = clock64();
-    while (true) {
-        __shared__ uint32_t position;
-        __shared__ DeviceCallback* callback;
-        __shared__ IPC* ipc;
-        BEGIN_SINGLE_THREAD
-        {
-            if (m_control.pending) {
-                position = dequeue();
-                if (isValidPosition(position)) {
-                    callback = slots(position);
-                    ipc = channel() + position;
-                } else {
-                    callback = nullptr;
-                }
-            } else {
-                position = shouldExitPosition();
-            }
-        }
-        END_SINGLE_THREAD
-        // __threadfence_block();
-        if (position == shouldExitPosition()) {
-            break;
-        }
+    __shared__ uint32_t position;
+    __shared__ DeviceCallback* callback;
+    __shared__ IPC* ipc;
 
+    BEGIN_SINGLE_THREAD
+    {
+        if (m_control.pending) {
+            position = dequeue();
+            if (isValidPosition(position)) {
+                callback = slots(position);
+                ipc = channel() + position;
+            } else {
+                callback = nullptr;
+            }
+        } else {
+            position = shouldExitPosition();
+        }
+    }
+    END_SINGLE_THREAD
+
+    while (position != shouldExitPosition()) {
         if (callback) {
             // __threadfence_system();  // IPC and Callback.
             // __threadfence_block();
             __syncthreads();  // FIXME
+
             // One shot function always destroys the function and syncs threads.
             (*callback)(this, ipc->request());
 
@@ -132,15 +130,22 @@ __device__ void DeviceLoop::drain()
                 }
                 start = now;
             }
+
+            if (position != shouldExitPosition()) {
+                if (m_control.pending) {
+                    position = dequeue();
+                    if (isValidPosition(position)) {
+                        callback = slots(position);
+                        ipc = channel() + position;
+                    } else {
+                        callback = nullptr;
+                    }
+                } else {
+                    position = shouldExitPosition();
+                }
+            }
         }
         END_SINGLE_THREAD
-        // __threadfence_block();
-        if (position == shouldExitPosition()) {
-            break;
-        }
-
-        // Always exit case.
-        // break;
     }
     // __threadfence_block();
     BEGIN_SINGLE_THREAD
