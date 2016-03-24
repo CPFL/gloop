@@ -82,13 +82,14 @@ __device__ auto DeviceLoop::dequeue() -> uint32_t
 
 __device__ void DeviceLoop::drain()
 {
-    uint64_t start = clock64();
+    __shared__ uint64_t start;
     __shared__ uint32_t position;
     __shared__ DeviceCallback* callback;
     __shared__ IPC* ipc;
 
     BEGIN_SINGLE_THREAD
     {
+        start = clock64();
         if (m_control.pending) {
             position = dequeue();
             if (isValidPosition(position)) {
