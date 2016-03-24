@@ -25,28 +25,9 @@
 #include <gloop/gloop.h>
 #include <gloop/benchmark.h>
 
-__device__ void throttle(gloop::DeviceLoop* loop, int count, int limit)
+__global__ void throttle(int count, int limit)
 {
-#if 0
-    __shared__ uint64_t start;
-    BEGIN_SINGLE_THREAD
-    {
-        start = clock64();
-    }
-    END_SINGLE_THREAD
-#endif
-    if (count != limit) {
-        gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
-#if 0
-            BEGIN_SINGLE_THREAD
-            {
-                printf("%llu\n", clock64() - start);
-            }
-            END_SINGLE_THREAD
-#endif
-            throttle(loop, count + 1, limit);
-        });
-    }
+    __shared__ gloop::UninitializedDeviceLoopStorage storage;
 }
 
 int main(int argc, char** argv) {
@@ -61,28 +42,18 @@ int main(int argc, char** argv) {
     int id=atoi(argv[4]);
 
     fprintf(stderr," iterations: %d blocks %d threads %d id %d\n",trials, nblocks, nthreads, id);
+    cudaStream_t pgraph;
+    GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&pgraph));
 
-    {
-        uint32_t pipelinePageCount = 0;
-        dim3 blocks(nblocks);
-        std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks, pipelinePageCount);
-
-        {
-            std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
-            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1ULL << 20)));
-        }
-
-        gloop::Benchmark benchmark;
-        benchmark.begin();
-        hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<int> tuple) {
-            throttle(loop, 0, thrust::get<0>(tuple));
-        }, trials);
-        benchmark.end();
-        printf("[%d] ", id);
-        benchmark.report();
+    gloop::Benchmark benchmark;
+    benchmark.begin();
+    for (int i = 0; i < trials; ++i) {
+        throttle<<<nblocks, nthreads, 0, pgraph>>>(0, i);
+        GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(pgraph));
     }
-
+    benchmark.end();
+    printf("[%d] ", id);
+    benchmark.report();
     fprintf(stderr, "cleanup-ed\n");
 
     return 0;

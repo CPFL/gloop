@@ -6,5 +6,5 @@ include_directories(
 add_executable(throttle
     throttle.cu
 )
-target_link_libraries(throttle gpufs gpufs_con gloop ${GLOOP_CUDA_RUNTIME_LIBS})
+target_link_libraries(throttle gloop ${GLOOP_CUDA_RUNTIME_LIBS})
 set_target_properties(throttle PROPERTIES LINKER_LANGUAGE CUDA)
