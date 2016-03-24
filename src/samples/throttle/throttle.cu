@@ -27,10 +27,25 @@
 
 __device__ void throttle(gloop::DeviceLoop* loop, int count, int limit)
 {
+#if 0
+    __shared__ uint64_t start;
+    BEGIN_SINGLE_THREAD
+    {
+        start = clock64();
+    }
+    END_SINGLE_THREAD
+#endif
     if (count != limit) {
         gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
             throttle(loop, count + 1, limit);
         });
+#if 0
+            BEGIN_SINGLE_THREAD
+            {
+                printf("%llu\n", clock64() - start);
+            }
+            END_SINGLE_THREAD
+#endif
     }
 }
 
