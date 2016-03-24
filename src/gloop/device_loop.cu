@@ -56,25 +56,27 @@ __device__ auto DeviceLoop::dequeue(bool& shouldExit) -> Callback*
     for (int i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
         // Look into ICP status to run callbacks.
         uint64_t bit = 1ULL << i;
-        if (m_control.sleepSlots & bit) {
-            if (m_control.wakeupSlots & bit) {
-                m_control.sleepSlots &= ~bit;
-                m_control.wakeupSlots &= ~bit;
-                return m_slots + i;
-            }
-        } else if (!(m_control.freeSlots & bit)) {
-            IPC* ipc = channel() + i;
-            Code code = ipc->peek();
-            if (code == Code::Complete) {
-                ipc->emit(Code::None);
-                GPU_ASSERT(ipc->peek() != Code::Complete);
-                GPU_ASSERT(ipc->peek() == Code::None);
-                return m_slots + i;
-            }
+        if (!(m_control.freeSlots & bit)) {
+            if (m_control.sleepSlots & bit) {
+                if (m_control.wakeupSlots & bit) {
+                    m_control.sleepSlots &= ~bit;
+                    m_control.wakeupSlots &= ~bit;
+                    return m_slots + i;
+                }
+            } else {
+                IPC* ipc = channel() + i;
+                Code code = ipc->peek();
+                if (code == Code::Complete) {
+                    ipc->emit(Code::None);
+                    GPU_ASSERT(ipc->peek() != Code::Complete);
+                    GPU_ASSERT(ipc->peek() == Code::None);
+                    return m_slots + i;
+                }
 
-            // FIXME: More careful exit decision.
-            if (code == Code::ExitRequired) {
-                shouldExit = true;
+                // FIXME: More careful exit decision.
+                if (code == Code::ExitRequired) {
+                    shouldExit = true;
+                }
             }
         }
     }
