@@ -72,12 +72,13 @@ public:
 
     __device__ DeviceLoop(volatile uint32_t* signal, DeviceContext, size_t size);
 
-    __device__ IPC* enqueueIPC(Callback lambda);
     template<typename Lambda>
-    __device__ void enqueueLater(Lambda lambda);
+    inline __device__ IPC* enqueueIPC(Lambda lambda);
+    template<typename Lambda>
+    inline __device__ void enqueueLater(Lambda lambda);
 
     template<typename Lambda>
-    __device__ void allocOnePage(Lambda lambda);
+    inline __device__ void allocOnePage(Lambda lambda);
     __device__ void freeOnePage(void* page);
 
     __device__ void drain();
@@ -85,9 +86,11 @@ public:
     __device__ void resume();
 
 private:
-    __device__ uint32_t enqueueSleep(const Callback& lambda);
+    template<typename Lambda>
+    inline __device__ uint32_t enqueueSleep(Lambda lambda);
 
-    __device__ uint32_t allocate(const Callback* lambda);
+    template<typename Lambda>
+    inline __device__ uint32_t allocate(Lambda lambda);
 
     __device__ void deallocate(Callback* callback);
 
@@ -109,74 +112,6 @@ private:
 };
 static_assert(std::is_trivially_destructible<DeviceLoop>::value, "DeviceLoop is trivially destructible");
 
-__device__ uint32_t DeviceLoop::position(Callback* callback)
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    return callback - m_slots;
-}
-
-__device__ uint32_t DeviceLoop::position(IPC* ipc)
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    return ipc - channel();
-}
-
-GLOOP_ALWAYS_INLINE __device__ uint32_t DeviceLoop::position(OnePage* page)
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    return page - pages();
-}
-
-__device__ auto DeviceLoop::channel() const -> IPC*
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    return m_deviceContext.channels + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
-}
-
-__device__ auto DeviceLoop::context() const -> PerBlockContext*
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    return m_deviceContext.context + GLOOP_BID();
-}
-
-__device__ auto DeviceLoop::pages() const -> OnePage*
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    return m_deviceContext.pages + (GLOOP_BID() * GLOOP_SHARED_PAGE_COUNT);
-}
-
-template<typename Lambda>
-inline __device__ void DeviceLoop::allocOnePage(Lambda lambda)
-{
-    __shared__ void* page;
-    BEGIN_SINGLE_THREAD
-    {
-        page = nullptr;
-        int freePagePosPlusOne = __ffs(m_control.freePages);
-        if (freePagePosPlusOne == 0) {
-            uint32_t pos = enqueueSleep([lambda](DeviceLoop* loop, volatile request::Request* req) {
-                loop->allocOnePage(lambda);
-            });
-            m_control.pageSleepSlots |= (1ULL << pos);
-        } else {
-            int pagePos = freePagePosPlusOne - 1;
-            page = pages() + pagePos;
-            m_control.freePages &= ~(1UL << pagePos);
-        }
-    }
-    END_SINGLE_THREAD
-    if (!page)
-        return;
-    lambda(this, page);
-}
-
-template<typename Lambda>
-inline __device__ void DeviceLoop::enqueueLater(Lambda lambda)
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    uint32_t pos = enqueueSleep(lambda);
-    m_control.wakeupSlots |= (1ULL << pos);
-}
-
 }  // namespace gloop
+#include "device_loop.inline.cuh"
 #endif  // GLOOP_DEVICE_LOOP_H_

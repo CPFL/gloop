@@ -40,15 +40,6 @@ __device__ DeviceLoop::DeviceLoop(volatile uint32_t* signal, DeviceContext devic
     GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
 }
 
-__device__ IPC* DeviceLoop::enqueueIPC(Callback lambda)
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    uint32_t pos = allocate(&lambda);
-    IPC* result = channel() + pos;
-    GPU_ASSERT(pos < GLOOP_SHARED_SLOT_SIZE);
-    return result;
-}
-
 __device__ auto DeviceLoop::dequeue(bool& shouldExit) -> Callback*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
@@ -156,20 +147,6 @@ __device__ void DeviceLoop::drain()
     // __threadfence_block();
 }
 
-__device__ uint32_t DeviceLoop::allocate(const Callback* lambda)
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    int pos = __ffsll(m_control.freeSlots) - 1;
-    GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
-    GPU_ASSERT(m_control.freeSlots & (1ULL << pos));
-    m_control.freeSlots &= ~(1ULL << pos);
-
-    new (m_slots + pos) Callback(*lambda);
-    m_control.pending += 1;
-
-    return pos;
-}
-
 __device__ void DeviceLoop::deallocate(Callback* callback)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
@@ -204,14 +181,6 @@ __device__ void DeviceLoop::resume()
     PerBlockContext* blockContext = context();
     m_control = blockContext->control;
     // __threadfence_system();  // FIXME
-}
-
-__device__ uint32_t DeviceLoop::enqueueSleep(const Callback& lambda)
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    uint32_t pos = allocate(&lambda);
-    m_control.sleepSlots |= (1ULL << pos);
-    return pos;
 }
 
 __device__ void DeviceLoop::freeOnePage(void* aPage)
