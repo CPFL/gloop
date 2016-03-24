@@ -35,8 +35,6 @@
 #include "utility/util.cu.h"
 namespace gloop {
 
-__device__ extern IPC* g_channel;
-
 class DeviceLoop {
 public:
     __device__ DeviceLoop(volatile uint32_t* signal, DeviceContext, size_t size);
