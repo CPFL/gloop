@@ -40,11 +40,11 @@ __device__ DeviceLoop::DeviceLoop(volatile uint32_t* signal, DeviceContext devic
     GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
 }
 
-__device__ auto DeviceLoop::dequeue(bool& shouldExit) -> DeviceCallback*
+__device__ auto DeviceLoop::dequeue(bool& shouldExit) -> uint32_t
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     // __threadfence_system();
-    for (int i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
+    for (uint32_t i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
         // Look into ICP status to run callbacks.
         uint64_t bit = 1ULL << i;
         if (!(m_control.freeSlots & bit)) {
@@ -52,7 +52,7 @@ __device__ auto DeviceLoop::dequeue(bool& shouldExit) -> DeviceCallback*
                 if (m_control.wakeupSlots & bit) {
                     m_control.sleepSlots &= ~bit;
                     m_control.wakeupSlots &= ~bit;
-                    return m_slots + i;
+                    return i;
                 }
             } else {
                 IPC* ipc = channel() + i;
@@ -61,7 +61,7 @@ __device__ auto DeviceLoop::dequeue(bool& shouldExit) -> DeviceCallback*
                     ipc->emit(Code::None);
                     GPU_ASSERT(ipc->peek() != Code::Complete);
                     GPU_ASSERT(ipc->peek() == Code::None);
-                    return m_slots + i;
+                    return i;
                 }
 
                 // FIXME: More careful exit decision.
@@ -71,7 +71,7 @@ __device__ auto DeviceLoop::dequeue(bool& shouldExit) -> DeviceCallback*
             }
         }
     }
-    return nullptr;
+    return invalidPosition();
 }
 
 __device__ void DeviceLoop::drain()
@@ -87,11 +87,12 @@ __device__ void DeviceLoop::drain()
 
             if (pending) {
                 bool shouldExit = false;
-                callback = dequeue(shouldExit);
-                if (callback) {
-                    uint32_t pos = position(callback);
-                    ipc = channel() + pos;
+                uint32_t position = dequeue(shouldExit);
+                if (position != invalidPosition()) {
+                    callback = slots() + position;
+                    ipc = channel() + position;
                 } else {
+                    callback = nullptr;
                     // FIXME: More careful exit routine.
                     // Let's exit to meet ExitRequired requirements.
                     if (shouldExit) {
@@ -150,7 +151,7 @@ __device__ void DeviceLoop::drain()
 __device__ void DeviceLoop::deallocate(DeviceCallback* callback)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    uint32_t pos = position(callback);
+    uint64_t pos = position(callback);
     // printf("pos:(%u)\n", (unsigned)pos);
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
     GPU_ASSERT(!(m_control.freeSlots & (1ULL << pos)));
@@ -186,7 +187,7 @@ __device__ void DeviceLoop::resume()
 __device__ void DeviceLoop::freeOnePage(void* aPage)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    uint32_t pos = position(static_cast<DeviceContext::OnePage*>(aPage));
+    uint64_t pos = position(static_cast<DeviceContext::OnePage*>(aPage));
     m_control.freePages |= (1UL << pos);
     GPU_ASSERT(pos < GLOOP_SHARED_PAGE_COUNT);
     int freePageWaitingCallbackPlusOne = __ffsll(m_control.pageSleepSlots);

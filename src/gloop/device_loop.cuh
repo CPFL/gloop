@@ -61,16 +61,19 @@ private:
 
     __device__ void deallocate(DeviceCallback* callback);
 
-    __device__ DeviceCallback* dequeue(bool& shouldExit);
+    __device__ uint32_t dequeue(bool& shouldExit);
 
     __device__ void suspend();
 
+    GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots() const;
     GLOOP_ALWAYS_INLINE __device__ IPC* channel() const;
     GLOOP_ALWAYS_INLINE __device__ DeviceContext::PerBlockContext* context() const;
     GLOOP_ALWAYS_INLINE __device__ DeviceContext::OnePage* pages() const;
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(DeviceCallback*);
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(IPC*);
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(DeviceContext::OnePage*);
+
+    __device__ static constexpr uint32_t invalidPosition() { return UINT32_MAX; }
 
     DeviceContext m_deviceContext;
     DeviceCallback* m_slots;
@@ -95,6 +98,12 @@ __device__ uint32_t DeviceLoop::position(DeviceContext::OnePage* page)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return page - pages();
+}
+
+__device__ auto DeviceLoop::slots() const -> DeviceCallback*
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    return m_slots;
 }
 
 __device__ auto DeviceLoop::channel() const -> IPC*
