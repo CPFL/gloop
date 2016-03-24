@@ -27,6 +27,7 @@
 #include <type_traits>
 #include "code.cuh"
 #include "config.h"
+#include "device_context.cuh"
 #include "function.cuh"
 #include "ipc.cuh"
 #include "request.h"
@@ -38,38 +39,6 @@ __device__ extern IPC* g_channel;
 
 class DeviceLoop {
 public:
-    typedef gloop::function<void(DeviceLoop*, volatile request::Request*)> Callback;
-    typedef std::aligned_storage<sizeof(DeviceLoop::Callback), alignof(DeviceLoop::Callback)>::type UninitializedStorage;
-
-    struct OnePage {
-        unsigned char data[GLOOP_SHARED_PAGE_SIZE];
-    };
-
-    static_assert(GLOOP_SHARED_PAGE_COUNT < 32, "Should be less than 32");
-    struct DeviceLoopControl {
-        uint32_t pending { 0 };
-        uint32_t freePages { (1UL << GLOOP_SHARED_PAGE_COUNT) - 1 };
-        uint64_t freeSlots { static_cast<decltype(freeSlots)>(-1) };
-        uint64_t sleepSlots { 0 };
-        uint64_t wakeupSlots { 0 };
-        uint64_t pageSleepSlots { 0 };
-    };
-
-    struct PerBlockContext {
-        static const std::size_t PerBlockSize = GLOOP_SHARED_SLOT_SIZE * sizeof(UninitializedStorage);
-        typedef std::aligned_storage<PerBlockSize>::type Slots;
-        Slots slots;
-        DeviceLoopControl control;
-    };
-
-    struct DeviceContext {
-        PerBlockContext* context;
-        IPC* channels;
-        OnePage* pages;
-        uint32_t* pending;
-        uint64_t killClock;
-    };
-
     __device__ DeviceLoop(volatile uint32_t* signal, DeviceContext, size_t size);
 
     template<typename Lambda>
@@ -92,22 +61,22 @@ private:
     template<typename Lambda>
     inline __device__ uint32_t allocate(Lambda lambda);
 
-    __device__ void deallocate(Callback* callback);
+    __device__ void deallocate(DeviceCallback* callback);
 
-    __device__ Callback* dequeue(bool& shouldExit);
+    __device__ DeviceCallback* dequeue(bool& shouldExit);
 
     __device__ void suspend();
 
     GLOOP_ALWAYS_INLINE __device__ IPC* channel() const;
-    GLOOP_ALWAYS_INLINE __device__ PerBlockContext* context() const;
-    GLOOP_ALWAYS_INLINE __device__ OnePage* pages() const;
-    GLOOP_ALWAYS_INLINE __device__ uint32_t position(Callback*);
+    GLOOP_ALWAYS_INLINE __device__ DeviceContext::PerBlockContext* context() const;
+    GLOOP_ALWAYS_INLINE __device__ DeviceContext::OnePage* pages() const;
+    GLOOP_ALWAYS_INLINE __device__ uint32_t position(DeviceCallback*);
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(IPC*);
-    GLOOP_ALWAYS_INLINE __device__ uint32_t position(OnePage*);
+    GLOOP_ALWAYS_INLINE __device__ uint32_t position(DeviceContext::OnePage*);
 
     DeviceContext m_deviceContext;
-    Callback* m_slots;
-    DeviceLoopControl m_control;
+    DeviceCallback* m_slots;
+    DeviceContext::DeviceLoopControl m_control;
     volatile uint32_t* m_signal;
 };
 static_assert(std::is_trivially_destructible<DeviceLoop>::value, "DeviceLoop is trivially destructible");

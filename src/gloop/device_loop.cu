@@ -32,7 +32,7 @@ namespace gloop {
 
 __device__ DeviceLoop::DeviceLoop(volatile uint32_t* signal, DeviceContext deviceContext, size_t size)
     : m_deviceContext(deviceContext)
-    , m_slots(reinterpret_cast<Callback*>(&context()->slots))
+    , m_slots(reinterpret_cast<DeviceCallback*>(&context()->slots))
     , m_control()
     , m_signal(signal)
 {
@@ -40,7 +40,7 @@ __device__ DeviceLoop::DeviceLoop(volatile uint32_t* signal, DeviceContext devic
     GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
 }
 
-__device__ auto DeviceLoop::dequeue(bool& shouldExit) -> Callback*
+__device__ auto DeviceLoop::dequeue(bool& shouldExit) -> DeviceCallback*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     // __threadfence_system();
@@ -79,7 +79,7 @@ __device__ void DeviceLoop::drain()
     uint64_t start = clock64();
     while (true) {
         __shared__ uint32_t pending;
-        __shared__ Callback* callback;
+        __shared__ DeviceCallback* callback;
         __shared__ IPC* ipc;
         BEGIN_SINGLE_THREAD
         {
@@ -147,7 +147,7 @@ __device__ void DeviceLoop::drain()
     // __threadfence_block();
 }
 
-__device__ void DeviceLoop::deallocate(Callback* callback)
+__device__ void DeviceLoop::deallocate(DeviceCallback* callback)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = position(callback);
@@ -155,7 +155,7 @@ __device__ void DeviceLoop::deallocate(Callback* callback)
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
     GPU_ASSERT(!(m_control.freeSlots & (1ULL << pos)));
 
-    callback->~Callback();
+    callback->~DeviceCallback();
 
     m_control.freeSlots |= (1ULL << pos);
     m_control.pending -= 1;
@@ -166,7 +166,7 @@ __device__ void DeviceLoop::suspend()
     // FIXME: always save.
     GLOOP_ASSERT_SINGLE_THREAD();
     // __threadfence_system();  // FIXME
-    PerBlockContext* blockContext = context();
+    DeviceContext::PerBlockContext* blockContext = context();
     blockContext->control = m_control;
     if (m_control.pending) {
         atomicAdd(m_deviceContext.pending, 1);
@@ -178,7 +178,7 @@ __device__ void DeviceLoop::resume()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     // __threadfence_system();  // FIXME
-    PerBlockContext* blockContext = context();
+    DeviceContext::PerBlockContext* blockContext = context();
     m_control = blockContext->control;
     // __threadfence_system();  // FIXME
 }
@@ -186,7 +186,7 @@ __device__ void DeviceLoop::resume()
 __device__ void DeviceLoop::freeOnePage(void* aPage)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    uint32_t pos = position(static_cast<OnePage*>(aPage));
+    uint32_t pos = position(static_cast<DeviceContext::OnePage*>(aPage));
     m_control.freePages |= (1UL << pos);
     GPU_ASSERT(pos < GLOOP_SHARED_PAGE_COUNT);
     int freePageWaitingCallbackPlusOne = __ffsll(m_control.pageSleepSlots);

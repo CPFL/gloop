@@ -21,44 +21,16 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_DEVICE_CONTEXT_CU_H_
-#define GLOOP_DEVICE_CONTEXT_CU_H_
-#include <cstdint>
-#include <type_traits>
-#include "config.h"
-#include "device_callback.cuh"
+#ifndef GLOOP_DEVICE_CALLBACK_CU_H_
+#define GLOOP_DEVICE_CALLBACK_CU_H_
+#include "function.cuh"
+#include "request.h"
 namespace gloop {
 
-class IPC;
+class DeviceLoop;
 
-struct DeviceContext {
-    static_assert(GLOOP_SHARED_PAGE_COUNT < 32, "Should be less than 32");
-    struct DeviceLoopControl {
-        uint32_t pending { 0 };
-        uint32_t freePages { (1UL << GLOOP_SHARED_PAGE_COUNT) - 1 };
-        uint64_t freeSlots { static_cast<decltype(freeSlots)>(-1) };
-        uint64_t sleepSlots { 0 };
-        uint64_t wakeupSlots { 0 };
-        uint64_t pageSleepSlots { 0 };
-    };
-
-    struct OnePage {
-        unsigned char data[GLOOP_SHARED_PAGE_SIZE];
-    };
-
-    struct PerBlockContext {
-        static const std::size_t PerBlockSize = GLOOP_SHARED_SLOT_SIZE * sizeof(UninitializedDeviceCallbackStorage);
-        typedef std::aligned_storage<PerBlockSize>::type Slots;
-        Slots slots;
-        DeviceLoopControl control;
-    };
-
-    PerBlockContext* context;
-    IPC* channels;
-    OnePage* pages;
-    uint32_t* pending;
-    uint64_t killClock;
-};
+typedef gloop::function<void(DeviceLoop*, volatile request::Request*)> DeviceCallback;
+typedef std::aligned_storage<sizeof(DeviceCallback), alignof(DeviceCallback)>::type UninitializedDeviceCallbackStorage;
 
 }  // namespace gloop
-#endif  // GLOOP_DEVICE_CONTEXT_CU_H_
+#endif  // GLOOP_DEVICE_CALLBACK_CU_H_

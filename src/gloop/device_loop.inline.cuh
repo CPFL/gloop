@@ -26,7 +26,7 @@
 #include "device_loop.cuh"
 namespace gloop {
 
-__device__ uint32_t DeviceLoop::position(Callback* callback)
+__device__ uint32_t DeviceLoop::position(DeviceCallback* callback)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return callback - m_slots;
@@ -38,7 +38,7 @@ __device__ uint32_t DeviceLoop::position(IPC* ipc)
     return ipc - channel();
 }
 
-GLOOP_ALWAYS_INLINE __device__ uint32_t DeviceLoop::position(OnePage* page)
+__device__ uint32_t DeviceLoop::position(DeviceContext::OnePage* page)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return page - pages();
@@ -50,13 +50,13 @@ __device__ auto DeviceLoop::channel() const -> IPC*
     return m_deviceContext.channels + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
 }
 
-__device__ auto DeviceLoop::context() const -> PerBlockContext*
+__device__ auto DeviceLoop::context() const -> DeviceContext::PerBlockContext*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return m_deviceContext.context + GLOOP_BID();
 }
 
-__device__ auto DeviceLoop::pages() const -> OnePage*
+__device__ auto DeviceLoop::pages() const -> DeviceContext::OnePage*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return m_deviceContext.pages + (GLOOP_BID() * GLOOP_SHARED_PAGE_COUNT);
@@ -123,7 +123,7 @@ __device__ uint32_t DeviceLoop::allocate(Lambda lambda)
     GPU_ASSERT(m_control.freeSlots & (1ULL << pos));
     m_control.freeSlots &= ~(1ULL << pos);
 
-    new (m_slots + pos) Callback(lambda);
+    new (m_slots + pos) DeviceCallback(lambda);
     m_control.pending += 1;
 
     return pos;
