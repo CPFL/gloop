@@ -45,13 +45,13 @@ public:
         unsigned char data[GLOOP_SHARED_PAGE_SIZE];
     };
 
-    static_assert(GLOOP_SHARED_PAGE_COUNT != 64, "Should not be 64");
+    static_assert(GLOOP_SHARED_PAGE_COUNT < 32, "Should be less than 32");
     struct DeviceLoopControl {
         uint32_t pending { 0 };
+        uint32_t freePages { (1UL << GLOOP_SHARED_PAGE_COUNT) - 1 };
         uint64_t free { static_cast<decltype(free)>(-1) };
         uint64_t sleep { 0 };
         uint64_t wakeup { 0 };
-        uint64_t freePages { (1ULL << GLOOP_SHARED_PAGE_COUNT) - 1 };
         uint64_t m_pageSleep { 0 };
     };
 
@@ -152,7 +152,7 @@ inline __device__ void DeviceLoop::allocOnePage(Lambda lambda)
     BEGIN_SINGLE_THREAD
     {
         page = nullptr;
-        int freePagePosPlusOne = __ffsll(m_control.freePages);
+        int freePagePosPlusOne = __ffs(m_control.freePages);
         if (freePagePosPlusOne == 0) {
             uint32_t pos = enqueueSleep([lambda](DeviceLoop* loop, volatile request::Request* req) {
                 loop->allocOnePage(lambda);
@@ -161,16 +161,13 @@ inline __device__ void DeviceLoop::allocOnePage(Lambda lambda)
         } else {
             int pagePos = freePagePosPlusOne - 1;
             page = pages() + pagePos;
-            m_control.freePages &= ~(1ULL << pagePos);
+            m_control.freePages &= ~(1UL << pagePos);
         }
     }
     END_SINGLE_THREAD
     if (!page)
         return;
-
-    volatile request::Request request;
-    request.u.allocOnePageResult.page = page;
-    lambda(this, &request);
+    lambda(this, page);
 }
 
 template<typename Lambda>

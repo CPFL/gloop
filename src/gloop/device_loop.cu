@@ -216,7 +216,7 @@ __device__ void DeviceLoop::freeOnePage(void* aPage)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = position(static_cast<OnePage*>(aPage));
-    m_control.freePages |= (1ULL << pos);
+    m_control.freePages |= (1UL << pos);
     GPU_ASSERT(pos < GLOOP_SHARED_PAGE_COUNT);
     int freePageWaitingCallbackPlusOne = __ffsll(m_control.m_pageSleep);
     if (freePageWaitingCallbackPlusOne) {

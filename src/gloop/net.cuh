@@ -110,10 +110,9 @@ inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t cou
     END_SINGLE_THREAD
 #endif
 
-    loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
+    loop->allocOnePage([=](DeviceLoop* loop, void* page) {
         BEGIN_SINGLE_THREAD
         {
-            void* page = req->u.allocOnePageResult.page;
             auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
                 ssize_t receiveCount = req->u.netTCPReceiveResult.receiveCount;
                 __threadfence_system();
@@ -148,8 +147,7 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
     }
     END_SINGLE_THREAD
 #endif
-    loop->allocOnePage([=](DeviceLoop* loop, volatile request::Request* req) {
-        unsigned char* page = static_cast<unsigned char*>(req->u.allocOnePageResult.page);
+    loop->allocOnePage([=](DeviceLoop* loop, void* page) {
         gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, count);
         // __threadfence_system();
         BEGIN_SINGLE_THREAD
@@ -162,7 +160,7 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
                 END_SINGLE_THREAD
                 callback(loop, req->u.netTCPSendResult.sentCount);
             });
-            tcp::sendImpl(loop, ipc, ipc->request()->u.netTCPSend, socket, count, page);
+            tcp::sendImpl(loop, ipc, ipc->request()->u.netTCPSend, socket, count, static_cast<unsigned char*>(page));
 #if 0
             long long t2 = clock64();
             printf("send clocks %ld\n", t2-t1);
