@@ -27,8 +27,9 @@
 #include <type_traits>
 #include "code.cuh"
 #include "config.h"
+#include "device_callback.cuh"
 #include "device_context.cuh"
-#include "function.cuh"
+#include "one_shot_function.cuh"
 #include "ipc.cuh"
 #include "request.h"
 #include "utility.h"

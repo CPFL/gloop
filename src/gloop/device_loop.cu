@@ -156,7 +156,8 @@ __device__ void DeviceLoop::deallocate(DeviceCallback* callback, uint32_t pos)
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
     GPU_ASSERT(!(m_control.freeSlots & (1ULL << pos)));
 
-    callback->~DeviceCallback();
+    // We are using one shot function. After calling the function, destruction is already done.
+    // callback->~DeviceCallback();
     if (pos == m_scratchIndex1) {
         m_scratchIndex1 = invalidPosition();
     } else if (pos == m_scratchIndex2) {

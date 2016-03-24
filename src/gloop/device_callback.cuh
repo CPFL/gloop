@@ -24,12 +24,13 @@
 #ifndef GLOOP_DEVICE_CALLBACK_CU_H_
 #define GLOOP_DEVICE_CALLBACK_CU_H_
 #include "function.cuh"
+#include "one_shot_function.cuh"
 #include "request.h"
 namespace gloop {
 
 class DeviceLoop;
 
-typedef gloop::function<void(DeviceLoop*, volatile request::Request*)> DeviceCallback;
+typedef gloop::OneShotFunction<void(DeviceLoop*, volatile request::Request*)> DeviceCallback;
 typedef std::aligned_storage<sizeof(DeviceCallback), alignof(DeviceCallback)>::type UninitializedDeviceCallbackStorage;
 
 }  // namespace gloop
