@@ -34,12 +34,16 @@ class IPC;
 struct DeviceContext {
     static_assert(GLOOP_SHARED_PAGE_COUNT < 32, "Should be less than 32");
     struct DeviceLoopControl {
-        uint32_t pending { 0 };
-        uint32_t freePages { (1UL << GLOOP_SHARED_PAGE_COUNT) - 1 };
-        uint64_t freeSlots { static_cast<decltype(freeSlots)>(-1) };
-        uint64_t sleepSlots { 0 };
-        uint64_t wakeupSlots { 0 };
-        uint64_t pageSleepSlots { 0 };
+        __host__ __device__ static constexpr uint32_t allFilledFreeSlots()
+        {
+            return ((1U << GLOOP_SHARED_SLOT_SIZE) - 1);
+        }
+
+        uint32_t freePages { (1U << GLOOP_SHARED_PAGE_COUNT) - 1 };
+        uint32_t freeSlots { allFilledFreeSlots() };
+        uint32_t sleepSlots { 0 };
+        uint32_t wakeupSlots { 0 };
+        uint32_t pageSleepSlots { 0 };
     };
 
     struct OnePage {

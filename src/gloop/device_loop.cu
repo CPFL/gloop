@@ -41,6 +41,12 @@ __device__ DeviceLoop::DeviceLoop(volatile uint32_t* signal, DeviceContext devic
     GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
 }
 
+__device__ DeviceLoop::DeviceLoop(volatile uint32_t* signal, DeviceContext deviceContext, size_t size, ResumeTag)
+    : DeviceLoop(signal, deviceContext, size)
+{
+    resume();
+}
+
 __device__ void DeviceLoop::suspend()
 {
     // FIXME: always save.
@@ -48,7 +54,7 @@ __device__ void DeviceLoop::suspend()
     // __threadfence_system();  // FIXME
     DeviceContext::PerBlockContext* blockContext = context();
     blockContext->control = m_control;
-    if (m_control.pending) {
+    if (m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
         atomicAdd(m_deviceContext.pending, 1);
     }
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
@@ -76,12 +82,12 @@ __device__ void DeviceLoop::resume()
 __device__ void DeviceLoop::freeOnePage(void* aPage)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    uint64_t pos = position(static_cast<DeviceContext::OnePage*>(aPage));
+    uint32_t pos = position(static_cast<DeviceContext::OnePage*>(aPage));
     m_control.freePages |= (1UL << pos);
     GPU_ASSERT(pos < GLOOP_SHARED_PAGE_COUNT);
-    int freePageWaitingCallbackPlusOne = __ffsll(m_control.pageSleepSlots);
+    int freePageWaitingCallbackPlusOne = __ffs(m_control.pageSleepSlots);
     if (freePageWaitingCallbackPlusOne) {
-        m_control.wakeupSlots |= (1ULL << (freePageWaitingCallbackPlusOne - 1));
+        m_control.wakeupSlots |= (1U << (freePageWaitingCallbackPlusOne - 1));
     }
 }
 
