@@ -1,8 +1,3 @@
-include_directories(
-    ../../gpufs/libgpufs
-    ../../gpufs/gpufs_con_lib.user
-)
-
 add_executable(launch
     launch.cu
 )

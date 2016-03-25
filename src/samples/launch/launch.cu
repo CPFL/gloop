@@ -27,7 +27,8 @@
 
 __global__ void throttle(int count, int limit)
 {
-    __shared__ gloop::UninitializedDeviceLoopStorage storage;
+    // printf("Block[%u] TID[%u]\n", (unsigned)GLOOP_BID(), (unsigned)GLOOP_TID());
+    // __syncthreads();
 }
 
 int main(int argc, char** argv) {
@@ -49,12 +50,13 @@ int main(int argc, char** argv) {
     benchmark.begin();
     for (int i = 0; i < trials; ++i) {
         throttle<<<nblocks, nthreads, 0, pgraph>>>(0, i);
+        GLOOP_CUDA_SAFE_CALL(cudaGetLastError());
         GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(pgraph));
     }
+    GLOOP_CUDA_SAFE_CALL(cudaDeviceSynchronize());
     benchmark.end();
     printf("[%d] ", id);
     benchmark.report();
-    fprintf(stderr, "cleanup-ed\n");
 
     return 0;
 }

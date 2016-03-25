@@ -83,7 +83,5 @@ int main(int argc, char** argv) {
         benchmark.report();
     }
 
-    fprintf(stderr, "cleanup-ed\n");
-
     return 0;
 }
