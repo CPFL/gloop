@@ -61,7 +61,7 @@ private:
     template<typename Lambda>
     inline __device__ uint32_t allocate(Lambda lambda);
 
-    inline __device__ void deallocate(DeviceCallback* callback, uint32_t pos);
+    inline __device__ void deallocate(uint32_t pos);
 
     inline __device__ uint32_t dequeue();
 
@@ -222,13 +222,15 @@ __device__ uint32_t DeviceLoop::allocate(Lambda lambda)
 
 __device__ void DeviceLoop::drain()
 {
-    __shared__ uint64_t start;
+    __shared__ uint64_t start;  // Do not use clock64().
+    __shared__ uint64_t killClock;
     __shared__ uint32_t position;
     __shared__ DeviceCallback* callback;
     __shared__ volatile request::Request* request;
 
     BEGIN_SINGLE_THREAD
     {
+        killClock = m_deviceContext.killClock;
         start = clock64();
         callback = nullptr;
         position = invalidPosition();
@@ -245,41 +247,38 @@ __device__ void DeviceLoop::drain()
             // One shot function always destroys the function and syncs threads.
             (*callback)(this, request);
 
-            // Here, we already sync all the results.
-
             // __syncthreads();  // FIXME
             // __threadfence_block();
         }
 
         // __threadfence_block();
-        BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
+        BEGIN_SINGLE_THREAD
         {
-            do {
-                if (callback) {
-                    deallocate(callback, position);
-                }
-
-                if (position == shouldExitPosition()) {
-                    break;
-                }
+            // 100 - 130 clock
+            if (callback) {
+                deallocate(position);
+            }
 
 #if 1
-                uint64_t now = clock64();
-                if ((now - start) > m_deviceContext.killClock) {
-                    start = now;
-                    if (gloop::readNoCache<uint32_t>(m_signal) != 0) {
-                        position = shouldExitPosition();
-                        break;
-                    }
+            // 100 clock
+            uint64_t now = clock64();
+            if (((now - start) > killClock)) {
+                start = now;
+                if (gloop::readNoCache<uint32_t>(m_signal) != 0) {
+                    position = shouldExitPosition();
+                    goto next;
                 }
+            }
 #endif
-                callback = nullptr;
-                position = dequeue();
-                if (isValidPosition(position)) {
-                    callback = slots(position);
-                    request = (channel() + position)->request();
-                }
-            } while (0);
+
+            // 200 clock.
+            callback = nullptr;
+            position = dequeue();
+            if (isValidPosition(position)) {
+                callback = slots(position);
+                request = (channel() + position)->request();
+            }
+next:
         }
         END_SINGLE_THREAD
     }
@@ -302,33 +301,36 @@ __device__ auto DeviceLoop::dequeue() -> uint32_t
     }
 
     // __threadfence_system();
-    bool shouldExit = false;
+    // We first search wake up slots. It is always ready to execute.
+    // And we can get the slot without costly DMA.
+    uint32_t wakeupSlots = m_control.freeSlots ^ DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+    wakeupSlots &= m_control.sleepSlots;
+    wakeupSlots &= m_control.wakeupSlots;
 
-    #pragma unroll 32
+    if (wakeupSlots) {
+        int position = __ffs(wakeupSlots) - 1;
+        m_control.sleepSlots &= ~(1U << position);
+        return position;
+    }
+
+    bool shouldExit = false;
     for (uint32_t i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
         // Look into ICP status to run callbacks.
         uint32_t bit = 1U << i;
         if (!(m_control.freeSlots & bit)) {
-            if (m_control.sleepSlots & bit) {
-                if (m_control.wakeupSlots & bit) {
-                    m_control.sleepSlots &= ~bit;
-                    return i;
-                }
-            } else {
-                IPC* ipc = channel() + i;
-                Code code = ipc->peek();
-                if (code == Code::Complete) {
-                    ipc->emit(Code::None);
-                    GPU_ASSERT(ipc->peek() != Code::Complete);
-                    GPU_ASSERT(ipc->peek() == Code::None);
-                    return i;
-                }
+            IPC* ipc = channel() + i;
+            Code code = ipc->peek();
+            if (code == Code::Complete) {
+                ipc->emit(Code::None);
+                GPU_ASSERT(ipc->peek() != Code::Complete);
+                GPU_ASSERT(ipc->peek() == Code::None);
+                return i;
+            }
 
-                // FIXME: More careful exit routine.
-                // Let's exit to meet ExitRequired requirements.
-                if (code == Code::ExitRequired) {
-                    shouldExit = true;
-                }
+            // FIXME: More careful exit routine.
+            // Let's exit to meet ExitRequired requirements.
+            if (code == Code::ExitRequired) {
+                shouldExit = true;
             }
         }
     }
@@ -339,7 +341,7 @@ __device__ auto DeviceLoop::dequeue() -> uint32_t
     return invalidPosition();
 }
 
-__device__ void DeviceLoop::deallocate(DeviceCallback* callback, uint32_t pos)
+__device__ void DeviceLoop::deallocate(uint32_t pos)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     // printf("pos:(%u)\n", (unsigned)pos);

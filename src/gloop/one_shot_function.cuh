@@ -101,6 +101,8 @@
 namespace gloop
 {
 
+extern void* enabler;
+
 // 20.8.11 Polymorphic function wrappers [func.wrap]
 
 // 20.8.11.1 Class bad_function_call [func.wrap.badcall]
@@ -134,12 +136,10 @@ private:
 
   template <class _F>
   __device__ __host__
-  constexpr bool __use_small_functor_data() const
+  static constexpr bool __use_small_functor_data()
   {
-    static_assert(sizeof(_F) <= sizeof(__small_functor_data) && alignof(_F) <= alignof(__functional_helpers::_Small_functor_types), "Currently we restrict the statically allocatable lambda only.");
-    return (sizeof(_F) <= sizeof(__small_functor_data) &&
-            alignof(_F) <= alignof(
-                                  __functional_helpers::_Small_functor_types));
+    static_assert(sizeof(_F) <= sizeof(__functional_helpers::_Small_functor_data) && alignof(_F) <= alignof(__functional_helpers::_Small_functor_types), "Currently we restrict the statically allocatable lambda only.");
+    return (sizeof(_F) <= sizeof(__functional_helpers::_Small_functor_data) && alignof(_F) <= alignof(__functional_helpers::_Small_functor_types));
   }
 
   __device__ __host__
@@ -195,13 +195,9 @@ private:
     __device__ __host__
     static void __clone_data(OneShotFunction &__dest, const OneShotFunction &__src)
     {
-      if (__dest.__use_small_functor_data<_F>()) {
-        __dest.__obj = __dest.__get_small_functor_data();
-        new (__dest.__obj) _F(__src.__get_functor<_F>(__src.__obj));
-      }
-      else {
-        __dest.__obj = new _F(__src.__get_functor<_F>(__src.__obj));
-      }
+      static_assert(__use_small_functor_data<_F>(), "OK");
+      __dest.__obj = __dest.__get_small_functor_data();
+      new (__dest.__obj) _F(__src.__get_functor<_F>(__src.__obj));
     }
   };
 
@@ -211,14 +207,33 @@ private:
     __device__ __host__
     GLOOP_ALWAYS_INLINE static void __destruct(OneShotFunction *__fn)
     {
-      if (__fn->__use_small_functor_data<_F>()) {
-        (__fn->__get_functor<_F>(__fn->__obj)).~_F();
-      }
-      else {
-        delete (_F*)(__fn->__obj);
-      }
+      static_assert(__use_small_functor_data<_F>(), "OK");
+      (__fn->__get_functor<_F>(__fn->__obj)).~_F();
     }
   };
+
+  template<
+      class _F,
+      class Function,
+      typename std::enable_if<!std::is_trivially_destructible<_F>::value>::type*& = enabler
+      >
+  __device__ static void oneShotDestroy(Function* function)
+  {
+      BEGIN_SINGLE_THREAD
+      {
+          __make_destructor<_F>::__destruct(function);
+      }
+      END_SINGLE_THREAD
+  }
+
+  template<
+      class _F,
+      class Function,
+      typename std::enable_if<std::is_trivially_destructible<_F>::value>::type*& = enabler
+      >
+  __device__ static void oneShotDestroy(Function* function)
+  {
+  }
 
   // We cannot simple define __make_functor in the following way:
   // template <class _T, _F>
@@ -238,11 +253,7 @@ private:
     static _RetType1 __invoke(FunctionType* function, void *__d, _ArgTypes1... __args)
     {
       __get_functor<_F>(__d)(internal::forward<_ArgTypes1>(__args)...);
-      BEGIN_SINGLE_THREAD
-      {
-          __make_destructor<_F>::__destruct(function);
-      }
-      END_SINGLE_THREAD
+      oneShotDestroy<_F>(function);
     }
   };
 
@@ -258,11 +269,7 @@ private:
     static _RetType1 __invoke(FunctionType* function, void *__d, _ArgTypes1... __args)
     {
       __get_functor<_F>(__d)(internal::forward<_ArgTypes1>(__args)...);
-      BEGIN_SINGLE_THREAD
-      {
-          __make_destructor<_F>::__destruct(function);
-      }
-      END_SINGLE_THREAD
+      oneShotDestroy<_F>(function);
     }
   };
 
@@ -472,13 +479,9 @@ OneShotFunction<_RetType(_ArgTypes...)>::OneShotFunction(_F __fn)
   __cloner = &__make_cloner<_F>::__clone_data;
   __destructor = &__make_destructor<_F>::__destruct;
 
-  if (__use_small_functor_data<_F>()) {
-    __obj = __get_small_functor_data();
-    new ((void*)__obj) _F(internal::move(__fn));
-  }
-  else {
-    __obj = new _F(internal::move(__fn));
-  }
+  static_assert(__use_small_functor_data<_F>(), "OK");
+  __obj = __get_small_functor_data();
+  new ((void*)__obj) _F(internal::move(__fn));
 }
 
 template <class _RetType, class..._ArgTypes>
