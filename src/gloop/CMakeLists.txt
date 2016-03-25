@@ -7,6 +7,12 @@ include_directories("../")
 # include_directories("../gpufs/gpufs_con_lib.user/")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
+option(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY "Enable hierarchical slot memory" ON)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/generated_config.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generated_config.h
+)
+
 set(CUDA_RUNTIME_API_HEADER)
 if(EXISTS "${CUDA_RUNTIME_INCLUDE_DIR}/cuda_runtime_api.h")
     set(CUDA_RUNTIME_API_HEADER "${CUDA_RUNTIME_INCLUDE_DIR}/cuda_runtime_api.h")

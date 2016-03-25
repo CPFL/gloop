@@ -31,6 +31,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
 endif()
 
 include_directories(".")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/gloop")
 
 add_subdirectory(cmalloc)
 add_subdirectory(gpufs)
