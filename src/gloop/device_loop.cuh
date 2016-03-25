@@ -33,11 +33,14 @@
 #include "ipc.cuh"
 #include "request.h"
 #include "utility.h"
+#include "utility.cuh"
 #include "utility/util.cu.h"
 namespace gloop {
 
 class DeviceLoop {
 public:
+    enum ResumeTag { Resume };
+    __device__ DeviceLoop(volatile uint32_t* signal, DeviceContext, size_t size, ResumeTag);
     __device__ DeviceLoop(volatile uint32_t* signal, DeviceContext, size_t size);
 
     template<typename Lambda>
@@ -51,8 +54,6 @@ public:
 
     inline __device__ void drain();
 
-    __device__ void resume();
-
 private:
     template<typename Lambda>
     inline __device__ uint32_t enqueueSleep(Lambda lambda);
@@ -64,6 +65,7 @@ private:
 
     inline __device__ uint32_t dequeue();
 
+    __device__ void resume();
     __device__ void suspend();
 
     GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots(uint32_t position);
@@ -152,7 +154,7 @@ __device__ void DeviceLoop::allocOnePage(Lambda lambda)
             uint32_t pos = enqueueSleep([lambda](DeviceLoop* loop, volatile request::Request* req) {
                 loop->allocOnePage(lambda);
             });
-            m_control.pageSleepSlots |= (1ULL << pos);
+            m_control.pageSleepSlots |= (1U << pos);
         } else {
             int pagePos = freePagePosPlusOne - 1;
             page = pages() + pagePos;
@@ -170,7 +172,7 @@ __device__ void DeviceLoop::enqueueLater(Lambda lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = enqueueSleep(lambda);
-    m_control.wakeupSlots |= (1ULL << pos);
+    m_control.wakeupSlots |= (1U << pos);
 }
 
 template<typename Lambda>
@@ -178,8 +180,8 @@ __device__ uint32_t DeviceLoop::enqueueSleep(Lambda lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = allocate(lambda);
-    m_control.sleepSlots |= (1ULL << pos);
-    m_control.wakeupSlots &= ~(1ULL << pos);
+    m_control.sleepSlots |= (1U << pos);
+    m_control.wakeupSlots &= ~(1U << pos);
     return pos;
 }
 
@@ -197,10 +199,10 @@ template<typename Lambda>
 __device__ uint32_t DeviceLoop::allocate(Lambda lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    int pos = __ffsll(m_control.freeSlots) - 1;
+    int pos = __ffs(m_control.freeSlots) - 1;
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
-    GPU_ASSERT(m_control.freeSlots & (1ULL << pos));
-    m_control.freeSlots &= ~(1ULL << pos);
+    GPU_ASSERT(m_control.freeSlots & (1U << pos));
+    m_control.freeSlots &= ~(1U << pos);
 
     void* target = m_slots + pos;
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
@@ -214,7 +216,6 @@ __device__ uint32_t DeviceLoop::allocate(Lambda lambda)
 #endif
 
     new (target) DeviceCallback(lambda);
-    m_control.pending += 1;
 
     return pos;
 }
@@ -224,17 +225,13 @@ __device__ void DeviceLoop::drain()
     __shared__ uint64_t start;
     __shared__ uint32_t position;
     __shared__ DeviceCallback* callback;
-    __shared__ IPC* ipc;
+    __shared__ volatile request::Request* request;
 
     BEGIN_SINGLE_THREAD
     {
         start = clock64();
         callback = nullptr;
-        position = dequeue();
-        if (isValidPosition(position)) {
-            callback = slots(position);
-            ipc = channel() + position;
-        }
+        position = invalidPosition();
     }
     END_SINGLE_THREAD
 
@@ -246,35 +243,43 @@ __device__ void DeviceLoop::drain()
 
             // printf("%llu %u\n", (unsigned long long)(clock64() - start), (unsigned)position);
             // One shot function always destroys the function and syncs threads.
-            (*callback)(this, ipc->request());
+            (*callback)(this, request);
+
+            // Here, we already sync all the results.
 
             // __syncthreads();  // FIXME
             // __threadfence_block();
         }
 
         // __threadfence_block();
-        BEGIN_SINGLE_THREAD
+        BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
         {
-            if (callback) {
-                deallocate(callback, position);
-            }
-
-            uint64_t now = clock64();
-            if ((now - start) > m_deviceContext.killClock) {
-                if (gloop::readNoCache<uint32_t>(m_signal) != 0) {
-                    position = shouldExitPosition();
+            do {
+                if (callback) {
+                    deallocate(callback, position);
                 }
-                start = now;
-            }
 
-            if (position != shouldExitPosition()) {
+                if (position == shouldExitPosition()) {
+                    break;
+                }
+
+#if 1
+                uint64_t now = clock64();
+                if ((now - start) > m_deviceContext.killClock) {
+                    start = now;
+                    if (gloop::readNoCache<uint32_t>(m_signal) != 0) {
+                        position = shouldExitPosition();
+                        break;
+                    }
+                }
+#endif
                 callback = nullptr;
                 position = dequeue();
                 if (isValidPosition(position)) {
                     callback = slots(position);
-                    ipc = channel() + position;
+                    request = (channel() + position)->request();
                 }
-            }
+            } while (0);
         }
         END_SINGLE_THREAD
     }
@@ -291,15 +296,18 @@ __device__ auto DeviceLoop::dequeue() -> uint32_t
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
-    if (!m_control.pending) {
+    uint32_t candidate = m_control.freeSlots;
+    if (candidate == DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
         return shouldExitPosition();
     }
 
     // __threadfence_system();
     bool shouldExit = false;
+
+    #pragma unroll 32
     for (uint32_t i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
         // Look into ICP status to run callbacks.
-        uint64_t bit = 1ULL << i;
+        uint32_t bit = 1U << i;
         if (!(m_control.freeSlots & bit)) {
             if (m_control.sleepSlots & bit) {
                 if (m_control.wakeupSlots & bit) {
@@ -336,7 +344,7 @@ __device__ void DeviceLoop::deallocate(DeviceCallback* callback, uint32_t pos)
     GLOOP_ASSERT_SINGLE_THREAD();
     // printf("pos:(%u)\n", (unsigned)pos);
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
-    GPU_ASSERT(!(m_control.freeSlots & (1ULL << pos)));
+    GPU_ASSERT(!(m_control.freeSlots & (1U << pos)));
 
     // We are using one shot function. After calling the function, destruction is already done.
     // callback->~DeviceCallback();
@@ -348,8 +356,7 @@ __device__ void DeviceLoop::deallocate(DeviceCallback* callback, uint32_t pos)
     }
 #endif
 
-    m_control.freeSlots |= (1ULL << pos);
-    m_control.pending -= 1;
+    m_control.freeSlots |= (1U << pos);
 }
 
 }  // namespace gloop

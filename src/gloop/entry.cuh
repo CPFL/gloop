@@ -56,7 +56,7 @@ inline __global__ void launch(volatile uint32_t* signal, DeviceContext context, 
         loop = new (&storage) DeviceLoop(signal, context, GLOOP_SHARED_SLOT_SIZE);
     }
     END_SINGLE_THREAD
-    __threadfence_system();
+    // __threadfence_system();
     callback(loop, std::forward<Args>(args)...);
     loop->drain();
 }
@@ -67,11 +67,10 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context)
     __shared__ DeviceLoop* loop;
     BEGIN_SINGLE_THREAD
     {
-        loop = new (&storage) DeviceLoop(signal, context, GLOOP_SHARED_SLOT_SIZE);
-        loop->resume();
+        loop = new (&storage) DeviceLoop(signal, context, GLOOP_SHARED_SLOT_SIZE, DeviceLoop::Resume);
     }
     END_SINGLE_THREAD
-    __threadfence_system();
+    // __threadfence_system();
     loop->drain();
 }
 

@@ -21,37 +21,11 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_LOOP_CU_H_
-#define GLOOP_LOOP_CU_H_
-#include <utility>
-#include "device_loop.cuh"
-namespace gloop {
-namespace loop {
+#ifndef GLOOP_UTILITY_CU_H_
+#define GLOOP_UTILITY_CU_H_
+#include "utility.h"
 
-template<typename Lambda>
-inline __device__ auto postTask(DeviceLoop* loop, Lambda callback) -> void
-{
-    BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
-    {
-        loop->enqueueLater([callback](DeviceLoop* loop, volatile request::Request* req) {
-            callback(loop);
-        });
-    }
-    END_SINGLE_THREAD_WITHOUT_BARRIER
-}
+#define BEGIN_SINGLE_THREAD_WITHOUT_BARRIER if(FIRST_THREAD_IN_BLOCK()) { {
+#define END_SINGLE_THREAD_WITHOUT_BARRIER } }
 
-template<typename Lambda>
-inline __device__ auto forceExit(DeviceLoop* loop, Lambda callback) -> void
-{
-    BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
-    {
-        IPC* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
-            callback(loop);
-        });
-        ipc->emit(Code::Exit);
-    }
-    END_SINGLE_THREAD_WITHOUT_BARRIER
-}
-
-} }  // namespace gloop::loop
-#endif  // GLOOP_LOOP_CU_H_
+#endif  // GLOOP_UTILITY_CU_H_
