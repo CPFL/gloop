@@ -51,6 +51,7 @@ __device__ void DeviceLoop::suspend()
     if (m_control.pending) {
         atomicAdd(m_deviceContext.pending, 1);
     }
+#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     if (m_scratchIndex1 != invalidPosition()) {
         new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_scratchIndex1) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_scratch1));
         reinterpret_cast<DeviceCallback*>(&m_scratch1)->~DeviceCallback();
@@ -59,6 +60,7 @@ __device__ void DeviceLoop::suspend()
         new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_scratchIndex2) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_scratch2));
         reinterpret_cast<DeviceCallback*>(&m_scratch2)->~DeviceCallback();
     }
+#endif
     __threadfence_system();  // FIXME
 }
 

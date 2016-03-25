@@ -82,10 +82,12 @@ private:
     DeviceCallback* m_slots;
     DeviceContext::DeviceLoopControl m_control;
     volatile uint32_t* m_signal;
+#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     uint32_t m_scratchIndex1 { invalidPosition() };
     uint32_t m_scratchIndex2 { invalidPosition() };
     UninitializedDeviceCallbackStorage m_scratch1;
     UninitializedDeviceCallbackStorage m_scratch2;
+#endif
 };
 static_assert(std::is_trivially_destructible<DeviceLoop>::value, "DeviceLoop is trivially destructible");
 
@@ -109,12 +111,14 @@ __device__ bool DeviceLoop::isValidPosition(uint32_t position)
 __device__ auto DeviceLoop::slots(uint32_t position) -> DeviceCallback*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
+#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     if (position == m_scratchIndex1) {
         return reinterpret_cast<DeviceCallback*>(&m_scratch1);
     }
     if (position == m_scratchIndex2) {
         return reinterpret_cast<DeviceCallback*>(&m_scratch2);
     }
+#endif
     return m_slots + position;
 }
 
@@ -199,6 +203,7 @@ __device__ uint32_t DeviceLoop::allocate(Lambda lambda)
     m_control.freeSlots &= ~(1ULL << pos);
 
     void* target = m_slots + pos;
+#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     if (m_scratchIndex1 == invalidPosition()) {
         m_scratchIndex1 = pos;
         target = &m_scratch1;
@@ -206,6 +211,7 @@ __device__ uint32_t DeviceLoop::allocate(Lambda lambda)
         m_scratchIndex2 = pos;
         target = &m_scratch2;
     }
+#endif
 
     new (target) DeviceCallback(lambda);
     m_control.pending += 1;
@@ -334,11 +340,13 @@ __device__ void DeviceLoop::deallocate(DeviceCallback* callback, uint32_t pos)
 
     // We are using one shot function. After calling the function, destruction is already done.
     // callback->~DeviceCallback();
+#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     if (pos == m_scratchIndex1) {
         m_scratchIndex1 = invalidPosition();
     } else if (pos == m_scratchIndex2) {
         m_scratchIndex2 = invalidPosition();
     }
+#endif
 
     m_control.freeSlots |= (1ULL << pos);
     m_control.pending -= 1;
