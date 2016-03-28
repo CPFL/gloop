@@ -127,7 +127,7 @@ public:
   void *__obj;
 
 private:
-  typedef _RetType(*__meta_fn_type)(OneShotFunction<_RetType(_ArgTypes...)>*, void *, _ArgTypes...);
+  typedef _RetType(*__meta_fn_type)(OneShotFunction<_RetType(_ArgTypes...)>*, _ArgTypes...);
   __meta_fn_type __meta_fn;
   typedef void(*__cloner_type)(OneShotFunction &, const OneShotFunction &);
   __cloner_type __cloner;
@@ -250,9 +250,9 @@ private:
     static_assert(std::is_same<_RetType1, void>::value, "Assume void.");
 
     __device__
-    static _RetType1 __invoke(FunctionType* function, void *__d, _ArgTypes1... __args)
+    static _RetType1 __invoke(FunctionType* function, _ArgTypes1... __args)
     {
-      __get_functor<_F>(__d)(internal::forward<_ArgTypes1>(__args)...);
+      __get_functor<_F>(function->__obj)(internal::forward<_ArgTypes1>(__args)...);
       oneShotDestroy<_F>(function);
     }
   };
@@ -266,9 +266,9 @@ private:
     static_assert(std::is_same<_RetType1, void>::value, "Assume void.");
 
     __device__
-    static _RetType1 __invoke(FunctionType* function, void *__d, _ArgTypes1... __args)
+    static _RetType1 __invoke(FunctionType* function, _ArgTypes1... __args)
     {
-      __get_functor<_F>(__d)(internal::forward<_ArgTypes1>(__args)...);
+      __get_functor<_F>(function->__obj)(internal::forward<_ArgTypes1>(__args)...);
       oneShotDestroy<_F>(function);
     }
   };
@@ -489,7 +489,7 @@ __device__
 _RetType
 OneShotFunction<_RetType(_ArgTypes...)>::operator()(_ArgTypes... __args)
 {
-  return __meta_fn(this, __obj, internal::device_forward<_ArgTypes>(__args)...);
+  return __meta_fn(this, internal::device_forward<_ArgTypes>(__args)...);
 }
 
 // 20.8.11.2.6, Null pointer comparisons:
