@@ -14,11 +14,12 @@ set(CMAKE_CUDA_FLAGS "\
     -rdc=true\
     --expt-extended-lambda\
     -std=c++11\
-    -Xptxas --warn-on-spills,--warn-on-local-memory-usage\
+    -Xptxas -v,--warn-on-spills,--warn-on-local-memory-usage\
     -Xcompiler -Wall,-Wno-unused-parameter,-Wextra\
     -w\
     --keep\
 ")
+# -Xptxas --warn-on-spills,--warn-on-local-memory-usage\
 
 set(GLOOP_CUDA_RUNTIME_LIBS cuda cudart_static;dl;rt;m;${CMAKE_THREAD_LIBS_INIT})
 link_directories(/usr/local/cuda-7.5/lib64)
