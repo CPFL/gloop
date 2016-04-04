@@ -52,6 +52,7 @@ void CopyWorkPool::release(CopyWork* work)
 {
     boost::unique_lock<boost::mutex> lock(m_mutex);
     m_works.push_back(work);
+    m_conditionVariable.notify_one();
 }
 
 void CopyWorkPool::registerCopyWork(std::shared_ptr<CopyWork> work)
