@@ -31,7 +31,7 @@
 namespace gloop {
 namespace fs {
 
-__device__ void openImpl(DeviceLoop* loop, IPC* ipc, volatile request::Open& req, const char* filename, int mode)
+__device__ void openImpl(IPC* ipc, volatile request::Open& req, const char* filename, int mode)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     memcpyIO(req.filename.data, filename, GLOOP_FILENAME_SIZE);
@@ -39,7 +39,7 @@ __device__ void openImpl(DeviceLoop* loop, IPC* ipc, volatile request::Open& req
     ipc->emit(Code::Open);
 }
 
-__device__ void writeImpl(DeviceLoop* loop, IPC* ipc, volatile request::Write& req, int fd, size_t offset, size_t count, unsigned char* buffer)
+__device__ void writeImpl(IPC* ipc, volatile request::Write& req, int fd, size_t offset, size_t count, unsigned char* buffer)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.fd = fd;
@@ -49,21 +49,21 @@ __device__ void writeImpl(DeviceLoop* loop, IPC* ipc, volatile request::Write& r
     ipc->emit(Code::Write);
 }
 
-__device__ void fstatImpl(DeviceLoop* loop, IPC* ipc, volatile request::Fstat& req, int fd)
+__device__ void fstatImpl(IPC* ipc, volatile request::Fstat& req, int fd)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.fd = fd;
     ipc->emit(Code::Fstat);
 }
 
-__device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::Close& req, int fd)
+__device__ void closeImpl(IPC* ipc, volatile request::Close& req, int fd)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.fd = fd;
     ipc->emit(Code::Close);
 }
 
-__device__ void readImpl(DeviceLoop* loop, IPC* ipc, volatile request::Read& req, int fd, size_t offset, size_t count, unsigned char* buffer)
+__device__ void readImpl(IPC* ipc, volatile request::Read& req, int fd, size_t offset, size_t count, unsigned char* buffer)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.fd = fd;
@@ -73,7 +73,7 @@ __device__ void readImpl(DeviceLoop* loop, IPC* ipc, volatile request::Read& req
     ipc->emit(Code::Read);
 }
 
-__device__ void ftruncateImpl(DeviceLoop* loop, IPC* ipc, volatile request::Ftruncate& req, int fd, off_t offset)
+__device__ void ftruncateImpl(IPC* ipc, volatile request::Ftruncate& req, int fd, off_t offset)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.fd = fd;
@@ -81,7 +81,7 @@ __device__ void ftruncateImpl(DeviceLoop* loop, IPC* ipc, volatile request::Ftru
     ipc->emit(Code::Ftruncate);
 }
 
-__device__ void mmapImpl(DeviceLoop* loop, IPC* ipc, volatile request::Mmap& req, void* address, size_t size, int prot, int flags, int fd, off_t offset)
+__device__ void mmapImpl(IPC* ipc, volatile request::Mmap& req, void* address, size_t size, int prot, int flags, int fd, off_t offset)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.address = address;
@@ -93,7 +93,7 @@ __device__ void mmapImpl(DeviceLoop* loop, IPC* ipc, volatile request::Mmap& req
     ipc->emit(Code::Mmap);
 }
 
-__device__ void munmapImpl(DeviceLoop* loop, IPC* ipc, volatile request::Munmap& req, volatile void* address, size_t size)
+__device__ void munmapImpl(IPC* ipc, volatile request::Munmap& req, volatile void* address, size_t size)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.address = address;
@@ -101,7 +101,7 @@ __device__ void munmapImpl(DeviceLoop* loop, IPC* ipc, volatile request::Munmap&
     ipc->emit(Code::Munmap);
 }
 
-__device__ void msyncImpl(DeviceLoop* loop, IPC* ipc, volatile request::Msync& req, volatile void* address, size_t size, int flags)
+__device__ void msyncImpl(IPC* ipc, volatile request::Msync& req, volatile void* address, size_t size, int flags)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.address = address;

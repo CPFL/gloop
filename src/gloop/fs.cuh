@@ -34,15 +34,15 @@
 namespace gloop {
 namespace fs {
 
-__device__ void openImpl(DeviceLoop*, IPC*, volatile request::Open&, const char* filename, int mode);
-__device__ void writeImpl(DeviceLoop*, IPC*, volatile request::Write&, int fd, size_t offset, size_t count, unsigned char* buffer);
-__device__ void fstatImpl(DeviceLoop*, IPC*, volatile request::Fstat&, int fd);
-__device__ void closeImpl(DeviceLoop*, IPC*, volatile request::Close&, int fd);
-__device__ void readImpl(DeviceLoop*, IPC*, volatile request::Read&, int fd, size_t offset, size_t count, unsigned char* buffer);
-__device__ void ftruncateImpl(DeviceLoop*, IPC*, volatile request::Ftruncate&, int fd, off_t offset);
-__device__ void mmapImpl(DeviceLoop*, IPC*, volatile request::Mmap&, void* address, size_t size, int prot, int flags, int fd, off_t offset);
-__device__ void munmapImpl(DeviceLoop*, IPC*, volatile request::Munmap&, volatile void* address, size_t size);
-__device__ void msyncImpl(DeviceLoop*, IPC*, volatile request::Msync&, volatile void* address, size_t size, int flags);
+__device__ void openImpl(IPC*, volatile request::Open&, const char* filename, int mode);
+__device__ void writeImpl(IPC*, volatile request::Write&, int fd, size_t offset, size_t count, unsigned char* buffer);
+__device__ void fstatImpl(IPC*, volatile request::Fstat&, int fd);
+__device__ void closeImpl(IPC*, volatile request::Close&, int fd);
+__device__ void readImpl(IPC*, volatile request::Read&, int fd, size_t offset, size_t count, unsigned char* buffer);
+__device__ void ftruncateImpl(IPC*, volatile request::Ftruncate&, int fd, off_t offset);
+__device__ void mmapImpl(IPC*, volatile request::Mmap&, void* address, size_t size, int prot, int flags, int fd, off_t offset);
+__device__ void munmapImpl(IPC*, volatile request::Munmap&, volatile void* address, size_t size);
+__device__ void msyncImpl(IPC*, volatile request::Msync&, volatile void* address, size_t size, int flags);
 
 template<typename Lambda>
 inline __device__ auto open(DeviceLoop* loop, const char* filename, int mode, Lambda callback) -> void
@@ -52,7 +52,7 @@ inline __device__ auto open(DeviceLoop* loop, const char* filename, int mode, La
         auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.openResult.fd);
         });
-        openImpl(loop, ipc, ipc->request()->u.open, filename, mode);
+        openImpl(ipc, ipc->request()->u.open, filename, mode);
     }
     END_SINGLE_THREAD
 }
@@ -65,7 +65,7 @@ inline __device__ auto fstat(DeviceLoop* loop, int fd, Lambda callback) -> void
         auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.fstatResult.size);
         });
-        fstatImpl(loop, ipc, ipc->request()->u.fstat, fd);
+        fstatImpl(ipc, ipc->request()->u.fstat, fd);
     }
     END_SINGLE_THREAD
 }
@@ -78,7 +78,7 @@ inline __device__ auto close(DeviceLoop* loop, int fd, Lambda callback) -> void
         auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.closeResult.error);
         });
-        closeImpl(loop, ipc, ipc->request()->u.close, fd);
+        closeImpl(ipc, ipc->request()->u.close, fd);
     }
     END_SINGLE_THREAD
 }
@@ -91,7 +91,7 @@ inline __device__ auto ftruncate(DeviceLoop* loop, int fd, off_t offset, Lambda 
         auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.ftruncateResult.error);
         });
-        ftruncateImpl(loop, ipc, ipc->request()->u.ftruncate, fd, offset);
+        ftruncateImpl(ipc, ipc->request()->u.ftruncate, fd, offset);
     }
     END_SINGLE_THREAD
 }
@@ -109,7 +109,7 @@ inline __device__ auto readOnePage(DeviceLoop* loop, int fd, size_t offset, size
                 __threadfence();
                 callback(loop, &oneTimeRequest);
             });
-            readImpl(loop, ipc, ipc->request()->u.read, fd, offset, count, static_cast<unsigned char*>(page));
+            readImpl(ipc, ipc->request()->u.read, fd, offset, count, static_cast<unsigned char*>(page));
         }
         END_SINGLE_THREAD
     });
@@ -175,7 +175,7 @@ inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, siz
                 oneTimeRequest.u.writeOnePageResult.writtenCount = req->u.writeResult.writtenCount;
                 callback(loop, &oneTimeRequest);
             });
-            writeImpl(loop, ipc, ipc->request()->u.write, fd, offset, transferringSize, static_cast<unsigned char*>(page));
+            writeImpl(ipc, ipc->request()->u.write, fd, offset, transferringSize, static_cast<unsigned char*>(page));
         }
         END_SINGLE_THREAD
     });
@@ -223,7 +223,7 @@ inline __device__ auto mmap(DeviceLoop* loop, void* address, size_t size, int pr
         auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.mmapResult.address);
         });
-        mmapImpl(loop, ipc, ipc->request()->u.mmap, address, size, prot, flags, fd, offset);
+        mmapImpl(ipc, ipc->request()->u.mmap, address, size, prot, flags, fd, offset);
     }
     END_SINGLE_THREAD
 }
@@ -237,7 +237,7 @@ inline __device__ auto munmap(DeviceLoop* loop, volatile void* address, size_t s
         auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.munmapResult.error);
         });
-        munmapImpl(loop, ipc, ipc->request()->u.munmap, address, size);
+        munmapImpl(ipc, ipc->request()->u.munmap, address, size);
     }
     END_SINGLE_THREAD
 }
@@ -250,7 +250,7 @@ inline __device__ auto msync(DeviceLoop* loop, volatile void* address, size_t si
         auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.msyncResult.error);
         });
-        msyncImpl(loop, ipc, ipc->request()->u.msync, address, size, flags);
+        msyncImpl(ipc, ipc->request()->u.msync, address, size, flags);
     }
     END_SINGLE_THREAD
 }

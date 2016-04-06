@@ -36,7 +36,7 @@ static_assert(sizeof(void*) == sizeof(uint64_t), "In both the host and the devic
 
 namespace tcp {
 
-__device__ void connectImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPConnect& req, struct sockaddr_in* addr)
+__device__ void connectImpl(IPC* ipc, volatile request::NetTCPConnect& req, struct sockaddr_in* addr)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     // FIXME: Fix this part.
@@ -44,7 +44,7 @@ __device__ void connectImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCP
     ipc->emit(Code::NetTCPConnect);
 }
 
-__device__ void bindImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPBind& req, struct sockaddr_in* addr)
+__device__ void bindImpl(IPC* ipc, volatile request::NetTCPBind& req, struct sockaddr_in* addr)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     // FIXME: Fix this part.
@@ -52,21 +52,21 @@ __device__ void bindImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPBin
     ipc->emit(Code::NetTCPBind);
 }
 
-__device__ void unbindImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPUnbind& req, net::Server* server)
+__device__ void unbindImpl(IPC* ipc, volatile request::NetTCPUnbind& req, net::Server* server)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.server = server;
     ipc->emit(Code::NetTCPUnbind);
 }
 
-__device__ void acceptImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPAccept& req, net::Server* server)
+__device__ void acceptImpl(IPC* ipc, volatile request::NetTCPAccept& req, net::Server* server)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.server = server;
     ipc->emit(Code::NetTCPAccept);
 }
 
-__device__ void receiveImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPReceive& req, net::Socket* socket, size_t count, unsigned char* buffer)
+__device__ void receiveImpl(IPC* ipc, volatile request::NetTCPReceive& req, net::Socket* socket, size_t count, unsigned char* buffer)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.socket = socket;
@@ -75,7 +75,7 @@ __device__ void receiveImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCP
     ipc->emit(Code::NetTCPReceive);
 }
 
-__device__ void sendImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPSend& req, net::Socket* socket, size_t count, unsigned char* buffer)
+__device__ void sendImpl(IPC* ipc, volatile request::NetTCPSend& req, net::Socket* socket, size_t count, unsigned char* buffer)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.socket = socket;
@@ -84,7 +84,7 @@ __device__ void sendImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPSen
     ipc->emit(Code::NetTCPSend);
 }
 
-__device__ void closeImpl(DeviceLoop* loop, IPC* ipc, volatile request::NetTCPClose& req, net::Socket* socket)
+__device__ void closeImpl(IPC* ipc, volatile request::NetTCPClose& req, net::Socket* socket)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     req.socket = socket;
