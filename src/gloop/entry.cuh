@@ -49,29 +49,25 @@ typedef std::aligned_storage<sizeof(DeviceLoop), alignof(DeviceLoop)>::type Unin
 template<typename DeviceLambda, class... Args>
 inline __global__ void launch(volatile uint32_t* signal, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
-    __shared__ UninitializedDeviceLoopStorage storage;
-    __shared__ DeviceLoop* loop;
     BEGIN_SINGLE_THREAD
     {
-        loop = new (&storage) DeviceLoop(signal, context, GLOOP_SHARED_SLOT_SIZE);
+        sharedDeviceLoop.initialize(signal, context, GLOOP_SHARED_SLOT_SIZE);
     }
     END_SINGLE_THREAD
     // __threadfence_system();
-    callback(loop, std::forward<Args>(args)...);
-    loop->drain();
+    callback(&sharedDeviceLoop, std::forward<Args>(args)...);
+    sharedDeviceLoop.drain();
 }
 
 inline __global__ void resume(volatile uint32_t* signal, DeviceContext context)
 {
-    __shared__ UninitializedDeviceLoopStorage storage;
-    __shared__ DeviceLoop* loop;
     BEGIN_SINGLE_THREAD
     {
-        loop = new (&storage) DeviceLoop(signal, context, GLOOP_SHARED_SLOT_SIZE, DeviceLoop::Resume);
+        sharedDeviceLoop.initialize(signal, context, GLOOP_SHARED_SLOT_SIZE, DeviceLoop::Resume);
     }
     END_SINGLE_THREAD
     // __threadfence_system();
-    loop->drain();
+    sharedDeviceLoop.drain();
 }
 
 }  // namespace gloop

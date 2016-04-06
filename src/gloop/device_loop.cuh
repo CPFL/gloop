@@ -40,8 +40,8 @@ namespace gloop {
 class DeviceLoop {
 public:
     enum ResumeTag { Resume };
-    __device__ DeviceLoop(volatile uint32_t* signal, DeviceContext, size_t size, ResumeTag);
-    __device__ DeviceLoop(volatile uint32_t* signal, DeviceContext, size_t size);
+    __device__ void initialize(volatile uint32_t* signal, DeviceContext, size_t size, ResumeTag);
+    __device__ void initialize(volatile uint32_t* signal, DeviceContext, size_t size);
 
     template<typename Lambda>
     inline __device__ IPC* enqueueIPC(Lambda lambda);
@@ -85,13 +85,15 @@ private:
     DeviceContext::DeviceLoopControl m_control;
     volatile uint32_t* m_signal;
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
-    uint32_t m_scratchIndex1 { invalidPosition() };
-    uint32_t m_scratchIndex2 { invalidPosition() };
+    uint32_t m_scratchIndex1;
+    uint32_t m_scratchIndex2;
     UninitializedDeviceCallbackStorage m_scratch1;
     UninitializedDeviceCallbackStorage m_scratch2;
 #endif
 };
 static_assert(std::is_trivially_destructible<DeviceLoop>::value, "DeviceLoop is trivially destructible");
+
+extern __device__ __shared__ DeviceLoop sharedDeviceLoop;
 
 __device__ uint32_t DeviceLoop::position(IPC* ipc)
 {

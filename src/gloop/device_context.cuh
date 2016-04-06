@@ -39,11 +39,20 @@ struct DeviceContext {
             return ((1U << GLOOP_SHARED_SLOT_SIZE) - 1);
         }
 
-        uint32_t freePages { (1U << GLOOP_SHARED_PAGE_COUNT) - 1 };
-        uint32_t freeSlots { allFilledFreeSlots() };
-        uint32_t sleepSlots { 0 };
-        uint32_t wakeupSlots { 0 };
-        uint32_t pageSleepSlots { 0 };
+        __host__ __device__ void initialize()
+        {
+            freePages = (1U << GLOOP_SHARED_PAGE_COUNT) - 1;
+            freeSlots = allFilledFreeSlots();
+            sleepSlots = 0;
+            wakeupSlots = 0;
+            pageSleepSlots = 0;
+        }
+
+        uint32_t freePages;
+        uint32_t freeSlots;
+        uint32_t sleepSlots;
+        uint32_t wakeupSlots;
+        uint32_t pageSleepSlots;
     };
 
     struct OnePage {
