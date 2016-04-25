@@ -66,7 +66,7 @@ public:
     static std::unique_ptr<HostLoop> create(int deviceNumber, uint64_t costPerBit = 1);
 
     template<typename DeviceLambda, class... Args>
-    __host__ void launch(HostContext& context, dim3 threads, const DeviceLambda& callback, Args&&... args);
+    __host__ void launch(HostContext& context, dim3 threads, const DeviceLambda& callback, Args... args);
 
     class KernelLock {
     GLOOP_NONCOPYABLE(KernelLock);
@@ -162,14 +162,14 @@ private:
 };
 
 template<typename DeviceLambda, class... Args>
-inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args&&... args)
+inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
 {
     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
     benchmark->begin();
     prologue(hostContext, threads);
     {
         refKernel();
-        m_kernelService.post(std::bind([&] (Args&&... args) {
+        m_kernelService.post(std::bind([&] (Args... args) {
             {
                 std::lock_guard<KernelLock> lock(m_kernelLock);
                 // GLOOP_DATA_LOG("acquire for launch\n");
