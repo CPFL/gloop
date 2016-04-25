@@ -17,7 +17,6 @@
 #include <unistd.h>
 
 // INCLUDING CODE INLINE - change later
-#include "host_loop.h"
 #include <gloop/gloop.h>
 #include <gloop/benchmark.h>
 //

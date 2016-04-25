@@ -7,19 +7,17 @@
 * ASPLOS13, March 2013, Houston,USA
 */
 
-#include "fs_constants.h"
-#include "util.cu.h"
-// #include "fs_calls.cu.h"
 #include <sys/mman.h>
 #include <stdio.h>
 #include <gloop/gloop.h>
+#include <gloop/utility/util.cu.h>
 
 
 #define MEMSIZE ((1 << 20) * 1024)
 #define THREADS (128)
 
-__device__ volatile INIT_LOCK init_lock;
-__device__ volatile LAST_SEMAPHORE last_lock;
+__device__ volatile gpunet::INIT_LOCK init_lock;
+__device__ volatile gpunet::LAST_SEMAPHORE last_lock;
 
 struct context {
     int zfd_src;
@@ -89,13 +87,13 @@ __device__ volatile char* get_row(volatile uchar** cur_page_ptr, size_t* cur_pag
                 return (volatile char*)(*cur_page_ptr+(req_file_offset&(FS_BLOCKSIZE-1)));
 
         // remap
-        if (*cur_page_ptr && gmunmap(*cur_page_ptr,0)) ERROR("Unmap failed");
+        if (*cur_page_ptr && gmunmap(*cur_page_ptr,0)) GPU_ERROR("Unmap failed");
 
         int mapsize=(max_file_size-req_file_offset)>FS_BLOCKSIZE?FS_BLOCKSIZE:(max_file_size-req_file_offset);
 
         *cur_page_offset=(req_file_offset& (~(FS_BLOCKSIZE-1)));// round to the beg. of the page
         *cur_page_ptr=(volatile uchar*) gmmap(NULL, mapsize,0,type, fd,*cur_page_offset);
-        if (*cur_page_ptr == GMAP_FAILED) ERROR("MMAP failed");
+        if (*cur_page_ptr == GMAP_FAILED) GPU_ERROR("MMAP failed");
 
         return (volatile char*)(*cur_page_ptr+(req_file_offset&(FS_BLOCKSIZE-1)));
 }
@@ -263,7 +261,7 @@ __device__ bool perform_matching(gloop::DeviceLoop* loop, struct context ctx, in
             __syncthreads();
 
             gloop::fs::write(loop, ctx.zfd_o, old_offset, *ctx.output_count,(uchar*) ctx.output_buffer, [=](gloop::DeviceLoop* loop, int written_size) {
-                if (written_size != *ctx.output_count) ERROR("Write to output failed");
+                if (written_size != *ctx.output_count) GPU_ERROR("Write to output failed");
 
                 __syncthreads();
 
@@ -310,7 +308,7 @@ __device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context 
         }
         END_SINGLE_THREAD
         gloop::fs::read(loop, zfd_db,_cursor,db_left,(uchar*)ctx.corpus, [=](gloop::DeviceLoop* loop, int bytes_read) {
-            if(bytes_read!=db_left) ERROR("Failed to read DB file");
+            if(bytes_read!=db_left) GPU_ERROR("Failed to read DB file");
             // take care of the stitches
             int overlap=0;
 
@@ -342,7 +340,7 @@ __device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char
 
     if (char* current_db = get_next(ctx, previous_db, &next_db, &db_strlen)) {
         gloop::fs::open(loop, current_db,O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_db) {
-            if (zfd_db<0) ERROR("Failed to open DB file");
+            if (zfd_db<0) GPU_ERROR("Failed to open DB file");
             gloop::fs::fstat(loop, zfd_db, [=](gloop::DeviceLoop* loop, int db_size) {
                 process_one_chunk_in_db(loop, ctx, next_db, zfd_db, 0, db_size, db_strlen);
             });
@@ -370,18 +368,18 @@ __device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char
 void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* dbs)
 {
     gloop::fs::open(loop, dbs,O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_dbs) {
-        if (zfd_dbs<0) ERROR("Failed to open output");
+        if (zfd_dbs<0) GPU_ERROR("Failed to open output");
 
         gloop::fs::open(loop, out,O_RDWR|O_CREAT, [=](gloop::DeviceLoop* loop, int zfd_o) {
-            if (zfd_o<0) ERROR("Failed to open output");
+            if (zfd_o<0) GPU_ERROR("Failed to open output");
 
             gloop::fs::open(loop, src,O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_src) {
-                if (zfd_src<0) ERROR("Failed to open input");
+                if (zfd_src<0) GPU_ERROR("Failed to open input");
 
                 gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop* loop, int src_size) {
                     int total_words=src_size/32;
 
-                    if (total_words==0) ERROR("empty input");
+                    if (total_words==0) GPU_ERROR("empty input");
 
                     int words_per_chunk=total_words/gridDim.x;
 
@@ -419,7 +417,7 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                         // init_int_to_char_map();
                         input_tmp=(char*)malloc(data_to_process);
                         assert(input_tmp);
-                        output_buffer=(char*)malloc(data_to_process/32*(32+FILENAME_SIZE+sizeof(int)));
+                        output_buffer=(char*)malloc(data_to_process/32*(32+GLOOP_FILENAME_SIZE+sizeof(int)));
                         assert(output_buffer);
                         output_count = (int*)malloc(sizeof(int));
                         *output_count = 0;
@@ -436,19 +434,19 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                             __threadfence();
                             init_lock.signal();
                         }
-                        current_db_name = (char*)malloc(FILENAME_SIZE+1);
+                        current_db_name = (char*)malloc(GLOOP_FILENAME_SIZE+1);
                         corpus = (char*)malloc(CORPUS_PREFETCH_SIZE+32+1); // just in case we need the leftovers
                     }
                     END_SINGLE_THREAD
 
                     gloop::fs::fstat(loop, zfd_dbs, [=](gloop::DeviceLoop* loop, size_t dbs_size) {
                         gloop::fs::read(loop, zfd_dbs,0,dbs_size,(uchar*)db_files, [=](gloop::DeviceLoop* loop, size_t db_bytes_read) {
-                            if(db_bytes_read!=dbs_size) ERROR("Failed to read dbs");
+                            if(db_bytes_read!=dbs_size) GPU_ERROR("Failed to read dbs");
                             db_files[db_bytes_read]='\0';
 
                             int to_read=min(data_to_process,(int)src_size);
                             gloop::fs::read(loop, zfd_src,blockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](gloop::DeviceLoop* loop, size_t bytes_read) {
-                                if (bytes_read!=to_read) ERROR("FAILED to read input");
+                                if (bytes_read!=to_read) GPU_ERROR("FAILED to read input");
                                 struct context ctx {
                                     zfd_src,
                                     zfd_dbs,
@@ -483,8 +481,8 @@ void init_app()
     void* inited;
 
     CUDA_SAFE_CALL(cudaGetSymbolAddress(&inited,init_lock));
-    CUDA_SAFE_CALL(cudaMemset(inited,0,sizeof(INIT_LOCK)));
+    CUDA_SAFE_CALL(cudaMemset(inited,0,sizeof(gpunet::INIT_LOCK)));
 
     CUDA_SAFE_CALL(cudaGetSymbolAddress(&inited,last_lock));
-    CUDA_SAFE_CALL(cudaMemset(inited,0,sizeof(LAST_SEMAPHORE)));
+    CUDA_SAFE_CALL(cudaMemset(inited,0,sizeof(gpunet::LAST_SEMAPHORE)));
 }
