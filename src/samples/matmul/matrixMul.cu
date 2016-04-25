@@ -578,13 +578,7 @@ void runTest(int argc, char** argv)
         // unlink(fn);
         double time_before=_timestamp();
         {
-            hostLoop->launch(*hostContext, threads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<int, int, int, int, char> tuple) {
-                int wA;
-                int wB;
-                int perBlockX;
-                int perBlockY;
-                char n;
-                thrust::tie(wA, wB, perBlockX, perBlockY, n) = tuple;
+            hostLoop->launch(*hostContext, threads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY, char n) {
                 matrixMul<32>(loop, wA, wB, perBlockX, perBlockY, n);
             }, uiWA, uiWB,perBlockX,perBlockY,'0'+zzz);
         }

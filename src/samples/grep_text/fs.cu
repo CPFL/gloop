@@ -91,11 +91,7 @@ int main( int argc, char** argv)
         }
         gloop::Benchmark benchmark;
         benchmark.begin();
-        hostLoop->launch(*hostContext, nthreads, [] __device__ (gloop::DeviceLoop* loop, thrust::tuple<char*, char*, char*> tuple) {
-            char* src;
-            char* out;
-            char* dbs;
-            thrust::tie(src, out, dbs) = tuple;
+        hostLoop->launch(*hostContext, nthreads, [] __device__ (gloop::DeviceLoop* loop, char* src, char* out, char* dbs) {
             grep_text(loop, src, out, dbs);
         }, d_filenames[0], d_filenames[1], d_filenames[2]);
         benchmark.end();

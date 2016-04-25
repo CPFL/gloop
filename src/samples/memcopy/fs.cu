@@ -140,10 +140,7 @@ int main( int argc, char** argv)
         gloop::Benchmark benchmark;
         benchmark.begin();
         {
-            hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<char*, char*> tuple) {
-                char* src;
-                char* dst;
-                thrust::tie(src, dst) = tuple;
+            hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
                 test_cpy(loop, src, dst);
             }, d_filenames[0], d_filenames[1]);
         }

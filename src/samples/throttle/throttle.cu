@@ -75,8 +75,8 @@ int main(int argc, char** argv) {
 
         gloop::Benchmark benchmark;
         benchmark.begin();
-        hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<int> tuple) {
-            throttle(loop, 0, thrust::get<0>(tuple));
+        hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int trials) {
+            throttle(loop, 0, trials);
         }, trials);
         benchmark.end();
         printf("[%d] ", id);

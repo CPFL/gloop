@@ -88,8 +88,8 @@ int main(int argc, char** argv) {
 
         gloop::Benchmark bench;
         bench.begin();
-        hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<char*> tuple) {
-            entry(loop, thrust::get<0>(tuple));
+        hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* filename) {
+            entry(loop, filename);
         }, reinterpret_cast<char*>(memory->devicePointer()));
         bench.end();
         bench.report();

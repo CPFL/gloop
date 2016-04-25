@@ -66,7 +66,7 @@ public:
     static std::unique_ptr<HostLoop> create(int deviceNumber, uint64_t costPerBit = 1);
 
     template<typename DeviceLambda, class... Args>
-    __host__ void launch(HostContext& context, dim3 threads, const DeviceLambda& callback, Args... args);
+    __host__ void launch(HostContext& context, dim3 threads, const DeviceLambda& callback, Args&&... args);
 
     class KernelLock {
     GLOOP_NONCOPYABLE(KernelLock);
@@ -162,21 +162,20 @@ private:
 };
 
 template<typename DeviceLambda, class... Args>
-inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
+inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args&&... args)
 {
     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
     benchmark->begin();
     prologue(hostContext, threads);
     {
-        auto arguments = thrust::make_tuple(std::forward<Args>(args)...);
         refKernel();
-        m_kernelService.post([&] {
+        m_kernelService.post(std::bind([&] (Args&&... args) {
             {
                 std::lock_guard<KernelLock> lock(m_kernelLock);
                 // GLOOP_DATA_LOG("acquire for launch\n");
                 prepareForLaunch();
                 while (true) {
-                    gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, arguments);
+                    gloop::launch<<<hostContext.blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, std::forward<Args>(args)...);
                     cudaError_t error = cudaGetLastError();
                     if (cudaErrorLaunchOutOfResources == error) {
                         continue;
@@ -192,7 +191,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
                 return;
             }
             derefKernel();
-        });
+        }, std::forward<Args>(args)...));
         drain();
     }
     epilogue();

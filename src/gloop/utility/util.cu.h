@@ -218,9 +218,12 @@ struct INIT_LOCK
 
 };
 
+#if defined(NDEBUG)
+	#define GPU_ERROR(str) do { } while (0);
+#else
+	#define GPU_ERROR(str) __assert_fail(str,__FILE__,__LINE__,__func__);
+#endif
 
-
-#define GPU_ERROR(str) __assert_fail(str,__FILE__,__LINE__,__func__);
 
 __device__ int getNewFileId();
 }

@@ -120,9 +120,7 @@ int main(int argc, char** argv)
     gloop::Benchmark benchmark;
     benchmark.begin();
     {
-        hostLoop->launch(*hostContext, THREADS_PER_TB, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, thrust::tuple<struct sockaddr*> tuple) {
-            struct sockaddr* address;
-            thrust::tie(address) = tuple;
+        hostLoop->launch(*hostContext, THREADS_PER_TB, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, struct sockaddr* address) {
             gpuMain(loop, (struct sockaddr_in*)address);
         }, dev_addr);
     }
