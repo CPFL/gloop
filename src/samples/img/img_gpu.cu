@@ -63,11 +63,11 @@ __device__ volatile float* get_row(gloop::DeviceLoop* loop, volatile uchar** cur
     continuation(loop);
 }
 
-#define ACCUM_N 512
-__shared__ volatile float s_reduction[ACCUM_N];
-
 GLOOP_ALWAYS_INLINE __device__ float inner_product( volatile float* a, volatile float* b, int size)
 {
+    #define ACCUM_N 512
+    __shared__ volatile float s_reduction[ACCUM_N];
+
     float tmp=0;
     //      __syncthreads();
     //      if (threadIdx.x==0) {

@@ -450,18 +450,23 @@ bool HostLoop::handleIO(IPC* ipc, request::Request req)
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
                 std::shared_ptr<MmapResult> result = m_currentContext->table().unregisterMapping((void*)req.u.munmap.address);
+                Code code = Code::Complete;
                 int error = 0;
                 if (result) {
                     if (!result->refCount) {
                         // error = ::munmap(result.host, req.u.munmap.size);
                         m_currentContext->addUnmapRequest(result);
+                        code = Code::ExitRequired;
+                        m_currentContext->addExitRequired(ipc);
                     }
                 } else {
                     error = -EINVAL;
                 }
                 ipc->request()->u.munmapResult.error = error;
-                ipc->emit(Code::ExitRequired);
-                m_currentContext->addExitRequired(ipc);
+                ipc->emit(code);
+                if (code == Code::ExitRequired) {
+                    syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 1);
+                }
             }
         });
         break;
