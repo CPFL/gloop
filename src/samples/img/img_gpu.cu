@@ -30,7 +30,7 @@ struct Context {
     _pagehelper ph_db;
 };
 
-#define GLOOP_PAGE_SIZE 0x4000
+#define GLOOP_PAGE_SIZE (1 << 20)
 template<typename Callback>
 __device__ volatile float* get_row(gloop::DeviceLoop* loop, volatile uchar** cur_page_ptr, size_t* cur_page_offset, size_t req_file_offset, int max_file_size, int fd, int type, Callback callback)
 {
@@ -124,7 +124,9 @@ void __device__ process_one_row(gloop::DeviceLoop* loop, Context* context, int d
                 callback(loop, ptr_row_db, found);
                 return;
             }
-            process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, start_offset, _cursor + 1, total_rows, src_row_len, db_rows, ptr_row_db + src_row_len, callback);
+            gloop::loop::postTask(loop, [=](gloop::DeviceLoop* loop) {
+                process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, start_offset, _cursor + 1, total_rows, src_row_len, db_rows, ptr_row_db + src_row_len, callback);
+            });
         };
         if (_req_offset - context->ph_db.file_offset >= GLOOP_PAGE_SIZE) {
             get_row(loop, &context->ph_db.page,&context->ph_db.file_offset,_req_offset,db_size,zfd_db, PROT_READ | PROT_WRITE, continuation);
