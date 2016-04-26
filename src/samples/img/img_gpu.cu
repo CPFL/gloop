@@ -16,6 +16,9 @@
 __device__ volatile gpunet::INIT_LOCK init_lock;
 __device__ volatile gpunet::LAST_SEMAPHORE last_lock;
 
+// #define GLOOP_PAGE_SIZE (1 << 20)
+#define GLOOP_PAGE_SIZE GLOOP_SHARED_PAGE_SIZE
+
 struct _pagehelper{
     volatile uchar* page;
     size_t file_offset;
@@ -30,7 +33,6 @@ struct Context {
     _pagehelper ph_db;
 };
 
-#define GLOOP_PAGE_SIZE (1 << 20)
 template<typename Callback>
 __device__ volatile float* get_row(gloop::DeviceLoop* loop, volatile uchar** cur_page_ptr, size_t* cur_page_offset, size_t req_file_offset, int max_file_size, int fd, int type, Callback callback)
 {
@@ -39,6 +41,7 @@ __device__ volatile float* get_row(gloop::DeviceLoop* loop, volatile uchar** cur
         return;
     }
 
+#if 0
     auto continuation = [=] (gloop::DeviceLoop* loop) {
         int mapsize = (max_file_size-req_file_offset)>GLOOP_PAGE_SIZE?GLOOP_PAGE_SIZE:(max_file_size-req_file_offset);
 
@@ -61,6 +64,22 @@ __device__ volatile float* get_row(gloop::DeviceLoop* loop, volatile uchar** cur
         return;
     }
     continuation(loop);
+#else
+    BEGIN_SINGLE_THREAD
+    {
+        if (!*cur_page_ptr) {
+            *cur_page_ptr = (volatile uchar*)malloc(GLOOP_PAGE_SIZE);
+        }
+
+        int mapsize = (max_file_size-req_file_offset)>GLOOP_PAGE_SIZE?GLOOP_PAGE_SIZE:(max_file_size-req_file_offset);
+
+        *cur_page_offset=(req_file_offset& (~(GLOOP_PAGE_SIZE-1)));// round to the beg. of the page
+        gloop::fs::read(loop, fd, *cur_page_offset, mapsize, (unsigned char*)*cur_page_ptr, [=](gloop::DeviceLoop* loop, int bytesRead) {
+            callback(loop, (volatile float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
+        });
+    }
+    END_SINGLE_THREAD
+#endif
 }
 
 GLOOP_ALWAYS_INLINE __device__ float inner_product( volatile float* a, volatile float* b, int size)
@@ -129,7 +148,7 @@ void __device__ process_one_row(gloop::DeviceLoop* loop, Context* context, int d
             });
         };
         if (_req_offset - context->ph_db.file_offset >= GLOOP_PAGE_SIZE) {
-            get_row(loop, &context->ph_db.page,&context->ph_db.file_offset,_req_offset,db_size,zfd_db, PROT_READ | PROT_WRITE, continuation);
+            get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, _req_offset,db_size,zfd_db, PROT_READ | PROT_WRITE, continuation);
             return;
         }
         continuation(loop, ptr_row_db);
@@ -151,6 +170,7 @@ void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int da
                     int _cursor = 0;
 
                     process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, start_offset, _cursor, total_rows, src_row_len, db_rows, ptr_row_db, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db, int found) {
+#if 0
                         gloop::fs::munmap(loop, ptr_row_db, 0, [=](gloop::DeviceLoop* loop, int error) {
                             if(error)
                                 GPU_ERROR("Failed to unmap db");
@@ -163,6 +183,15 @@ void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int da
                                 process_one_db(loop, context, data_idx, db_idx + 1, out_count, start_offset, num_db_files, total_rows, src_row_len, callback);
                             });
                         });
+#else
+                        gloop::fs::close(loop, zfd_db, [=](gloop::DeviceLoop* loop, int error) {
+                            if (found) {
+                                callback(loop, found);
+                                return;
+                            }
+                            process_one_db(loop, context, data_idx, db_idx + 1, out_count, start_offset, num_db_files, total_rows, src_row_len, callback);
+                        });
+#endif
                     });
                 });
             });
@@ -237,8 +266,8 @@ void __device__ img_gpu(
                     context->db_files[4] = out6;
                     context->db_files[5] = out7;
                     context->match_threshold = match_threshold;
-                    context->ph_input = {NULL,0};
-                    context->ph_db = {NULL,0};
+                    context->ph_input = {nullptr,0};
+                    context->ph_db = {nullptr,0};
 
                     toInit=init_lock.try_wait();
                     if (toInit == 1)
@@ -287,7 +316,7 @@ void __device__ img_gpu(
 
 void init_device_app()
 {
-    GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,1<<25));
+    GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,1<<30));
 }
 
 void init_app()
