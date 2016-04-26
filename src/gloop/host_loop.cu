@@ -414,18 +414,29 @@ bool HostLoop::handleIO(IPC* ipc, request::Request req)
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
-            void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset);
-            // GLOOP_DEBUG("mmap:address:(%p),size:(%u),prot:(%d),flags:(%d),fd:(%d),offset:(%d),res:(%p)\n", req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset, host);
             void* device = nullptr;
-            // Not sure, but, mapped memory can be accessed immediately from GPU kernel.
-            GLOOP_CUDA_SAFE_CALL(cudaHostRegister(host, req.u.mmap.size, cudaHostRegisterMapped));
-            GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&device, host, 0));
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-                m_currentContext->table().registerMapping(host, device);
-                ipc->request()->u.mmapResult.address = device;
-                ipc->emit(Code::Complete);
+                std::shared_ptr<MmapResult> result;
+                if (m_currentContext->table().requestMmap(req.u.mmap.fd, req.u.mmap.offset, req.u.mmap.size, result)) {
+                    // New!
+                    size_t size = req.u.mmap.size;
+                    void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset);
+                    // GLOOP_DATA_LOG("mmap:address:(%p),size:(%u),prot:(%d),flags:(%d),fd:(%d),offset:(%d),res:(%p)\n", req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset, host);
+                    void* device = nullptr;
+                    // Not sure, but, mapped memory can be accessed immediately from GPU kernel.
+                    GLOOP_CUDA_SAFE_CALL(cudaHostRegister(host, size, cudaHostRegisterMapped));
+                    GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&device, host, 0));
+                    result->host = host;
+                    result->device = device;
+                    result->size = size;
+                    m_currentContext->table().registerMapping(device, result);
+                }
+                device = result->device;
             }
+            // GLOOP_DATA_LOG("mmap:device(%p)\n", device);
+            ipc->request()->u.mmapResult.address = device;
+            ipc->emit(Code::Complete);
         });
         break;
     }
@@ -434,13 +445,20 @@ bool HostLoop::handleIO(IPC* ipc, request::Request req)
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
-            // GLOOP_DEBUG("munmap:address:(%p),size:(%u)\n", req.u.munmap.address, req.u.munmap.size);
+            // GLOOP_DATA_LOG("munmap:address:(%p),size:(%u)\n", req.u.munmap.address, req.u.munmap.size);
             // FIXME: We should schedule this inside this process.
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-                void* host = m_currentContext->table().unregisterMapping((void*)req.u.munmap.address);
-                int error = ::munmap(host, req.u.munmap.size);
-                m_currentContext->addUnmapRequest((void*)req.u.munmap.address);
+                std::shared_ptr<MmapResult> result = m_currentContext->table().unregisterMapping((void*)req.u.munmap.address);
+                int error = 0;
+                if (result) {
+                    if (!result->refCount) {
+                        // error = ::munmap(result.host, req.u.munmap.size);
+                        m_currentContext->addUnmapRequest(result);
+                    }
+                } else {
+                    error = -EINVAL;
+                }
                 ipc->request()->u.munmapResult.error = error;
                 ipc->emit(Code::ExitRequired);
                 m_currentContext->addExitRequired(ipc);

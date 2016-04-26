@@ -22,6 +22,7 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <algorithm>
+#include <cassert>
 #include <cstdio>
 #include <fcntl.h>
 #include <unistd.h>
@@ -61,22 +62,44 @@ void FileDescriptorTable::close(int fd)
     }
 }
 
-void FileDescriptorTable::registerMapping(void* host, void* device)
+void FileDescriptorTable::registerMapping(void* device, std::shared_ptr<MmapResult> result)
 {
-    m_mmapTable.insert(std::make_pair(device, host));
+    m_mmapTable.insert(std::make_pair(device, result));
 }
 
 void* FileDescriptorTable::lookupHostByDevice(void* device)
 {
-    return m_mmapTable[device];
+    return m_mmapTable[device]->host;
 }
 
-void* FileDescriptorTable::unregisterMapping(void* device)
+std::shared_ptr<MmapResult> FileDescriptorTable::unregisterMapping(void* device)
 {
     auto iterator = m_mmapTable.find(device);
-    void* result = iterator->second;
-    m_mmapTable.erase(iterator);
+    if (iterator == m_mmapTable.end())
+        return nullptr;
+    std::shared_ptr<MmapResult> result = iterator->second;
     return result;
+}
+
+bool FileDescriptorTable::requestMmap(int fd, size_t offset, size_t size, std::shared_ptr<MmapResult>& result)
+{
+    MmapRequest request = std::make_tuple(fd, offset, size);
+    auto iterator = m_mmapRequestsTable.find(request);
+    if (iterator == m_mmapRequestsTable.end()) {
+        result = std::make_shared<MmapResult>(request);
+        m_mmapRequestsTable.insert(iterator, std::make_pair(request, result));
+        return true;
+    }
+    result = iterator->second;
+    result->refCount++;
+    return false;
+}
+
+void FileDescriptorTable::dropMmapResult(std::shared_ptr<MmapResult> result)
+{
+    assert(result->refCount == 0);
+    m_mmapTable.erase(result->device);
+    m_mmapRequestsTable.erase(result->request);
 }
 
 }  // namespace gloop

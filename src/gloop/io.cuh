@@ -24,8 +24,10 @@
 #ifndef GLOOP_IO_CU_H_
 #define GLOOP_IO_CU_H_
 #include <memory>
+#include <tuple>
 #include <unordered_map>
 #include "noncopyable.h"
+#include "hash_tuple.h"
 namespace gloop {
 
 struct File {
@@ -41,6 +43,24 @@ inline File::File(int fd)
 {
 }
 
+// fd, offset, size
+typedef std::tuple<int, size_t, size_t> MmapRequest;
+
+struct MmapResult {
+    MmapResult(MmapRequest);
+
+    void* host { nullptr };
+    void* device { nullptr };
+    size_t size { 0 };
+    int refCount { 1 };
+    MmapRequest request;
+};
+
+inline MmapResult::MmapResult(MmapRequest request)
+    : request(request)
+{
+}
+
 class FileDescriptorTable {
 GLOOP_NONCOPYABLE(FileDescriptorTable)
 public:
@@ -50,17 +70,23 @@ public:
     int open(std::string fileName, int mode);
     void close(int fd);
 
-    void registerMapping(void* host, void* device);
+    void registerMapping(void* device, std::shared_ptr<MmapResult> result);
     void* lookupHostByDevice(void* device);
-    void* unregisterMapping(void* device);
+    std::shared_ptr<MmapResult> unregisterMapping(void* device);
+
+    bool requestMmap(int fd, size_t offset, size_t size, std::shared_ptr<MmapResult>& result);
+    void dropMmapResult(std::shared_ptr<MmapResult> result);
 
 private:
     // This merges file open requests from the blocks.
     typedef std::unordered_map<std::string, std::shared_ptr<File>> FileNameToFileMap;
     FileNameToFileMap m_fileNameToFile;
 
-    typedef std::unordered_map<void*, void*> MmapTable;
+    typedef std::unordered_map<void*, std::shared_ptr<MmapResult>> MmapTable;
     MmapTable m_mmapTable;
+
+    typedef std::unordered_map<MmapRequest, std::shared_ptr<MmapResult>, hash_tuple::hash<MmapRequest>> MmapRequests;
+    MmapRequests m_mmapRequestsTable;
 };
 
 }  // namespace gloop

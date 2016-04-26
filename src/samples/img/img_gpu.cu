@@ -16,15 +16,13 @@
 __device__ volatile gpunet::INIT_LOCK init_lock;
 __device__ volatile gpunet::LAST_SEMAPHORE last_lock;
 
-__shared__ float input_img_row[GREP_ROW_WIDTH];
-__shared__ float input_db_row[GREP_ROW_WIDTH];
-
 struct _pagehelper{
     volatile uchar* page;
     size_t file_offset;
 };
 
 struct Context {
+    float input_img_row[GREP_ROW_WIDTH];
     char* db_files[6];
     int* out_buffer;
     int match_threshold;
@@ -32,23 +30,24 @@ struct Context {
     _pagehelper ph_db;
 };
 
+#define GLOOP_PAGE_SIZE 0x4000
 template<typename Callback>
 __device__ volatile float* get_row(gloop::DeviceLoop* loop, volatile uchar** cur_page_ptr, size_t* cur_page_offset, size_t req_file_offset, int max_file_size, int fd, int type, Callback callback)
 {
-    if (*cur_page_ptr!=NULL && *cur_page_offset+GLOOP_SHARED_PAGE_SIZE>req_file_offset) {
-        callback(loop, (volatile float*)(*cur_page_ptr+(req_file_offset&(GLOOP_SHARED_PAGE_SIZE-1))));
+    if (*cur_page_ptr!=NULL && *cur_page_offset+GLOOP_PAGE_SIZE>req_file_offset) {
+        callback(loop, (volatile float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
         return;
     }
 
     auto continuation = [=] (gloop::DeviceLoop* loop) {
-        int mapsize=(max_file_size-req_file_offset)>GLOOP_SHARED_PAGE_SIZE?GLOOP_SHARED_PAGE_SIZE:(max_file_size-req_file_offset);
+        int mapsize = (max_file_size-req_file_offset)>GLOOP_PAGE_SIZE?GLOOP_PAGE_SIZE:(max_file_size-req_file_offset);
 
-        *cur_page_offset=(req_file_offset& (~(GLOOP_SHARED_PAGE_SIZE-1)));// round to the beg. of the page
-        gloop::fs::mmap(loop, nullptr, mapsize, 0, type, fd, *cur_page_offset, [=](gloop::DeviceLoop* loop, volatile void* memory) {
+        *cur_page_offset=(req_file_offset& (~(GLOOP_PAGE_SIZE-1)));// round to the beg. of the page
+        gloop::fs::mmap(loop, nullptr, mapsize, type, MAP_SHARED, fd, *cur_page_offset, [=](gloop::DeviceLoop* loop, volatile void* memory) {
             *cur_page_ptr=(volatile uchar*) memory;
             if (*cur_page_ptr == MAP_FAILED)
                 GPU_ERROR("MMAP failed");
-            callback(loop, (volatile float*)(*cur_page_ptr+(req_file_offset&(GLOOP_SHARED_PAGE_SIZE-1))));
+            callback(loop, (volatile float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
         });
     };
 
@@ -110,7 +109,8 @@ void __device__ process_one_row(gloop::DeviceLoop* loop, Context* context, int d
     if (_cursor<db_rows) {
         size_t _req_offset=(_cursor*src_row_len)<<2;
         auto continuation = [=] (gloop::DeviceLoop* loop, volatile float* ptr_row_db) {
-            int found = match(input_img_row, ptr_row_db, src_row_len, context->match_threshold);
+
+            int found = match(context->input_img_row, ptr_row_db, src_row_len, context->match_threshold);
             BEGIN_SINGLE_THREAD
             {
                 if (found){
@@ -126,8 +126,8 @@ void __device__ process_one_row(gloop::DeviceLoop* loop, Context* context, int d
             }
             process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, start_offset, _cursor + 1, total_rows, src_row_len, db_rows, ptr_row_db + src_row_len, callback);
         };
-        if (_req_offset - context->ph_db.file_offset >= GLOOP_SHARED_PAGE_SIZE) {
-            get_row(loop, &context->ph_db.page,&context->ph_db.file_offset,_req_offset,db_size,zfd_db,O_RDONLY, continuation);
+        if (_req_offset - context->ph_db.file_offset >= GLOOP_PAGE_SIZE) {
+            get_row(loop, &context->ph_db.page,&context->ph_db.file_offset,_req_offset,db_size,zfd_db, PROT_READ | PROT_WRITE, continuation);
             return;
         }
         continuation(loop, ptr_row_db);
@@ -140,13 +140,14 @@ template<typename Callback>
 void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int data_idx, int db_idx, int out_count, int start_offset, int num_db_files, int total_rows, int src_row_len, Callback callback)
 {
     if (db_idx<num_db_files) {
-        gloop::fs::open(loop, context->db_files[db_idx], O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_db) {
+        gloop::fs::open(loop, context->db_files[db_idx], /* O_RDONLY */ O_RDWR, [=](gloop::DeviceLoop* loop, int zfd_db) {
             if (zfd_db<0) GPU_ERROR("Failed to open DB file");
             gloop::fs::fstat(loop, zfd_db, [=](gloop::DeviceLoop* loop, size_t db_size) {
                 size_t db_rows=(db_size/src_row_len)>>2;
 
-                get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, 0, db_size, zfd_db, O_RDONLY, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db) {
+                get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, 0, db_size, zfd_db, PROT_READ | PROT_WRITE, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db) {
                     int _cursor = 0;
+
                     process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, start_offset, _cursor, total_rows, src_row_len, db_rows, ptr_row_db, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db, int found) {
                         gloop::fs::munmap(loop, ptr_row_db, 0, [=](gloop::DeviceLoop* loop, int error) {
                             if(error)
@@ -173,7 +174,7 @@ template<typename Callback>
 void __device__ process_one_data(gloop::DeviceLoop* loop, Context* context, size_t data_idx, int out_count, int start, int rows_to_process, int zfd_src, int src_row_len, int start_offset, int total_rows, int num_db_files, Callback callback)
 {
     if (data_idx < start + rows_to_process) {
-        gloop::fs::read(loop, zfd_src, data_idx*src_row_len<<2, GREP_ROW_WIDTH*4, (uchar*)input_img_row, [=](gloop::DeviceLoop* loop, int bytes_read) {
+        gloop::fs::read(loop, zfd_src, data_idx*src_row_len<<2, GREP_ROW_WIDTH*4, (uchar*)context->input_img_row, [=](gloop::DeviceLoop* loop, int bytes_read) {
             if (bytes_read!=GREP_ROW_WIDTH*4) GPU_ERROR("Failed to read src");
 
             int db_idx = 0;
@@ -205,7 +206,7 @@ void __device__ img_gpu(
     gloop::fs::open(loop, out, O_RDWR|O_CREAT, [=](gloop::DeviceLoop* loop, int zfd_o) {
         if (zfd_o<0) GPU_ERROR("Failed to open output");
 
-        gloop::fs::open(loop, src, O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_src) {
+        gloop::fs::open(loop, src, /* O_RDONLY */ O_RDWR, [=](gloop::DeviceLoop* loop, int zfd_src) {
             if (zfd_src<0) GPU_ERROR("Failed to open input");
 
             gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop* loop, int in_size) {
@@ -236,14 +237,14 @@ void __device__ img_gpu(
                     context->match_threshold = match_threshold;
                     context->ph_input = {NULL,0};
                     context->ph_db = {NULL,0};
-                }
-                toInit=init_lock.try_wait();
 
-                if (toInit == 1)
-                {
-                    // single_thread_ftruncate(zfd_o,0);
-                    __threadfence();
-                    init_lock.signal();
+                    toInit=init_lock.try_wait();
+                    if (toInit == 1)
+                    {
+                        // single_thread_ftruncate(zfd_o,0);
+                        __threadfence();
+                        init_lock.signal();
+                    }
                 }
                 END_SINGLE_THREAD
 
@@ -254,7 +255,6 @@ void __device__ img_gpu(
                    4. scan through
                    5. write to output
                    */
-
                 int out_count=0;
                 volatile float* ptr_row_in=NULL;
                 int found=0;

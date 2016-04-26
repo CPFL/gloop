@@ -26,4 +26,10 @@
 
 #define GREP_ROW_WIDTH (4*1024)
 
+void __device__ img_gpu(
+        gloop::DeviceLoop* loop,
+        char* src, int src_row_len, int num_db_files, float match_threshold, int start_offset,
+        char* out, char* out2, char* out3, char* out4, char *out5, char* out6, char* out7);
+
+
 #endif  // IMG_CU_H_

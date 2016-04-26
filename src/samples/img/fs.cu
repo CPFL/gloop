@@ -127,7 +127,7 @@ int main( int argc, char** argv)
         gloop::Benchmark benchmark;
         benchmark.begin();
         hostLoop->launch(*hostContext, nthreads, [] __device__ (gloop::DeviceLoop* loop, char* src, int src_row_len, int num_db_files, float match_threshold, int start_offset, char* out, char* out2, char* out3, char* out4, char* out5, char* out6, char* out7) {
-            // grep_text(loop, src, out, dbs);
+            img_gpu(loop, src, src_row_len, num_db_files, match_threshold, start_offset, out, out2, out3, out4, out5, out6, out7);
         },
         d_filenames[0],
         GREP_ROW_WIDTH, num_files - 2, match_threshold, global_devicenum,

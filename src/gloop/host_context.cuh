@@ -27,6 +27,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <unordered_set>
 #include "config.h"
 #include "device_context.cuh"
 #include "io.cuh"
@@ -66,10 +67,10 @@ public:
         m_exitRequired.push_back(ipc);
     }
 
-    bool addUnmapRequest(void* pointer)
+    bool addUnmapRequest(std::shared_ptr<MmapResult> result)
     {
         // Mutex should be held.
-        m_unmapRequests.push_back(pointer);
+        m_unmapRequests.insert(result);
     }
 
 private:
@@ -85,7 +86,7 @@ private:
     dim3 m_blocks { };
     uint32_t m_pageCount { };
     std::vector<IPC*> m_exitRequired;
-    std::vector<void*> m_unmapRequests;
+    std::unordered_set<std::shared_ptr<MmapResult>> m_unmapRequests;
     bool m_exitHandlerScheduled { false };
 };
 

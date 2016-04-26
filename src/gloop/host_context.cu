@@ -99,8 +99,12 @@ void HostContext::prepareForLaunch()
             ipc->emit(Code::Complete);
         }
         m_exitRequired.clear();
-        for (void* pointer : m_unmapRequests) {
-            GLOOP_CUDA_SAFE_CALL(cudaHostUnregister(pointer));
+        for (std::shared_ptr<MmapResult> result : m_unmapRequests) {
+            if (!result->refCount) {
+                GLOOP_CUDA_SAFE_CALL(cudaHostUnregister(result->device));
+                ::munmap(((char*)result->host) + std::get<1>(result->request), result->size);
+                table().dropMmapResult(result);
+            }
         }
         m_unmapRequests.clear();
     }
