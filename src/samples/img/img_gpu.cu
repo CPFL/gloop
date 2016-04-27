@@ -28,7 +28,12 @@ struct Context {
     float input_img_row[GREP_ROW_WIDTH];
     char* db_files[6];
     int* out_buffer;
-    int match_threshold;
+    float match_threshold;
+    int start_offset;
+    int total_rows;
+    int src_row_len;
+    int num_db_files;
+    int zfd_src;
     _pagehelper ph_input;
     _pagehelper ph_db;
 };
@@ -114,41 +119,45 @@ GLOOP_ALWAYS_INLINE __device__ float inner_product( volatile float* a, volatile 
     __syncthreads();
 
     return s_reduction[0];
-
 }
 
-GLOOP_ALWAYS_INLINE __device__ bool match(volatile float* a, volatile float* b, int size,float match_threshold)
+GLOOP_ALWAYS_INLINE __device__ bool match(volatile float* a, volatile float* b, int size, float match_threshold, int id)
 {
+    float result = sqrt(inner_product(a,b,size));
+    BEGIN_SINGLE_THREAD
+        printf("%d %d %f %d\n", (int)id, (int)(result < match_threshold), (float)result, (int)size);
+    END_SINGLE_THREAD
     return sqrt(inner_product(a,b,size)) < match_threshold;
 }
 
 template<typename Callback>
-void __device__ process_one_row(gloop::DeviceLoop* loop, Context* context, int data_idx, int db_idx, int out_count, int db_size, int zfd_db, int start_offset, int _cursor, int total_rows, int src_row_len, int db_rows, volatile float* ptr_row_db, Callback callback)
+void __device__ process_one_row(gloop::DeviceLoop* loop, Context* context, int data_idx, int db_idx, int out_count, int db_size, int zfd_db, int _cursor, int db_rows, volatile float* ptr_row_db, Callback callback)
 {
-    if (_cursor<db_rows) {
-        size_t _req_offset=(_cursor*src_row_len)<<2;
+    if (_cursor < db_rows) {
+        size_t _req_offset=(_cursor*context->src_row_len)<<2;
         auto continuation = [=] (gloop::DeviceLoop* loop, volatile float* ptr_row_db) {
 
-            int found = match(context->input_img_row, ptr_row_db, src_row_len, context->match_threshold);
+            int found = match(context->input_img_row, ptr_row_db, context->src_row_len, context->match_threshold, data_idx+context->start_offset*context->total_rows);
             BEGIN_SINGLE_THREAD
             {
-                if (found){
-                    context->out_buffer[out_count]=data_idx+start_offset*total_rows;
+                // printf("img %d %d\n", db_idx, data_idx);
+                if (found) {
+                    context->out_buffer[out_count]=data_idx+context->start_offset*context->total_rows;
                     context->out_buffer[out_count+1]=db_idx;
                     context->out_buffer[out_count+2]=_cursor;
                 }
             }
             END_SINGLE_THREAD
-            if (found) {
-                callback(loop, ptr_row_db, found);
+            if (!found) {
+                gloop::loop::postTask(loop, [=](gloop::DeviceLoop* loop) {
+                    process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, _cursor + 1, db_rows, ptr_row_db + context->src_row_len, callback);
+                });
                 return;
             }
-            gloop::loop::postTask(loop, [=](gloop::DeviceLoop* loop) {
-                process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, start_offset, _cursor + 1, total_rows, src_row_len, db_rows, ptr_row_db + src_row_len, callback);
-            });
+            callback(loop, ptr_row_db, found);
         };
         if (_req_offset - context->ph_db.file_offset >= GLOOP_PAGE_SIZE) {
-            get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, _req_offset,db_size,zfd_db, PROT_READ | PROT_WRITE, continuation);
+            get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, _req_offset, db_size, zfd_db, PROT_READ | PROT_WRITE, continuation);
             return;
         }
         continuation(loop, ptr_row_db);
@@ -158,18 +167,18 @@ void __device__ process_one_row(gloop::DeviceLoop* loop, Context* context, int d
 }
 
 template<typename Callback>
-void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int data_idx, int db_idx, int out_count, int start_offset, int num_db_files, int total_rows, int src_row_len, Callback callback)
+void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int data_idx, int db_idx, int out_count, Callback callback)
 {
-    if (db_idx<num_db_files) {
+    if (db_idx < context->num_db_files) {
         gloop::fs::open(loop, context->db_files[db_idx], /* O_RDONLY */ O_RDWR, [=](gloop::DeviceLoop* loop, int zfd_db) {
             if (zfd_db<0) GPU_ERROR("Failed to open DB file");
             gloop::fs::fstat(loop, zfd_db, [=](gloop::DeviceLoop* loop, size_t db_size) {
-                size_t db_rows=(db_size/src_row_len)>>2;
+                size_t db_rows=(db_size/context->src_row_len)>>2;
 
                 get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, 0, db_size, zfd_db, PROT_READ | PROT_WRITE, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db) {
                     int _cursor = 0;
 
-                    process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, start_offset, _cursor, total_rows, src_row_len, db_rows, ptr_row_db, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db, int found) {
+                    process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, _cursor, db_rows, ptr_row_db, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db, int found) {
 #if 0
                         gloop::fs::munmap(loop, ptr_row_db, 0, [=](gloop::DeviceLoop* loop, int error) {
                             if(error)
@@ -180,7 +189,7 @@ void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int da
                                     callback(loop, found);
                                     return;
                                 }
-                                process_one_db(loop, context, data_idx, db_idx + 1, out_count, start_offset, num_db_files, total_rows, src_row_len, callback);
+                                process_one_db(loop, context, data_idx, db_idx + 1, out_count, callback);
                             });
                         });
 #else
@@ -189,7 +198,7 @@ void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int da
                                 callback(loop, found);
                                 return;
                             }
-                            process_one_db(loop, context, data_idx, db_idx + 1, out_count, start_offset, num_db_files, total_rows, src_row_len, callback);
+                            process_one_db(loop, context, data_idx, db_idx + 1, out_count, callback);
                         });
 #endif
                     });
@@ -202,25 +211,29 @@ void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int da
 }
 
 template<typename Callback>
-void __device__ process_one_data(gloop::DeviceLoop* loop, Context* context, size_t data_idx, int out_count, int start, int rows_to_process, int zfd_src, int src_row_len, int start_offset, int total_rows, int num_db_files, Callback callback)
+void __device__ process_one_data(gloop::DeviceLoop* loop, Context* context, size_t data_idx, int out_count, int start, int rows_to_process, Callback callback)
 {
     if (data_idx < start + rows_to_process) {
-        gloop::fs::read(loop, zfd_src, data_idx*src_row_len<<2, GREP_ROW_WIDTH*4, (uchar*)context->input_img_row, [=](gloop::DeviceLoop* loop, int bytes_read) {
+        BEGIN_SINGLE_THREAD
+            printf("data %u\n", (unsigned)data_idx);
+        END_SINGLE_THREAD
+        gloop::fs::read(loop, context->zfd_src, data_idx*context->src_row_len<<2, GREP_ROW_WIDTH*4, (uchar*)context->input_img_row, [=](gloop::DeviceLoop* loop, int bytes_read) {
             if (bytes_read!=GREP_ROW_WIDTH*4) GPU_ERROR("Failed to read src");
 
+
             int db_idx = 0;
-            process_one_db(loop, context, data_idx, db_idx, out_count, start_offset, num_db_files, total_rows, src_row_len, [=] (gloop::DeviceLoop* loop, int found) {
-                if (!found) {
-                    BEGIN_SINGLE_THREAD
-                    {
-                        context->out_buffer[out_count]=data_idx+start_offset*total_rows;
+            process_one_db(loop, context, data_idx, db_idx, out_count, [=] (gloop::DeviceLoop* loop, int found) {
+                BEGIN_SINGLE_THREAD
+                {
+                    if (!found) {
+                        context->out_buffer[out_count]=data_idx+context->start_offset*context->total_rows;
                         context->out_buffer[out_count+1]=-1;
                         context->out_buffer[out_count+2]=-1;
                     }
-                    END_SINGLE_THREAD
                 }
+                END_SINGLE_THREAD
                 // Increment
-                process_one_data(loop, context, data_idx + 1, out_count + 3, start, rows_to_process, zfd_src, src_row_len, start_offset, total_rows, num_db_files, callback);
+                process_one_data(loop, context, data_idx + 1, out_count + 3, start, rows_to_process, callback);
             });
         });
         return;
@@ -241,14 +254,14 @@ void __device__ img_gpu(
             if (zfd_src<0) GPU_ERROR("Failed to open input");
 
             gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop* loop, int in_size) {
-                __shared__ int total_rows;
+                int total_rows;
                 total_rows=in_size/src_row_len>>2;
 
-                __shared__ int rows_per_chunk;
+                int rows_per_chunk;
                 rows_per_chunk=total_rows/gridDim.x;
                 if (rows_per_chunk==0) rows_per_chunk=1;
 
-                __shared__ int rows_to_process;
+                int rows_to_process;
                 rows_to_process=rows_per_chunk;
 
                 if (blockIdx.x==gridDim.x-1) rows_to_process=(total_rows - blockIdx.x*rows_per_chunk);
@@ -266,8 +279,13 @@ void __device__ img_gpu(
                     context->db_files[4] = out6;
                     context->db_files[5] = out7;
                     context->match_threshold = match_threshold;
+                    context->start_offset = start_offset;
+                    context->total_rows = total_rows;
+                    context->src_row_len = src_row_len;
+                    context->num_db_files = num_db_files;
                     context->ph_input = {nullptr,0};
                     context->ph_db = {nullptr,0};
+                    context->zfd_src = zfd_src;
 
                     toInit=init_lock.try_wait();
                     if (toInit == 1)
@@ -287,11 +305,9 @@ void __device__ img_gpu(
                    5. write to output
                    */
                 int out_count=0;
-                volatile float* ptr_row_in=NULL;
-                int found=0;
                 int start=blockIdx.x*rows_per_chunk;
 
-                process_one_data(loop, context, blockIdx.x*rows_per_chunk, out_count, start, rows_to_process, zfd_src, src_row_len, start_offset, total_rows, num_db_files, [=] (gloop::DeviceLoop* loop) {
+                process_one_data(loop, context, blockIdx.x*rows_per_chunk, out_count, start, rows_to_process, [=] (gloop::DeviceLoop* loop) {
                     //we are done.
                     //write the output and finish
                     //if (gmunmap(ptr_row_in,0)) GPU_ERROR("Failed to unmap input");
@@ -316,7 +332,8 @@ void __device__ img_gpu(
 
 void init_device_app()
 {
-    GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,1<<30));
+    GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitPrintfFifoSize, 1<<25));
+    GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, 1<<30));
 }
 
 void init_app()

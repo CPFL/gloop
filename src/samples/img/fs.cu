@@ -88,6 +88,11 @@ int global_devicenum;
 
 int main( int argc, char** argv)
 {
+    char* threshold=getenv("GREPTH");
+    match_threshold=0.01;
+    if(threshold!=0) match_threshold=strtof(threshold,NULL);
+    fprintf(stderr,"Match threshold is %f\n",match_threshold);
+
 	if(argc<5) {
 		fprintf(stderr,"<id> <blocks> <threads> f1 f2 ... f_#files\n");
 		return -1;
@@ -130,7 +135,7 @@ int main( int argc, char** argv)
             img_gpu(loop, src, src_row_len, num_db_files, match_threshold, start_offset, out, out2, out3, out4, out5, out6, out7);
         },
         d_filenames[0],
-        GREP_ROW_WIDTH, num_files - 2, match_threshold, global_devicenum,
+        GREP_ROW_WIDTH, num_files - 2, match_threshold, 0,
         d_filenames[1],
         d_filenames[2], // db0
         d_filenames[3],d_filenames[4],
