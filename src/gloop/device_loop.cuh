@@ -40,8 +40,8 @@ namespace gloop {
 class DeviceLoop {
 public:
     enum ResumeTag { Resume };
-    __device__ void initialize(volatile uint32_t* signal, DeviceContext, size_t size, ResumeTag);
-    __device__ void initialize(volatile uint32_t* signal, DeviceContext, size_t size);
+    __device__ void initialize(volatile uint32_t* signal, DeviceContext, dim3 blockIdx, ResumeTag);
+    __device__ void initialize(volatile uint32_t* signal, DeviceContext, dim3 blockIdx);
 
     template<typename Lambda>
     inline __device__ IPC* enqueueIPC(Lambda lambda);
@@ -53,6 +53,11 @@ public:
     __device__ void freeOnePage(void* page);
 
     inline __device__ void drain();
+
+    // GLOOP_ALWAYS_INLINE __device__ auto blockIdx() -> uint3 const { return m_blockIdx; }
+    GLOOP_ALWAYS_INLINE __device__ auto blockIdxX() -> unsigned const { return m_blockIdx.x; }
+    GLOOP_ALWAYS_INLINE __device__ auto blockIdxY() -> unsigned const { return m_blockIdx.y; }
+    GLOOP_ALWAYS_INLINE __device__ auto blockIdxZ() -> unsigned const { return m_blockIdx.z; }
 
 private:
     template<typename Lambda>
@@ -84,6 +89,7 @@ private:
     DeviceCallback* m_slots;
     DeviceContext::DeviceLoopControl m_control;
     volatile uint32_t* m_signal;
+    uint3 m_blockIdx;
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     uint32_t m_scratchIndex1;
     uint32_t m_scratchIndex2;

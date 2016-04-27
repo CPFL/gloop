@@ -33,7 +33,7 @@ namespace gloop {
 // Initialize a device loop per thread block.
 __device__ __shared__ DeviceLoop sharedDeviceLoop;
 
-__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, size_t size)
+__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, dim3 blockIdx)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
@@ -42,17 +42,17 @@ __device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext 
     m_slots = reinterpret_cast<DeviceCallback*>(&context()->slots);
     m_control.initialize();
     m_signal = signal;
+    m_blockIdx = blockIdx;
 
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     m_scratchIndex1 = invalidPosition();
     m_scratchIndex2 = invalidPosition();
 #endif
-    GPU_ASSERT(size >= GLOOP_SHARED_SLOT_SIZE);
 }
 
-__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, size_t size, ResumeTag)
+__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, dim3 blockIdx, ResumeTag)
 {
-    initialize(signal, deviceContext, size);
+    initialize(signal, deviceContext, blockIdx);
     resume();
 }
 

@@ -366,7 +366,7 @@ bool HostLoop::handleIO(IPC* ipc, request::Request req)
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
-            // GLOOP_DATA_LOG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
+            GLOOP_DATA_LOG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
 
             CopyWork* copyWork = acquireCopyWork();
             assert(req.u.read.count <= copyWork->hostMemory().size());
