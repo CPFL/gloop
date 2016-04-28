@@ -123,10 +123,10 @@ GLOOP_ALWAYS_INLINE __device__ float inner_product( volatile float* a, volatile 
 
 GLOOP_ALWAYS_INLINE __device__ bool match(volatile float* a, volatile float* b, int size, float match_threshold, int id)
 {
-    float result = sqrt(inner_product(a,b,size));
-    BEGIN_SINGLE_THREAD
-        printf("%d %d %f %d\n", (int)id, (int)(result < match_threshold), (float)result, (int)size);
-    END_SINGLE_THREAD
+//     float result = sqrt(inner_product(a,b,size));
+//     BEGIN_SINGLE_THREAD
+//         // printf("%d %d %f %d\n", (int)id, (int)(result < match_threshold), (float)result, (int)size);
+//     END_SINGLE_THREAD
     return sqrt(inner_product(a,b,size)) < match_threshold;
 }
 
@@ -176,9 +176,8 @@ void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int da
                 size_t db_rows=(db_size/context->src_row_len)>>2;
 
                 get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, 0, db_size, zfd_db, PROT_READ | PROT_WRITE, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db) {
-                    int _cursor = 0;
 
-                    process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, _cursor, db_rows, ptr_row_db, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db, int found) {
+                    process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, 0, db_rows, ptr_row_db, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db, int found) {
 #if 0
                         gloop::fs::munmap(loop, ptr_row_db, 0, [=](gloop::DeviceLoop* loop, int error) {
                             if(error)
@@ -193,6 +192,7 @@ void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int da
                             });
                         });
 #else
+                        context->ph_db.file_offset=0;
                         gloop::fs::close(loop, zfd_db, [=](gloop::DeviceLoop* loop, int error) {
                             if (found) {
                                 callback(loop, found);
@@ -211,12 +211,12 @@ void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int da
 }
 
 template<typename Callback>
-void __device__ process_one_data(gloop::DeviceLoop* loop, Context* context, size_t data_idx, int out_count, int start, int rows_to_process, Callback callback)
+void __device__ process_one_data(gloop::DeviceLoop* loop, Context* context, size_t data_idx, int out_count, int limit, Callback callback)
 {
-    if (data_idx < start + rows_to_process) {
-        BEGIN_SINGLE_THREAD
-            printf("data %u\n", (unsigned)data_idx);
-        END_SINGLE_THREAD
+    if (data_idx < limit) {
+//         BEGIN_SINGLE_THREAD
+//             // printf("data %u\n", (unsigned)data_idx);
+//         END_SINGLE_THREAD
         gloop::fs::read(loop, context->zfd_src, data_idx*context->src_row_len<<2, GREP_ROW_WIDTH*4, (uchar*)context->input_img_row, [=](gloop::DeviceLoop* loop, int bytes_read) {
             if (bytes_read!=GREP_ROW_WIDTH*4) GPU_ERROR("Failed to read src");
 
@@ -233,7 +233,7 @@ void __device__ process_one_data(gloop::DeviceLoop* loop, Context* context, size
                 }
                 END_SINGLE_THREAD
                 // Increment
-                process_one_data(loop, context, data_idx + 1, out_count + 3, start, rows_to_process, callback);
+                process_one_data(loop, context, data_idx + 1, out_count + 3, limit, callback);
             });
         });
         return;
@@ -255,7 +255,7 @@ void __device__ img_gpu(
 
             gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop* loop, int in_size) {
                 int total_rows;
-                total_rows=in_size/src_row_len>>2;
+                total_rows=(in_size/src_row_len)>>2;
 
                 int rows_per_chunk;
                 rows_per_chunk=total_rows/gridDim.x;
@@ -307,7 +307,7 @@ void __device__ img_gpu(
                 int out_count=0;
                 int start=blockIdx.x*rows_per_chunk;
 
-                process_one_data(loop, context, blockIdx.x*rows_per_chunk, out_count, start, rows_to_process, [=] (gloop::DeviceLoop* loop) {
+                process_one_data(loop, context, start, out_count, start + rows_to_process, [=] (gloop::DeviceLoop* loop) {
                     //we are done.
                     //write the output and finish
                     //if (gmunmap(ptr_row_in,0)) GPU_ERROR("Failed to unmap input");
