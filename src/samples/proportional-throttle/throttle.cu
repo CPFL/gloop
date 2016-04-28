@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
         uint32_t pipelinePageCount = 0;
         dim3 blocks(nblocks);
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0, prop);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks, pipelinePageCount);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks, blocks, pipelinePageCount);
 
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());

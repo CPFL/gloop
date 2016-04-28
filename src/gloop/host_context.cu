@@ -32,18 +32,24 @@
 
 namespace gloop {
 
-std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 blocks, uint32_t pageCount)
+static bool isZeroBlocks(dim3 blocks)
 {
-    std::unique_ptr<HostContext> hostContext(new HostContext(hostLoop, blocks, pageCount));
+    return blocks.x == 0 && blocks.y == 0 && blocks.z == 0;
+}
+
+std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 logicalBlocks, dim3 physicalBlocks, uint32_t pageCount)
+{
+    std::unique_ptr<HostContext> hostContext(new HostContext(hostLoop, logicalBlocks, physicalBlocks, pageCount));
     if (!hostContext->initialize(hostLoop)) {
         return nullptr;
     }
     return hostContext;
 }
 
-HostContext::HostContext(HostLoop& hostLoop, dim3 blocks, uint32_t pageCount)
+HostContext::HostContext(HostLoop& hostLoop, dim3 logicalBlocks, dim3 physicalBlocks, uint32_t pageCount)
     : m_hostLoop(hostLoop)
-    , m_blocks(blocks)
+    , m_logicalBlocks(logicalBlocks)
+    , m_physicalBlocks(isZeroBlocks(physicalBlocks) ? logicalBlocks : physicalBlocks)
     , m_pageCount(pageCount)
 {
 }
@@ -68,7 +74,7 @@ bool HostContext::initialize(HostLoop& hostLoop)
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
 
-        m_ipc = make_unique<IPC[]>(m_blocks.x * m_blocks.y * GLOOP_SHARED_SLOT_SIZE);
+        m_ipc = make_unique<IPC[]>(m_physicalBlocks.x * m_physicalBlocks.y * GLOOP_SHARED_SLOT_SIZE);
         m_pending = MappedMemory::create(sizeof(uint32_t));
 
         m_context.killClock = hostLoop.killClock();
@@ -76,9 +82,9 @@ bool HostContext::initialize(HostLoop& hostLoop)
 
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.pending, m_pending->mappedPointer(), 0));
 
-        GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceContext::PerBlockContext) * m_blocks.x * m_blocks.y));
+        GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceContext::PerBlockContext) * m_physicalBlocks.x * m_physicalBlocks.y));
         if (m_pageCount) {
-            GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceContext::OnePage) * m_pageCount * m_blocks.x * m_blocks.y));
+            GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceContext::OnePage) * m_pageCount * m_physicalBlocks.x * m_physicalBlocks.y));
         }
     }
     return true;

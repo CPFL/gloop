@@ -43,11 +43,11 @@ GLOOP_NONCOPYABLE(HostContext);
 public:
     __host__ ~HostContext();
 
-    __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 blocks, uint32_t pageCount = GLOOP_SHARED_PAGE_COUNT);
+    __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 logicalBlocks, dim3 physicalBlocks = { }, uint32_t pageCount = GLOOP_SHARED_PAGE_COUNT);
 
     __host__ DeviceContext deviceContext() { return m_context; }
 
-    dim3 blocks() const { return m_blocks; }
+    dim3 blocks() const { return m_logicalBlocks; }
 
     template<typename Callback>
     __host__ bool tryPeekRequest(const Callback& callback);
@@ -74,7 +74,7 @@ public:
     }
 
 private:
-    HostContext(HostLoop& hostLoop, dim3 blocks, uint32_t pageCount);
+    HostContext(HostLoop& hostLoop, dim3 logicalBlocks, dim3 physicalBlocks, uint32_t pageCount);
     bool initialize(HostLoop&);
 
     HostLoop& m_hostLoop;
@@ -83,7 +83,8 @@ private:
     std::unique_ptr<IPC[]> m_ipc { nullptr };
     std::shared_ptr<MappedMemory> m_pending { nullptr };
     DeviceContext m_context { nullptr };
-    dim3 m_blocks { };
+    dim3 m_logicalBlocks { };
+    dim3 m_physicalBlocks { };
     uint32_t m_pageCount { };
     std::vector<IPC*> m_exitRequired;
     std::unordered_set<std::shared_ptr<MmapResult>> m_unmapRequests;
@@ -94,7 +95,7 @@ template<typename Callback>
 inline bool HostContext::tryPeekRequest(const Callback& callback)
 {
     bool found = false;
-    int blocks = m_blocks.x * m_blocks.y;
+    int blocks = m_logicalBlocks.x * m_logicalBlocks.y;
     for (int i = 0; i < blocks; ++i) {
         for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
             auto& channel = m_ipc[i * GLOOP_SHARED_SLOT_SIZE + j];
