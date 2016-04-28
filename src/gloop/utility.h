@@ -76,6 +76,7 @@
 #define GLOOP_TID() (threadIdx.x + threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y)
 #define GLOOP_TMAX() (blockDim.x * blockDim.y * blockDim.z)
 #define GLOOP_BID() (blockIdx.x + blockIdx.y * gridDim.x)
+#define GLOOP_BMAX() (gridDim.y * gridDim.x)
 
 // #define GLOOP_ERROR(str) do { __assert_fail(str,__FILE__,__LINE__,__func__); } while (0)
 #define GLOOP_ERROR(str) GLOOP_ASSERT(0)

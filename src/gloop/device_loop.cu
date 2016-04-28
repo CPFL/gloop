@@ -33,16 +33,14 @@ namespace gloop {
 // Initialize a device loop per thread block.
 __device__ __shared__ DeviceLoop sharedDeviceLoop;
 
-__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, dim3 blockIdx)
+__device__ void DeviceLoop::initializeImpl(volatile uint32_t* signal, DeviceContext deviceContext)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
     m_deviceContext = deviceContext;
     m_channels = deviceContext.channels + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
     m_slots = reinterpret_cast<DeviceCallback*>(&context()->slots);
-    m_control.initialize();
     m_signal = signal;
-    m_blockIdx = blockIdx;
 
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     m_scratchIndex1 = invalidPosition();
@@ -50,9 +48,15 @@ __device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext 
 #endif
 }
 
-__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, dim3 blockIdx, ResumeTag)
+__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext)
 {
-    initialize(signal, deviceContext, blockIdx);
+    initializeImpl(signal, deviceContext);
+    m_control.initialize(deviceContext.logicalBlocks);
+}
+
+__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, ResumeTag)
+{
+    initializeImpl(signal, deviceContext);
     resume();
 }
 

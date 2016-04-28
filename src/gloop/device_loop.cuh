@@ -40,8 +40,8 @@ namespace gloop {
 class DeviceLoop {
 public:
     enum ResumeTag { Resume };
-    __device__ void initialize(volatile uint32_t* signal, DeviceContext, dim3 blockIdx, ResumeTag);
-    __device__ void initialize(volatile uint32_t* signal, DeviceContext, dim3 blockIdx);
+    __device__ void initialize(volatile uint32_t* signal, DeviceContext, ResumeTag);
+    __device__ void initialize(volatile uint32_t* signal, DeviceContext);
 
     template<typename Lambda>
     inline __device__ IPC* enqueueIPC(Lambda lambda);
@@ -60,6 +60,8 @@ public:
     GLOOP_ALWAYS_INLINE __device__ auto blockIdxZ() -> unsigned const { return m_blockIdx.z; }
 
 private:
+    __device__ void initializeImpl(volatile uint32_t* signal, DeviceContext);
+
     template<typename Lambda>
     inline __device__ uint32_t enqueueSleep(Lambda lambda);
 
@@ -230,7 +232,7 @@ __device__ uint32_t DeviceLoop::allocate(Lambda lambda)
 
 __device__ void DeviceLoop::drain()
 {
-    __shared__ uint64_t start;  // Do not use clock64().
+    __shared__ uint64_t start;
     __shared__ uint64_t killClock;
     __shared__ uint32_t position;
     __shared__ DeviceCallback* callback;

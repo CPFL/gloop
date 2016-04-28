@@ -51,7 +51,7 @@ inline __global__ void launch(volatile uint32_t* signal, DeviceContext context, 
 {
     BEGIN_SINGLE_THREAD
     {
-        sharedDeviceLoop.initialize(signal, context, blockIdx);
+        sharedDeviceLoop.initialize(signal, context);
     }
     END_SINGLE_THREAD
     // __threadfence_system();
@@ -63,7 +63,7 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context)
 {
     BEGIN_SINGLE_THREAD
     {
-        sharedDeviceLoop.initialize(signal, context, blockIdx, DeviceLoop::Resume);
+        sharedDeviceLoop.initialize(signal, context, DeviceLoop::Resume);
     }
     END_SINGLE_THREAD
     // __threadfence_system();
