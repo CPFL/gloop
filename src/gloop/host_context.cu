@@ -37,11 +37,6 @@ static bool isZeroBlocks(dim3 blocks)
     return (blocks.x * blocks.y) == 0;
 }
 
-static uint32_t blocksToUint32(dim3 blocks)
-{
-    return blocks.x * blocks.y;
-}
-
 std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 logicalBlocks, dim3 physicalBlocks, uint32_t pageCount)
 {
     std::unique_ptr<HostContext> hostContext(new HostContext(hostLoop, logicalBlocks, physicalBlocks, pageCount));
@@ -83,7 +78,7 @@ bool HostContext::initialize(HostLoop& hostLoop)
         m_pending = MappedMemory::create(sizeof(uint32_t));
 
         m_context.killClock = hostLoop.killClock();
-        m_context.logicalBlocks = blocksToUint32(m_logicalBlocks);
+        m_context.logicalBlocks = m_logicalBlocks;
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.channels, m_ipc.get(), 0));
 
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.pending, m_pending->mappedPointer(), 0));

@@ -39,7 +39,7 @@ struct DeviceContext {
             return ((1U << GLOOP_SHARED_SLOT_SIZE) - 1);
         }
 
-        __host__ __device__ void initialize(uint32_t logicalBlocks)
+        __host__ __device__ void initialize(uint3 logicalBlocksDim)
         {
             freePages = (1U << GLOOP_SHARED_PAGE_COUNT) - 1;
             freeSlots = allFilledFreeSlots();
@@ -47,7 +47,8 @@ struct DeviceContext {
             wakeupSlots = 0;
             pageSleepSlots = 0;
 
-            // Let's calculate the logical blocks per physical blocks.
+            // Calculate the logical blocks per physical blocks.
+            uint32_t logicalBlocks = logicalBlocksDim.x * logicalBlocksDim.y;
             uint32_t physicalBlocks = GLOOP_BMAX();
             uint32_t count = logicalBlocks / physicalBlocks;
             uint32_t remaining = logicalBlocks % physicalBlocks;
@@ -86,7 +87,7 @@ struct DeviceContext {
     OnePage* pages;
     uint32_t* pending;
     uint64_t killClock;
-    uint32_t logicalBlocks;
+    uint3 logicalBlocks;
 };
 
 }  // namespace gloop

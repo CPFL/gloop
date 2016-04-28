@@ -104,4 +104,75 @@ __device__ void DeviceLoop::freeOnePage(void* aPage)
     }
 }
 
+__device__ void DeviceLoop::drain()
+{
+    __shared__ uint64_t start;
+    __shared__ uint64_t killClock;
+    __shared__ uint32_t position;
+    __shared__ DeviceCallback* callback;
+    __shared__ volatile request::Request* request;
+
+    BEGIN_SINGLE_THREAD
+    {
+        killClock = m_deviceContext.killClock;
+        start = clock64();
+        callback = nullptr;
+        position = invalidPosition();
+    }
+    END_SINGLE_THREAD
+
+    while (position != shouldExitPosition()) {
+        if (callback) {
+            // __threadfence_system();  // IPC and Callback.
+            // __threadfence_block();
+            // __syncthreads();  // FIXME
+
+            // printf("%llu %u\n", (unsigned long long)(clock64() - start), (unsigned)position);
+            // One shot function always destroys the function and syncs threads.
+            (*callback)(this, request);
+
+            // __syncthreads();  // FIXME
+            // __threadfence_block();
+        }
+
+        // __threadfence_block();
+        BEGIN_SINGLE_THREAD
+        {
+            // 100 - 130 clock
+            if (callback) {
+                deallocate(position);
+            }
+
+#if 1
+            // 100 clock
+            uint64_t now = clock64();
+            if (((now - start) > killClock)) {
+                start = now;
+                if (gloop::readNoCache<uint32_t>(m_signal) != 0) {
+                    position = shouldExitPosition();
+                    goto next;
+                }
+            }
+#endif
+
+            // 200 clock.
+            callback = nullptr;
+            position = dequeue();
+            if (isValidPosition(position)) {
+                callback = slots(position);
+                request = (channel() + position)->request();
+            }
+next:
+        }
+        END_SINGLE_THREAD
+    }
+    // __threadfence_block();
+    BEGIN_SINGLE_THREAD
+    {
+        suspend();
+    }
+    END_SINGLE_THREAD
+    // __threadfence_block();
+}
+
 }  // namespace gloop

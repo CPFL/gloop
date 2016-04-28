@@ -52,12 +52,11 @@ public:
     inline __device__ void allocOnePage(Lambda lambda);
     __device__ void freeOnePage(void* page);
 
-    inline __device__ void drain();
+    __device__ void drain();
 
-    // GLOOP_ALWAYS_INLINE __device__ auto blockIdx() -> uint3 const { return m_blockIdx; }
-    GLOOP_ALWAYS_INLINE __device__ auto blockIdxX() -> unsigned const { return m_blockIdx.x; }
-    GLOOP_ALWAYS_INLINE __device__ auto blockIdxY() -> unsigned const { return m_blockIdx.y; }
-    GLOOP_ALWAYS_INLINE __device__ auto blockIdxZ() -> unsigned const { return m_blockIdx.z; }
+    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() -> uint3 const { return m_logicalBlockIdx; }
+    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxX() -> unsigned const { return m_logicalBlockIdx.x; }
+    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxY() -> unsigned const { return m_logicalBlockIdx.y; }
 
 private:
     __device__ void initializeImpl(volatile uint32_t* signal, DeviceContext);
@@ -91,7 +90,7 @@ private:
     DeviceCallback* m_slots;
     DeviceContext::DeviceLoopControl m_control;
     volatile uint32_t* m_signal;
-    uint3 m_blockIdx;
+    uint3 m_logicalBlockIdx;
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     uint32_t m_scratchIndex1;
     uint32_t m_scratchIndex2;
@@ -228,77 +227,6 @@ __device__ uint32_t DeviceLoop::allocate(Lambda lambda)
     new (target) DeviceCallback(lambda);
 
     return pos;
-}
-
-__device__ void DeviceLoop::drain()
-{
-    __shared__ uint64_t start;
-    __shared__ uint64_t killClock;
-    __shared__ uint32_t position;
-    __shared__ DeviceCallback* callback;
-    __shared__ volatile request::Request* request;
-
-    BEGIN_SINGLE_THREAD
-    {
-        killClock = m_deviceContext.killClock;
-        start = clock64();
-        callback = nullptr;
-        position = invalidPosition();
-    }
-    END_SINGLE_THREAD
-
-    while (position != shouldExitPosition()) {
-        if (callback) {
-            // __threadfence_system();  // IPC and Callback.
-            // __threadfence_block();
-            // __syncthreads();  // FIXME
-
-            // printf("%llu %u\n", (unsigned long long)(clock64() - start), (unsigned)position);
-            // One shot function always destroys the function and syncs threads.
-            (*callback)(this, request);
-
-            // __syncthreads();  // FIXME
-            // __threadfence_block();
-        }
-
-        // __threadfence_block();
-        BEGIN_SINGLE_THREAD
-        {
-            // 100 - 130 clock
-            if (callback) {
-                deallocate(position);
-            }
-
-#if 1
-            // 100 clock
-            uint64_t now = clock64();
-            if (((now - start) > killClock)) {
-                start = now;
-                if (gloop::readNoCache<uint32_t>(m_signal) != 0) {
-                    position = shouldExitPosition();
-                    goto next;
-                }
-            }
-#endif
-
-            // 200 clock.
-            callback = nullptr;
-            position = dequeue();
-            if (isValidPosition(position)) {
-                callback = slots(position);
-                request = (channel() + position)->request();
-            }
-next:
-        }
-        END_SINGLE_THREAD
-    }
-    // __threadfence_block();
-    BEGIN_SINGLE_THREAD
-    {
-        suspend();
-    }
-    END_SINGLE_THREAD
-    // __threadfence_block();
 }
 
 __device__ auto DeviceLoop::dequeue() -> uint32_t

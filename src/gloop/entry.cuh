@@ -47,21 +47,19 @@ inline void tryLaunch(const Lambda& lambda)
 typedef std::aligned_storage<sizeof(DeviceLoop), alignof(DeviceLoop)>::type UninitializedDeviceLoopStorage;
 
 template<typename DeviceLambda, class... Args>
-inline __global__ void launch(volatile uint32_t* signal, DeviceContext context, DeviceLambda callback, Args... args)
+inline __global__ void launch(volatile uint32_t* signal, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     BEGIN_SINGLE_THREAD
     {
         sharedDeviceLoop.initialize(signal, context);
-        sharedDeviceLoop.enqueueLater([=](DeviceLoop* loop, volatile request::Request*) {
-            callback(loop, args...);
-        });
     }
     END_SINGLE_THREAD
+    callback(&sharedDeviceLoop, std::forward<Args>(args)...);
     sharedDeviceLoop.drain();
 }
 
 template<typename DeviceLambda, class... Args>
-inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, DeviceLambda callback, Args... args)
+inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     BEGIN_SINGLE_THREAD
     {
