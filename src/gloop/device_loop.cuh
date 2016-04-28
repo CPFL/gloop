@@ -54,13 +54,13 @@ public:
 
     inline __device__ int drain();
 
-    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() -> uint2 const { return m_control.logicalBlockIdx; }
-    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxX() -> unsigned const { return m_control.logicalBlockIdx.x; }
-    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxY() -> unsigned const { return m_control.logicalBlockIdx.y; }
+    // GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() -> uint2 const { return m_control.logicalBlockIdx; }
+    // GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxX() -> unsigned const { return m_control.logicalBlockIdx.x; }
+    // GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxY() -> unsigned const { return m_control.logicalBlockIdx.y; }
 
-    GLOOP_ALWAYS_INLINE __device__ auto logicalGridDim() -> uint2 const { return m_control.logicalGridDim; }
-    GLOOP_ALWAYS_INLINE __device__ auto logicalGridDimX() -> unsigned const { return m_control.logicalGridDim.x; }
-    GLOOP_ALWAYS_INLINE __device__ auto logicalGridDimY() -> unsigned const { return m_control.logicalGridDim.y; }
+    // GLOOP_ALWAYS_INLINE __device__ auto logicalGridDim() -> uint2 const { return m_control.logicalGridDim; }
+    // GLOOP_ALWAYS_INLINE __device__ auto logicalGridDimX() -> unsigned const { return m_control.logicalGridDim.x; }
+    // GLOOP_ALWAYS_INLINE __device__ auto logicalGridDimY() -> unsigned const { return m_control.logicalGridDim.y; }
 
 private:
     __device__ void initializeImpl(volatile uint32_t* signal, DeviceContext);
@@ -104,6 +104,8 @@ private:
 static_assert(std::is_trivially_destructible<DeviceLoop>::value, "DeviceLoop is trivially destructible");
 
 extern __device__ __shared__ DeviceLoop sharedDeviceLoop;
+extern __device__ __shared__ uint2 logicalGridDim;
+extern __device__ __shared__ uint2 logicalBlockIdx;
 
 __device__ uint32_t DeviceLoop::position(IPC* ipc)
 {

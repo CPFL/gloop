@@ -32,6 +32,8 @@ namespace gloop {
 
 // Initialize a device loop per thread block.
 __device__ __shared__ DeviceLoop sharedDeviceLoop;
+__device__ __shared__ uint2 logicalGridDim;
+__device__ __shared__ uint2 logicalBlockIdx;
 
 __device__ void DeviceLoop::initializeImpl(volatile uint32_t* signal, DeviceContext deviceContext)
 {
@@ -52,12 +54,16 @@ __device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext 
 {
     initializeImpl(signal, deviceContext);
     m_control.initialize(deviceContext.logicalBlocks);
+    logicalGridDim = m_control.logicalGridDim;
+    logicalBlockIdx = m_control.logicalBlockIdx;
 }
 
 __device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, ResumeTag)
 {
     initializeImpl(signal, deviceContext);
     resume();
+    logicalGridDim = m_control.logicalGridDim;
+    logicalBlockIdx = m_control.logicalBlockIdx;
     return m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
 }
 
@@ -80,6 +86,7 @@ __device__ int DeviceLoop::suspend()
                 m_control.logicalBlockIdx.x = 0;
                 m_control.logicalBlockIdx.y += 1;
             }
+            logicalBlockIdx = m_control.logicalBlockIdx;
         } else {
             suspended = 1;
         }
