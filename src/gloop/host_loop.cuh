@@ -66,7 +66,7 @@ public:
     static std::unique_ptr<HostLoop> create(int deviceNumber, uint64_t costPerBit = 1);
 
     template<typename DeviceLambda, class... Args>
-    __host__ void launch(HostContext& context, dim3 threads, const DeviceLambda& callback, Args... args);
+    __host__ void launch(HostContext& context, dim3 threads, DeviceLambda callback, Args... args);
 
     class KernelLock {
     GLOOP_NONCOPYABLE(KernelLock);
@@ -116,7 +116,8 @@ private:
     bool handleIO(IPC*, request::Request);
     void send(Command);
 
-    void resume();
+    template<typename DeviceLambda, typename... Args>
+    void resume(DeviceLambda callback, Args... args);
 
     void lockLaunch();
     void unlockLaunch(bool acquireLockSoon = false);
@@ -162,7 +163,7 @@ private:
 };
 
 template<typename DeviceLambda, class... Args>
-inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, const DeviceLambda& callback, Args... args)
+inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, DeviceLambda callback, Args... args)
 {
     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
     benchmark->begin();
@@ -175,7 +176,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
                 // GLOOP_DATA_LOG("acquire for launch\n");
                 prepareForLaunch();
                 while (true) {
-                    gloop::launch<<<hostContext.physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, std::forward<Args>(args)...);
+                    gloop::launch<<<hostContext.physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, args...);
                     cudaError_t error = cudaGetLastError();
                     if (cudaErrorLaunchOutOfResources == error) {
                         continue;
@@ -187,7 +188,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
             }
 
             if (m_currentContext->pending()) {
-                resume();
+                resume(callback, args...);
                 return;
             }
             derefKernel();
@@ -195,6 +196,39 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, co
         drain();
     }
     epilogue();
+}
+
+template<typename DeviceLambda, typename... Args>
+inline __host__ void HostLoop::resume(DeviceLambda callback, Args... args)
+{
+    // GLOOP_DEBUG("resume\n");
+    m_kernelService.post(std::bind([=] (Args... args) {
+        bool acquireLockSoon = false;
+        {
+            m_kernelLock.lock();
+            // GLOOP_DATA_LOG("acquire for resume\n");
+            prepareForLaunch();
+
+            while (true) {
+                gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext(), callback, args...);
+                cudaError_t error = cudaGetLastError();
+                if (cudaErrorLaunchOutOfResources == error) {
+                    continue;
+                }
+                GLOOP_CUDA_SAFE_CALL(error);
+                break;
+            }
+
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
+            acquireLockSoon = m_currentContext->pending();
+            m_kernelLock.unlock(acquireLockSoon);
+        }
+        if (acquireLockSoon) {
+            resume(callback, args...);
+            return;
+        }
+        derefKernel();
+    }, std::forward<Args>(args)...));
 }
 
 inline void HostLoop::lockLaunch()

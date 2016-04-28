@@ -262,30 +262,6 @@ void HostLoop::prepareForLaunch()
     syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 0);
 }
 
-void HostLoop::resume()
-{
-    // GLOOP_DEBUG("resume\n");
-    m_kernelService.post([&] {
-        bool acquireLockSoon = false;
-        {
-            m_kernelLock.lock();
-            // GLOOP_DATA_LOG("acquire for resume\n");
-            prepareForLaunch();
-            tryLaunch([&] {
-                gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext());
-            });
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
-            acquireLockSoon = m_currentContext->pending();
-            m_kernelLock.unlock(acquireLockSoon);
-        }
-        if (acquireLockSoon) {
-            resume();
-            return;
-        }
-        derefKernel();
-    });
-}
-
 void HostLoop::prologue(HostContext& hostContext, dim3 threads)
 {
     m_threads = threads;
