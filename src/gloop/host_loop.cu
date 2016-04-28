@@ -272,7 +272,7 @@ void HostLoop::resume()
             // GLOOP_DATA_LOG("acquire for resume\n");
             prepareForLaunch();
             tryLaunch([&] {
-                gloop::resume<<<m_currentContext->blocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext());
+                gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext());
             });
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             acquireLockSoon = m_currentContext->pending();

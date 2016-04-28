@@ -53,7 +53,6 @@ add_library(gloop STATIC
     dump_memory.cu
     fs.cu
     io.cu
-    ipc.cu
     mapped_memory.cu
     monitor_utility.cc
     net.cu

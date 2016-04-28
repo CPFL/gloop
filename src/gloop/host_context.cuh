@@ -47,7 +47,8 @@ public:
 
     __host__ DeviceContext deviceContext() { return m_context; }
 
-    dim3 blocks() const { return m_logicalBlocks; }
+    dim3 logicalBlocks() const { return m_logicalBlocks; }
+    dim3 physicalBlocks() const { return m_physicalBlocks; }
 
     template<typename Callback>
     __host__ bool tryPeekRequest(const Callback& callback);
@@ -95,7 +96,7 @@ template<typename Callback>
 inline bool HostContext::tryPeekRequest(const Callback& callback)
 {
     bool found = false;
-    int blocks = m_logicalBlocks.x * m_logicalBlocks.y;
+    int blocks = m_physicalBlocks.x * m_physicalBlocks.y;
     for (int i = 0; i < blocks; ++i) {
         for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
             auto& channel = m_ipc[i * GLOOP_SHARED_SLOT_SIZE + j];
