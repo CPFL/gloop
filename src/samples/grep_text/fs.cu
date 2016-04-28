@@ -52,17 +52,18 @@ int main( int argc, char** argv)
 {
 
 
-	if(argc<5) {
-		fprintf(stderr,"<id> <blocks> <threads> f1 f2 ... f_#files\n");
+	if(argc<6) {
+		fprintf(stderr,"<id> <blocks> <physblocks> <threads> f1 f2 ... f_#files\n");
 		return -1;
 	}
 	int id=atoi(argv[1]);
 	int nblocks=atoi(argv[2]);
-	int nthreads=atoi(argv[3]);
+	int physnblocks=atoi(argv[3]);
+	int nthreads=atoi(argv[4]);
 
 	fprintf(stderr," id: %d blocks %d threads %d\n",id, nblocks, nthreads);
 
-	int num_files=argc-1-3;
+	int num_files=argc-1-4;
 	char** d_filenames=NULL;
 
 
@@ -71,21 +72,21 @@ int main( int argc, char** argv)
 
     {
         dim3 blocks(nblocks);
+        dim3 physblocks(physnblocks);
 
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks, physblocks);
 
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
             init_device_app();
             init_app();
 
-
             if (num_files>0){
                 d_filenames=(char**)malloc(sizeof(char*)*num_files);
                 for(int i=0;i<num_files;i++){
-                    d_filenames[i]=update_filename(argv[i+4]);
-                    fprintf(stderr,"file -%s\n",argv[i+4]);
+                    d_filenames[i]=update_filename(argv[i+5]);
+                    fprintf(stderr,"file -%s\n",argv[i+5]);
                 }
             }
         }

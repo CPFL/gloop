@@ -381,16 +381,14 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
 
                     if (total_words==0) GPU_ERROR("empty input");
 
-                    int words_per_chunk=total_words/gridDim.x;
+                    int words_per_chunk=total_words/gloop::logicalGridDim.x;
 
                     if (words_per_chunk==0) {
                         words_per_chunk=1;
-                        if (blockIdx.x>total_words) {
+                        if (gloop::logicalBlockIdx.x>total_words) {
                             words_per_chunk=0;
                         }
                     }
-
-
 
                     if (words_per_chunk==0) {
                         gloop::fs::close(loop, zfd_o, [=](gloop::DeviceLoop* loop, int err) {
@@ -400,11 +398,10 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                         return;
                     }
 
-
                     int data_to_process=words_per_chunk*32;
 
-                    if (blockIdx.x==gridDim.x-1)
-                        data_to_process=src_size-data_to_process*blockIdx.x;
+                    if (gloop::logicalBlockIdx.x==gloop::logicalGridDim.x-1)
+                        data_to_process=src_size-data_to_process*gloop::logicalBlockIdx.x;
 
                     __shared__ char* db_files;
                     __shared__ char* input_tmp;
@@ -445,7 +442,7 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                             db_files[db_bytes_read]='\0';
 
                             int to_read=min(data_to_process,(int)src_size);
-                            gloop::fs::read(loop, zfd_src,blockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](gloop::DeviceLoop* loop, size_t bytes_read) {
+                            gloop::fs::read(loop, zfd_src,gloop::logicalBlockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](gloop::DeviceLoop* loop, size_t bytes_read) {
                                 if (bytes_read!=to_read) GPU_ERROR("FAILED to read input");
                                 struct context ctx {
                                     zfd_src,
