@@ -62,6 +62,8 @@ public:
     // GLOOP_ALWAYS_INLINE __device__ auto logicalGridDimX() -> unsigned const { return m_control.logicalGridDim.x; }
     // GLOOP_ALWAYS_INLINE __device__ auto logicalGridDimY() -> unsigned const { return m_control.logicalGridDim.y; }
 
+    GLOOP_ALWAYS_INLINE __device__ unsigned logicalBlocksCount() const { return m_control.logicalBlocksCount; }
+
 private:
     __device__ void initializeImpl(volatile uint32_t* signal, DeviceContext);
 

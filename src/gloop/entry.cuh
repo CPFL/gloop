@@ -54,6 +54,10 @@ inline __global__ void launch(volatile uint32_t* signal, DeviceContext context, 
         sharedDeviceLoop.initialize(signal, context);
     }
     END_SINGLE_THREAD
+
+    if (sharedDeviceLoop.logicalBlocksCount() == 0)
+        return;
+
     int suspended = 0;
     do {
         callback(&sharedDeviceLoop, args...);
@@ -70,6 +74,10 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, 
         callbackKicked = sharedDeviceLoop.initialize(signal, context, DeviceLoop::Resume);
     }
     END_SINGLE_THREAD
+
+    if (sharedDeviceLoop.logicalBlocksCount() == 0)
+        return;
+
     // __threadfence_system();
     int suspended = 0;
 
