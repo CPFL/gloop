@@ -34,7 +34,7 @@ namespace gloop {
 
 static bool isZeroBlocks(dim3 blocks)
 {
-    return blocks.x == 0 && blocks.y == 0 && blocks.z == 0;
+    return (blocks.x * blocks.y) == 0;
 }
 
 static uint32_t blocksToUint32(dim3 blocks)

@@ -43,7 +43,7 @@ GLOOP_NONCOPYABLE(HostContext);
 public:
     __host__ ~HostContext();
 
-    __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 logicalBlocks, dim3 physicalBlocks = { }, uint32_t pageCount = GLOOP_SHARED_PAGE_COUNT);
+    __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 logicalBlocks, dim3 physicalBlocks = { 0 }, uint32_t pageCount = GLOOP_SHARED_PAGE_COUNT);
 
     __host__ DeviceContext deviceContext() { return m_context; }
 
