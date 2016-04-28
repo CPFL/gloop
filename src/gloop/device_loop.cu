@@ -54,22 +54,40 @@ __device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext 
     m_control.initialize(deviceContext.logicalBlocks);
 }
 
-__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, ResumeTag)
+__device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, ResumeTag)
 {
     initializeImpl(signal, deviceContext);
     resume();
+    return m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
 }
 
-__device__ void DeviceLoop::suspend()
+__device__ int DeviceLoop::suspend()
 {
     // FIXME: always save.
     GLOOP_ASSERT_SINGLE_THREAD();
     // __threadfence_system();  // FIXME
     DeviceContext::PerBlockContext* blockContext = context();
-    blockContext->control = m_control;
-    if (m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
+    int suspended = m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+    if (suspended) {
         atomicAdd(m_deviceContext.pending, 1);
+    } else {
+        // This logical thread block is done.
+        if (--m_control.logicalBlocksCount != 0) {
+            // There is some remaining logical thread blocks.
+            // Let's increment the logical block index.
+            m_control.logicalBlockIdx.x += 1;
+            if (m_control.logicalBlockIdx.x == m_control.logicalGridDim.x) {
+                m_control.logicalBlockIdx.x = 0;
+                m_control.logicalBlockIdx.y += 1;
+            }
+        } else {
+            suspended = 1;
+        }
     }
+
+    // Save the control state.
+    blockContext->control = m_control;
+
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     if (m_scratchIndex1 != invalidPosition()) {
         new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_scratchIndex1) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_scratch1));
@@ -81,6 +99,7 @@ __device__ void DeviceLoop::suspend()
     }
 #endif
     __threadfence_system();  // FIXME
+    return suspended;
 }
 
 __device__ void DeviceLoop::resume()

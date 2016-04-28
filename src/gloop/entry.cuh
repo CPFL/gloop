@@ -54,20 +54,33 @@ inline __global__ void launch(volatile uint32_t* signal, DeviceContext context, 
         sharedDeviceLoop.initialize(signal, context);
     }
     END_SINGLE_THREAD
-    callback(&sharedDeviceLoop, std::forward<Args>(args)...);
-    sharedDeviceLoop.drain();
+    int suspended = 0;
+    do {
+        callback(&sharedDeviceLoop, args...);
+        suspended = sharedDeviceLoop.drain();
+    } while (!suspended);
 }
 
 template<typename DeviceLambda, class... Args>
 inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
+    __shared__ int callbackKicked;
     BEGIN_SINGLE_THREAD
     {
-        sharedDeviceLoop.initialize(signal, context, DeviceLoop::Resume);
+        callbackKicked = sharedDeviceLoop.initialize(signal, context, DeviceLoop::Resume);
     }
     END_SINGLE_THREAD
     // __threadfence_system();
-    sharedDeviceLoop.drain();
+    int suspended = 0;
+
+    if (callbackKicked)
+        goto callbackKickedLabel;
+
+    do {
+        callback(&sharedDeviceLoop, args...);
+callbackKickedLabel:
+        suspended = sharedDeviceLoop.drain();
+    } while (!suspended);
 }
 
 }  // namespace gloop

@@ -40,7 +40,7 @@ namespace gloop {
 class DeviceLoop {
 public:
     enum ResumeTag { Resume };
-    __device__ void initialize(volatile uint32_t* signal, DeviceContext, ResumeTag);
+    __device__ int initialize(volatile uint32_t* signal, DeviceContext, ResumeTag);
     __device__ void initialize(volatile uint32_t* signal, DeviceContext);
 
     template<typename Lambda>
@@ -52,11 +52,15 @@ public:
     inline __device__ void allocOnePage(Lambda lambda);
     __device__ void freeOnePage(void* page);
 
-    inline __device__ void drain();
+    inline __device__ int drain();
 
-    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() -> uint2 const { return m_logicalBlockIdx; }
-    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxX() -> unsigned const { return m_logicalBlockIdx.x; }
-    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxY() -> unsigned const { return m_logicalBlockIdx.y; }
+    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() -> uint2 const { return m_control.logicalBlockIdx; }
+    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxX() -> unsigned const { return m_control.logicalBlockIdx.x; }
+    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxY() -> unsigned const { return m_control.logicalBlockIdx.y; }
+
+    GLOOP_ALWAYS_INLINE __device__ auto logicalGridDim() -> uint2 const { return m_control.logicalGridDim; }
+    GLOOP_ALWAYS_INLINE __device__ auto logicalGridDimX() -> unsigned const { return m_control.logicalGridDim.x; }
+    GLOOP_ALWAYS_INLINE __device__ auto logicalGridDimY() -> unsigned const { return m_control.logicalGridDim.y; }
 
 private:
     __device__ void initializeImpl(volatile uint32_t* signal, DeviceContext);
@@ -72,7 +76,7 @@ private:
     inline __device__ uint32_t dequeue();
 
     __device__ void resume();
-    __device__ void suspend();
+    __device__ int suspend();
 
     GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots(uint32_t position);
     GLOOP_ALWAYS_INLINE __device__ IPC* channel() const;
@@ -90,7 +94,6 @@ private:
     DeviceCallback* m_slots;
     DeviceContext::DeviceLoopControl m_control;
     volatile uint32_t* m_signal;
-    uint2 m_logicalBlockIdx;
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     uint32_t m_scratchIndex1;
     uint32_t m_scratchIndex2;
@@ -299,7 +302,7 @@ __device__ void DeviceLoop::deallocate(uint32_t pos)
     m_control.freeSlots |= (1U << pos);
 }
 
-__device__ void DeviceLoop::drain()
+__device__ int DeviceLoop::drain()
 {
     __shared__ uint64_t start;
     __shared__ uint64_t killClock;
@@ -362,12 +365,14 @@ next:
         END_SINGLE_THREAD
     }
     // __threadfence_block();
+    __shared__ int suspended;
     BEGIN_SINGLE_THREAD
     {
-        suspend();
+        suspended = suspend();
     }
     END_SINGLE_THREAD
     // __threadfence_block();
+    return suspended;
 }
 
 }  // namespace gloop

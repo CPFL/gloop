@@ -60,6 +60,9 @@ struct DeviceContext {
                 currentLogicalBlockCount = count * bid + remaining;
             }
             logicalBlocksCount = count;
+
+            logicalBlockIdx = make_uint2(currentLogicalBlockCount % logicalBlocksDim.x, currentLogicalBlockCount / logicalBlocksDim.x);
+            logicalGridDim = make_uint2(logicalBlocksDim.x, logicalGridDim.y);
         }
 
         uint32_t freePages;
@@ -69,6 +72,8 @@ struct DeviceContext {
         uint32_t pageSleepSlots;
         uint32_t logicalBlocksCount;
         uint32_t currentLogicalBlockCount;
+        uint2 logicalBlockIdx;
+        uint2 logicalGridDim;
     };
 
     struct OnePage {
