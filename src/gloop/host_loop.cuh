@@ -152,6 +152,7 @@ private:
     KernelLock m_kernelLock;
     cudaDeviceProp m_deviceProperties;
 
+    // Thread group management.
     boost::thread_group m_threadGroup;
     boost::mutex m_threadGroupMutex { };
     boost::condition_variable m_threadGroupNotify;
