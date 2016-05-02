@@ -226,11 +226,10 @@ __device__ void DeviceLoop::deallocate(uint32_t pos)
 
 __device__ int DeviceLoop::drain()
 {
-    __shared__ uint64_t start;
-    __shared__ uint64_t killClock;
+    uint64_t start;
+    uint64_t killClock;
     __shared__ uint32_t position;
     __shared__ DeviceCallback* callback;
-    __shared__ volatile request::Request* request;
 
     BEGIN_SINGLE_THREAD
     {
@@ -249,7 +248,7 @@ __device__ int DeviceLoop::drain()
 
             // printf("%llu %u\n", (unsigned long long)(clock64() - start), (unsigned)position);
             // One shot function always destroys the function and syncs threads.
-            (*callback)(this, request);
+            (*callback)(this, &m_payloads[position]);
 
             // __syncthreads();  // FIXME
             // __threadfence_block();
@@ -280,7 +279,6 @@ __device__ int DeviceLoop::drain()
             position = dequeue();
             if (isValidPosition(position)) {
                 callback = slots(position);
-                request = &m_payloads[position];
             }
 next:
         }
