@@ -37,14 +37,17 @@
 #include "utility/util.cu.h"
 namespace gloop {
 
+struct IPC;
+
 class DeviceLoop {
 public:
+    friend struct IPC;
     enum ResumeTag { Resume };
     __device__ int initialize(volatile uint32_t* signal, DeviceContext, ResumeTag);
     __device__ void initialize(volatile uint32_t* signal, DeviceContext);
 
     template<typename Lambda>
-    inline __device__ IPC* enqueueIPC(Lambda lambda);
+    inline __device__ IPC enqueueIPC(Lambda lambda);
     template<typename Lambda>
     inline __device__ void enqueueLater(Lambda lambda);
 
@@ -81,10 +84,8 @@ private:
     __device__ int suspend();
 
     GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots(uint32_t position);
-    GLOOP_ALWAYS_INLINE __device__ IPC* channel() const;
     GLOOP_ALWAYS_INLINE __device__ DeviceContext::PerBlockContext* context() const;
     GLOOP_ALWAYS_INLINE __device__ DeviceContext::OnePage* pages() const;
-    GLOOP_ALWAYS_INLINE __device__ uint32_t position(IPC*);
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(DeviceContext::OnePage*);
 
     __device__ static constexpr uint32_t shouldExitPosition() { return UINT32_MAX - 1; }
@@ -92,7 +93,11 @@ private:
     GLOOP_ALWAYS_INLINE __device__ static bool isValidPosition(uint32_t position);
 
     DeviceContext m_deviceContext;
-    IPC* m_channels;
+
+    // SoA.
+    int32_t* m_codes;
+    request::Payload* m_payloads;
+
     DeviceCallback* m_slots;
     DeviceContext::DeviceLoopControl m_control;
     volatile uint32_t* m_signal;

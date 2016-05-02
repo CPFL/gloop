@@ -45,10 +45,10 @@ inline __device__ auto forceExit(DeviceLoop* loop, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
     {
-        IPC* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop);
         });
-        ipc->emit(Code::Exit);
+        ipc.emit(loop, Code::Exit);
     }
     END_SINGLE_THREAD_WITHOUT_BARRIER
 }

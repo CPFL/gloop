@@ -63,7 +63,8 @@ HostContext::~HostContext()
         if (m_context.context) {
             cudaFree(m_context.context);
         }
-        m_ipc.reset();
+        m_codesMemory.reset();
+        m_payloadsMemory.reset();
         m_kernel.reset();
     }
     // GLOOP_DATA_LOG("let's cleanup context done\n");
@@ -74,12 +75,21 @@ bool HostContext::initialize(HostLoop& hostLoop)
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
 
-        m_ipc = make_unique<IPC[]>(m_physicalBlocks.x * m_physicalBlocks.y * GLOOP_SHARED_SLOT_SIZE);
+        size_t allSlotsSize = m_physicalBlocks.x * m_physicalBlocks.y * GLOOP_SHARED_SLOT_SIZE;
+
+        m_codesMemory = MappedMemory::create(sizeof(int32_t) * allSlotsSize);
+        m_codes = (int32_t*)m_codesMemory->mappedPointer();
+
+        m_payloadsMemory = MappedMemory::create(sizeof(request::Payload) * allSlotsSize);
+        m_payloads = (request::Payload*)m_payloadsMemory->mappedPointer();
+
         m_kernel = MappedMemory::create(sizeof(DeviceContext::KernelContext));
+
         m_context.killClock = hostLoop.killClock();
         m_context.logicalBlocks = m_logicalBlocks;
-        GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.channels, m_ipc.get(), 0));
 
+        GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.codes, m_codesMemory->mappedPointer(), 0));
+        GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.payloads, m_payloadsMemory->mappedPointer(), 0));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.kernel, m_kernel->mappedPointer(), 0));
 
         GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceContext::PerBlockContext) * m_physicalBlocks.x * m_physicalBlocks.y));
@@ -102,8 +112,8 @@ void HostContext::prepareForLaunch()
     // Clean up ExitRequired flags.
     {
         std::unique_lock<Mutex> guard(m_mutex);
-        for (IPC* ipc : m_exitRequired) {
-            ipc->emit(Code::Complete);
+        for (IPC ipc : m_exitRequired) {
+            ipc.emit(this, Code::Complete);
         }
         m_exitRequired.clear();
         for (std::shared_ptr<MmapResult> result : m_unmapRequests) {

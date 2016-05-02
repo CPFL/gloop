@@ -33,36 +33,20 @@
 
 namespace gloop {
 
-class IPC : public Mapped {
-GLOOP_NONCOPYABLE(IPC)
-public:
-    __host__ IPC() : m_request { 0 } { }
-    __host__ __device__ void emit(Code code);
-    __device__ __host__ Code peek();
+class DeviceLoop;
+class HostContext;
 
-    __device__ __host__ GLOOP_ALWAYS_INLINE volatile request::Request* request()
-    {
-        return &m_request;
-    }
+struct IPC {
+    uint32_t position;
 
-private:
-#if 0
-    __device__ void lock();
-    __device__ void unlock();
-#endif
+    __device__ Code peek(DeviceLoop*);
+    __device__ void emit(DeviceLoop*, Code code);
+    __device__ request::Payload* request(DeviceLoop*);
 
-    volatile request::Request m_request { 0 };
+    __host__ Code peek(HostContext*);
+    __host__ void emit(HostContext*, Code code);
+    __host__ request::Payload* request(HostContext*) const;
 };
-
-GLOOP_ALWAYS_INLINE __host__ __device__ void IPC::emit(Code code)
-{
-    syncWrite(&m_request.code, static_cast<int32_t>(code));
-}
-
-GLOOP_ALWAYS_INLINE __device__ __host__ Code IPC::peek()
-{
-    return readNoCache<Code>(&m_request.code);
-}
 
 }  // namespace gloop
 #endif  // GLOOP_IPC_CU_H_

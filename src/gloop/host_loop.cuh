@@ -113,7 +113,7 @@ private:
     void stopPoller();
     void pollerMain();
 
-    bool handleIO(IPC*, request::Request);
+    bool handleIO(IPC, Code code, request::Request);
     void send(Command);
 
     template<typename DeviceLambda, typename... Args>

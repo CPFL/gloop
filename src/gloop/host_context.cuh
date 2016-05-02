@@ -38,10 +38,13 @@
 namespace gloop {
 
 class HostLoop;
+struct IPC;
 
 class HostContext {
 GLOOP_NONCOPYABLE(HostContext);
 public:
+    friend struct IPC;
+
     __host__ ~HostContext();
 
     __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 logicalBlocks, dim3 physicalBlocks = { 0 }, uint32_t pageCount = GLOOP_SHARED_PAGE_COUNT);
@@ -63,7 +66,7 @@ public:
 
     uint32_t pending() const;
 
-    void addExitRequired(const std::lock_guard<Mutex>&, IPC* ipc)
+    void addExitRequired(const std::lock_guard<Mutex>&, IPC ipc)
     {
         // Mutex should be held.
         m_exitRequired.push_back(ipc);
@@ -82,16 +85,34 @@ private:
     HostLoop& m_hostLoop;
     Mutex m_mutex;
     FileDescriptorTable m_table { };
-    std::unique_ptr<IPC[]> m_ipc { nullptr };
+    std::shared_ptr<MappedMemory> m_codesMemory { nullptr };
+    std::shared_ptr<MappedMemory> m_payloadsMemory { nullptr };
     std::shared_ptr<MappedMemory> m_kernel { nullptr };
     DeviceContext m_context { nullptr };
+    int32_t* m_codes;
+    request::Payload* m_payloads;
     dim3 m_logicalBlocks { };
     dim3 m_physicalBlocks { };
     uint32_t m_pageCount { };
-    std::vector<IPC*> m_exitRequired;
+    std::vector<IPC> m_exitRequired;
     std::unordered_set<std::shared_ptr<MmapResult>> m_unmapRequests;
     bool m_exitHandlerScheduled { false };
 };
+
+GLOOP_ALWAYS_INLINE __host__ void IPC::emit(HostContext* hostContext, Code code)
+{
+    syncWrite(&hostContext->m_codes[position], static_cast<int32_t>(code));
+}
+
+GLOOP_ALWAYS_INLINE __host__ Code IPC::peek(HostContext* hostContext)
+{
+    return readNoCache<Code>(&hostContext->m_codes[position]);
+}
+
+GLOOP_ALWAYS_INLINE __host__ request::Payload* IPC::request(HostContext* hostContext) const
+{
+    return &hostContext->m_payloads[position];
+}
 
 template<typename Callback>
 inline bool HostContext::tryPeekRequest(const Callback& callback)
@@ -100,11 +121,11 @@ inline bool HostContext::tryPeekRequest(const Callback& callback)
     int blocks = m_physicalBlocks.x * m_physicalBlocks.y;
     for (int i = 0; i < blocks; ++i) {
         for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
-            auto& channel = m_ipc[i * GLOOP_SHARED_SLOT_SIZE + j];
-            Code code = channel.peek();
+            IPC ipc { i * GLOOP_SHARED_SLOT_SIZE + j };
+            Code code = ipc.peek(this);
             if (IsOperationCode(code)) {
                 found = true;
-                callback(&channel);
+                callback(ipc);
             }
         }
     }

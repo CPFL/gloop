@@ -25,10 +25,19 @@
 #define GLOOP_DEVICE_LOOP_INLINES_CU_H_
 namespace gloop {
 
-__device__ uint32_t DeviceLoop::position(IPC* ipc)
+GLOOP_ALWAYS_INLINE __device__ void IPC::emit(DeviceLoop* loop, Code code)
 {
-    GLOOP_ASSERT_SINGLE_THREAD();
-    return ipc - channel();
+    syncWrite(&loop->m_codes[position], static_cast<int32_t>(code));
+}
+
+GLOOP_ALWAYS_INLINE __device__ Code IPC::peek(DeviceLoop* loop)
+{
+    return readNoCache<Code>(&loop->m_codes[position]);
+}
+
+GLOOP_ALWAYS_INLINE __device__ request::Payload* IPC::request(DeviceLoop* loop)
+{
+    return &loop->m_payloads[position];
 }
 
 __device__ uint32_t DeviceLoop::position(DeviceContext::OnePage* page)
@@ -54,12 +63,6 @@ __device__ auto DeviceLoop::slots(uint32_t position) -> DeviceCallback*
     }
 #endif
     return m_slots + position;
-}
-
-__device__ auto DeviceLoop::channel() const -> IPC*
-{
-    GLOOP_ASSERT_SINGLE_THREAD();
-    return m_channels;
 }
 
 __device__ auto DeviceLoop::context() const -> DeviceContext::PerBlockContext*
@@ -118,13 +121,12 @@ __device__ uint32_t DeviceLoop::enqueueSleep(Lambda lambda)
 }
 
 template<typename Lambda>
-__device__ IPC* DeviceLoop::enqueueIPC(Lambda lambda)
+__device__ IPC DeviceLoop::enqueueIPC(Lambda lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = allocate(lambda);
-    IPC* result = channel() + pos;
     GPU_ASSERT(pos < GLOOP_SHARED_SLOT_SIZE);
-    return result;
+    return { pos };
 }
 
 template<typename Lambda>
@@ -179,12 +181,12 @@ __device__ auto DeviceLoop::dequeue() -> uint32_t
         // Look into ICP status to run callbacks.
         uint32_t bit = 1U << i;
         if (!(m_control.freeSlots & bit)) {
-            IPC* ipc = channel() + i;
-            Code code = ipc->peek();
+            IPC ipc { i };
+            Code code = ipc.peek(this);
             if (code == Code::Complete) {
-                ipc->emit(Code::None);
-                GPU_ASSERT(ipc->peek() != Code::Complete);
-                GPU_ASSERT(ipc->peek() == Code::None);
+                ipc.emit(this, Code::None);
+                GPU_ASSERT(ipc.peek(this) != Code::Complete);
+                GPU_ASSERT(ipc.peek(this) == Code::None);
                 return i;
             }
 
@@ -278,7 +280,7 @@ __device__ int DeviceLoop::drain()
             position = dequeue();
             if (isValidPosition(position)) {
                 callback = slots(position);
-                request = (channel() + position)->request();
+                request = &m_payloads[position];
             }
 next:
         }

@@ -197,8 +197,7 @@ struct NetTCPCloseResult {
     int error;
 };
 
-struct Request {
-    int32_t code;
+struct Payload {
     union {
         Open open;
         OpenResult openResult;
@@ -253,6 +252,8 @@ struct Request {
         NetTCPCloseResult netTCPCloseResult;
     } u;
 };
+
+typedef Payload Request;
 
 } }  // namespace gloop::request
 #endif  // GLOOP_REQUEST_H_

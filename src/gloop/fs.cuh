@@ -34,25 +34,18 @@
 namespace gloop {
 namespace fs {
 
-__device__ void openImpl(IPC*, volatile request::Open&, const char* filename, int mode);
-__device__ void writeImpl(IPC*, volatile request::Write&, int fd, size_t offset, size_t count, unsigned char* buffer);
-__device__ void fstatImpl(IPC*, volatile request::Fstat&, int fd);
-__device__ void closeImpl(IPC*, volatile request::Close&, int fd);
-__device__ void readImpl(IPC*, volatile request::Read&, int fd, size_t offset, size_t count, unsigned char* buffer);
-__device__ void ftruncateImpl(IPC*, volatile request::Ftruncate&, int fd, off_t offset);
-__device__ void mmapImpl(IPC*, volatile request::Mmap&, void* address, size_t size, int prot, int flags, int fd, off_t offset);
-__device__ void munmapImpl(IPC*, volatile request::Munmap&, volatile void* address, size_t size);
-__device__ void msyncImpl(IPC*, volatile request::Msync&, volatile void* address, size_t size, int flags);
-
 template<typename Lambda>
 inline __device__ auto open(DeviceLoop* loop, const char* filename, int mode, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.openResult.fd);
         });
-        openImpl(ipc, ipc->request()->u.open, filename, mode);
+        volatile request::Open& req = ipc.request(loop)->u.open;
+        memcpyIO(req.filename.data, filename, GLOOP_FILENAME_SIZE);
+        req.mode = mode;
+        ipc.emit(loop, Code::Open);
     }
     END_SINGLE_THREAD
 }
@@ -62,10 +55,12 @@ inline __device__ auto fstat(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.fstatResult.size);
         });
-        fstatImpl(ipc, ipc->request()->u.fstat, fd);
+        volatile request::Fstat& req = ipc.request(loop)->u.fstat;
+        req.fd = fd;
+        ipc.emit(loop, Code::Fstat);
     }
     END_SINGLE_THREAD
 }
@@ -75,10 +70,12 @@ inline __device__ auto close(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.closeResult.error);
         });
-        closeImpl(ipc, ipc->request()->u.close, fd);
+        volatile request::Close& req = ipc.request(loop)->u.close;
+        req.fd = fd;
+        ipc.emit(loop, Code::Close);
     }
     END_SINGLE_THREAD
 }
@@ -88,10 +85,13 @@ inline __device__ auto ftruncate(DeviceLoop* loop, int fd, off_t offset, Lambda 
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.ftruncateResult.error);
         });
-        ftruncateImpl(ipc, ipc->request()->u.ftruncate, fd, offset);
+        volatile request::Ftruncate& req = ipc.request(loop)->u.ftruncate;
+        req.fd = fd;
+        req.offset = offset;
+        ipc.emit(loop, Code::Ftruncate);
     }
     END_SINGLE_THREAD
 }
@@ -102,14 +102,19 @@ inline __device__ auto readOnePage(DeviceLoop* loop, int fd, size_t offset, size
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
         BEGIN_SINGLE_THREAD
         {
-            auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+            auto ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
                 volatile request::Request oneTimeRequest;
                 oneTimeRequest.u.readOnePageResult.page = page;
                 oneTimeRequest.u.readOnePageResult.readCount = req->u.readResult.readCount;
                 __threadfence();
                 callback(loop, &oneTimeRequest);
             });
-            readImpl(ipc, ipc->request()->u.read, fd, offset, count, static_cast<unsigned char*>(page));
+            volatile request::Read& req = ipc.request(loop)->u.read;
+            req.fd = fd;
+            req.offset = offset;
+            req.count = count;
+            req.buffer = static_cast<unsigned char*>(page);
+            ipc.emit(loop, Code::Read);
         }
         END_SINGLE_THREAD
     });
@@ -165,7 +170,7 @@ inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, siz
         gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, transferringSize);
         BEGIN_SINGLE_THREAD
         {
-            auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+            auto ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
                 BEGIN_SINGLE_THREAD
                 {
                     loop->freeOnePage(page);
@@ -175,7 +180,12 @@ inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, siz
                 oneTimeRequest.u.writeOnePageResult.writtenCount = req->u.writeResult.writtenCount;
                 callback(loop, &oneTimeRequest);
             });
-            writeImpl(ipc, ipc->request()->u.write, fd, offset, transferringSize, static_cast<unsigned char*>(page));
+            volatile request::Write& req = ipc.request(loop)->u.write;
+            req.fd = fd;
+            req.offset = offset;
+            req.count = transferringSize;
+            req.buffer = static_cast<unsigned char*>(page);
+            ipc.emit(loop, Code::Write);
         }
         END_SINGLE_THREAD
     });
@@ -220,10 +230,17 @@ inline __device__ auto mmap(DeviceLoop* loop, void* address, size_t size, int pr
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.mmapResult.address);
         });
-        mmapImpl(ipc, ipc->request()->u.mmap, address, size, prot, flags, fd, offset);
+        volatile request::Mmap& req = ipc.request(loop)->u.mmap;
+        req.address = address;
+        req.size = size;
+        req.prot = prot;
+        req.flags = flags;
+        req.fd = fd;
+        req.offset = offset;
+        ipc.emit(loop, Code::Mmap);
     }
     END_SINGLE_THREAD
 }
@@ -234,10 +251,13 @@ inline __device__ auto munmap(DeviceLoop* loop, volatile void* address, size_t s
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.munmapResult.error);
         });
-        munmapImpl(ipc, ipc->request()->u.munmap, address, size);
+        volatile request::Munmap& req = ipc.request(loop)->u.munmap;
+        req.address = address;
+        req.size = size;
+        ipc.emit(loop, Code::Munmap);
     }
     END_SINGLE_THREAD
 }
@@ -247,10 +267,14 @@ inline __device__ auto msync(DeviceLoop* loop, volatile void* address, size_t si
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.msyncResult.error);
         });
-        msyncImpl(ipc, ipc->request()->u.msync, address, size, flags);
+        volatile request::Msync& req = ipc.request(loop)->u.msync;
+        req.address = address;
+        req.size = size;
+        req.flags = flags;
+        ipc.emit(loop, Code::Msync);
     }
     END_SINGLE_THREAD
 }

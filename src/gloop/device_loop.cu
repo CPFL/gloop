@@ -40,7 +40,8 @@ __device__ void DeviceLoop::initializeImpl(volatile uint32_t* signal, DeviceCont
     GLOOP_ASSERT_SINGLE_THREAD();
 
     m_deviceContext = deviceContext;
-    m_channels = deviceContext.channels + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
+    m_codes = deviceContext.codes + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
+    m_payloads = deviceContext.payloads + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
     m_slots = reinterpret_cast<DeviceCallback*>(&context()->slots);
     m_signal = signal;
 

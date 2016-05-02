@@ -29,8 +29,6 @@
 #include "device_callback.cuh"
 namespace gloop {
 
-class IPC;
-
 struct DeviceContext {
     static_assert(GLOOP_SHARED_PAGE_COUNT < 32, "Should be less than 32");
     struct DeviceLoopControl {
@@ -93,7 +91,8 @@ struct DeviceContext {
     };
 
     PerBlockContext* context;
-    IPC* channels;
+    int32_t* codes;
+    request::Payload* payloads;
     OnePage* pages;
     KernelContext* kernel;
     uint64_t killClock;

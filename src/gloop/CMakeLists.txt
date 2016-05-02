@@ -51,11 +51,9 @@ add_library(gloop STATIC
     device_loop.cu
     device_memory.cu
     dump_memory.cu
-    fs.cu
     io.cu
     mapped_memory.cu
     monitor_utility.cc
-    net.cu
     process.cu
     system_initialize.cu
     utility/util.cu

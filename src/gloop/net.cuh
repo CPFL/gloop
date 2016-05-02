@@ -37,23 +37,19 @@ namespace gloop {
 namespace net {
 namespace tcp {
 
-__device__ void connectImpl(IPC* ipc, volatile request::NetTCPConnect& req, struct sockaddr_in* addr);
-__device__ void bindImpl(IPC* ipc, volatile request::NetTCPBind& req, struct sockaddr_in* addr);
-__device__ void unbindImpl(IPC* ipc, volatile request::NetTCPUnbind& req, net::Server* server);
-__device__ void acceptImpl(IPC* ipc, volatile request::NetTCPAccept& req, net::Server* server);
-__device__ void receiveImpl(IPC* ipc, volatile request::NetTCPReceive& req, net::Socket* socket, size_t count, unsigned char* buffer);
-__device__ void sendImpl(IPC* ipc, volatile request::NetTCPSend& req, net::Socket* socket, size_t count, unsigned char* buffer);
-__device__ void closeImpl(IPC* ipc, volatile request::NetTCPClose& req, Socket* socket);
+static_assert(sizeof(void*) == sizeof(uint64_t), "In both the host and the device, the size of the pointer should be 64bit.");
 
 template<typename Lambda>
 inline __device__ auto connect(DeviceLoop* loop, struct sockaddr_in* addr, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, const_cast<Socket*>(req->u.netTCPConnectResult.socket));
         });
-        tcp::connectImpl(ipc, ipc->request()->u.netTCPConnect, addr);
+        volatile request::NetTCPConnect& req = ipc.request(loop)->u.netTCPConnect;
+        *const_cast<struct sockaddr_in*>(&req.address) = *reinterpret_cast<struct sockaddr_in*>(addr);
+        ipc.emit(loop, Code::NetTCPConnect);
     }
     END_SINGLE_THREAD
 }
@@ -63,10 +59,12 @@ inline __device__ auto bind(DeviceLoop* loop, struct sockaddr_in* addr, Lambda c
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, const_cast<Server*>(req->u.netTCPBindResult.server));
         });
-        tcp::bindImpl(ipc, ipc->request()->u.netTCPBind, addr);
+        volatile request::NetTCPBind& req = ipc.request(loop)->u.netTCPBind;
+        *const_cast<struct sockaddr_in*>(&req.address) = *reinterpret_cast<struct sockaddr_in*>(addr);
+        ipc.emit(loop, Code::NetTCPBind);
     }
     END_SINGLE_THREAD
 }
@@ -76,10 +74,12 @@ inline __device__ auto unbind(DeviceLoop* loop, Server* server, Lambda callback)
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.netTCPUnbindResult.error);
         });
-        tcp::unbindImpl(ipc, ipc->request()->u.netTCPUnbind, server);
+        volatile request::NetTCPUnbind& req = ipc.request(loop)->u.netTCPUnbind;
+        req.server = server;
+        ipc.emit(loop, Code::NetTCPUnbind);
     }
     END_SINGLE_THREAD
 }
@@ -89,10 +89,12 @@ inline __device__ auto accept(DeviceLoop* loop, net::Server* server, Lambda call
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, const_cast<Socket*>(req->u.netTCPAcceptResult.socket));
         });
-        tcp::acceptImpl(ipc, ipc->request()->u.netTCPAccept, server);
+        volatile request::NetTCPAccept& req = ipc.request(loop)->u.netTCPAccept;
+        req.server = server;
+        ipc.emit(loop, Code::NetTCPAccept);
     }
     END_SINGLE_THREAD
 }
@@ -113,7 +115,7 @@ inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t cou
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
         BEGIN_SINGLE_THREAD
         {
-            auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+            auto ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
                 ssize_t receiveCount = req->u.netTCPReceiveResult.receiveCount;
                 __threadfence_system();
                 GPU_ASSERT(receiveCount <= GLOOP_SHARED_PAGE_SIZE);
@@ -125,7 +127,11 @@ inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t cou
                 END_SINGLE_THREAD
                 callback(loop, receiveCount);
             });
-            tcp::receiveImpl(ipc, ipc->request()->u.netTCPReceive, socket, count, static_cast<unsigned char*>(page));
+            volatile request::NetTCPReceive& req = ipc.request(loop)->u.netTCPReceive;
+            req.socket = socket;
+            req.count = count;
+            req.buffer = static_cast<unsigned char*>(buffer);
+            ipc.emit(loop, Code::NetTCPReceive);
 #if 0
             long long t2 = clock64();
             printf("receive clocks %ld, size: %d\n", t2-t1, (int)count);
@@ -152,7 +158,7 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
         // __threadfence_system();
         BEGIN_SINGLE_THREAD
         {
-            auto* ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+            auto ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
                 BEGIN_SINGLE_THREAD
                 {
                     loop->freeOnePage(page);
@@ -160,7 +166,11 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
                 END_SINGLE_THREAD
                 callback(loop, req->u.netTCPSendResult.sentCount);
             });
-            tcp::sendImpl(ipc, ipc->request()->u.netTCPSend, socket, count, static_cast<unsigned char*>(page));
+            volatile request::NetTCPSend& req = ipc.request(loop)->u.netTCPSend;
+            req.socket = socket;
+            req.count = count;
+            req.buffer = static_cast<unsigned char*>(buffer);
+            ipc.emit(loop, Code::NetTCPSend);
 #if 0
             long long t2 = clock64();
             printf("send clocks %ld\n", t2-t1);
@@ -175,10 +185,12 @@ inline __device__ auto close(DeviceLoop* loop, Socket* socket, Lambda callback) 
 {
     BEGIN_SINGLE_THREAD
     {
-        auto* ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.netTCPCloseResult.error);
         });
-        tcp::closeImpl(ipc, ipc->request()->u.netTCPClose, socket);
+        volatile request::NetTCPClose& req = ipc.request(loop)->u.netTCPClose;
+        req.socket = socket;
+        ipc.emit(loop, Code::NetTCPClose);
     }
     END_SINGLE_THREAD
 }
