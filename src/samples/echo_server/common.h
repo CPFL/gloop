@@ -481,14 +481,14 @@ __device__ inline int gbench_recv_send_bw(int sock) {
   
   struct gtimeval tv1, tv2;
 
-  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_recv_send gprepare_recv ret: %d\n", ret);
     return ret;
   }
   
   ggettimeofday(&tv1);
 
-  if (ret = gbench_recv<LEN_MSG, NR_ITERATION>(sock, g_message[blockIdx.x])) {
+  if (ret = gbench_recv<LEN_MSG, NR_ITERATION>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_recv_send gbench_recv ret: %d\n", ret);
     return ret;
   }
@@ -506,14 +506,14 @@ __device__ inline int gbench_recv_send_bw(int sock) {
     
   } END_SINGLE_THREAD_PART;
     
-  if (ret = gprepare_send<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_send<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_recv_send gprepare_send ret: %d\n", ret);
     return ret;
   }
   
   ggettimeofday(&tv1);
   
-  if (ret = gbench_send<LEN_MSG, NR_ITERATION>(sock, g_message[blockIdx.x])) {
+  if (ret = gbench_send<LEN_MSG, NR_ITERATION>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_recv_send gbench_send ret: %d\n", ret);
     return ret;
   }
@@ -531,11 +531,11 @@ __device__ inline int gbench_recv_send_bw(int sock) {
     gprintf4_single("send time: %d ms, bw: %d MB/s\n", (int)t_in_ms, (int)((double)(NR_ITERATION - 1) * LEN_MSG * 1000.0 / t_in_ms / 1024.0 / 1024.0), 0, 0);
   } END_SINGLE_THREAD_PART;
 
-  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_send ret: %d\n", ret);
     return ret;
   }
-  if (ret = gprepare_send<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_send<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_send ret: %d\n", ret);
     return ret;
   }
@@ -550,14 +550,14 @@ __device__ inline int gbench_send_recv_bw(int sock) {
   struct gtimeval tv1, tv2;
   int ret;
 
-  if (ret = gprepare_send<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_send<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_send ret: %d\n", ret);
     return ret;
   }
   
   ggettimeofday(&tv1);
 
-  if (ret = gbench_send<LEN_MSG, NR_ITERATION>(sock, g_message[blockIdx.x])) {
+  if (ret = gbench_send<LEN_MSG, NR_ITERATION>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gbench_send ret: %d\n", ret);
     return ret;
   }
@@ -576,14 +576,14 @@ __device__ inline int gbench_send_recv_bw(int sock) {
     
   } END_SINGLE_THREAD_PART;
 
-  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_recv ret: %d\n", ret);
     return ret;
   }
   
   ggettimeofday(&tv1);
 
-  if (ret = gbench_recv<LEN_MSG, NR_ITERATION>(sock, g_message[blockIdx.x])) {
+  if (ret = gbench_recv<LEN_MSG, NR_ITERATION>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gbench_recv ret: %d\n", ret);
     return ret;
   }
@@ -601,11 +601,11 @@ __device__ inline int gbench_send_recv_bw(int sock) {
 
   } END_SINGLE_THREAD_PART;
 
-  if (ret = gprepare_send<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_send<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_send ret: %d\n", ret);
     return ret;
   }
-  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_send ret: %d\n", ret);
     return ret;
   }
@@ -620,7 +620,7 @@ __device__ inline int gbench_send_recv_lat(int sock) {
   struct gtimeval tv1, tv2;
   int ret;
   
-  if (ret = gprepare_send<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_send<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_send ret: %d\n", ret);
     return ret;
   }
@@ -628,12 +628,12 @@ __device__ inline int gbench_send_recv_lat(int sock) {
   ggettimeofday(&tv1);
 
   for (int i = 0; i < NR_ITERATION; i++) {
-    if (ret = gbench_send<LEN_MSG, 1>(sock, g_message[blockIdx.x])) {
+    if (ret = gbench_send<LEN_MSG, 1>(sock, g_message[gloop::logicalBlockIdx.x])) {
       printf("bench_send_recv bench_send ret: %d\n", ret);
       return ret;
     }
     
-    if (ret = gbench_recv<LEN_MSG, 1>(sock, g_message[blockIdx.x])) {
+    if (ret = gbench_recv<LEN_MSG, 1>(sock, g_message[gloop::logicalBlockIdx.x])) {
       printf("bench_send_recv bench_send ret: %d\n", ret);
       return ret;
     }
@@ -650,11 +650,11 @@ __device__ inline int gbench_send_recv_lat(int sock) {
     gprintf4_single("total time: %d ms, RTT: %d us\n", (int)t_in_ms, (int)(t_in_ms * 1000.0 / NR_ITERATION), 0, 0);
   } END_SINGLE_THREAD_PART;
 
-  if (ret = gprepare_send<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_send<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_send ret: %d\n", ret);
     return ret;
   }
-  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_send ret: %d\n", ret);
     return ret;
   }
@@ -667,7 +667,7 @@ __device__ inline int gbench_recv_send_lat(int sock) {
   struct gtimeval tv1, tv2;
   int ret;
   
-  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_recv ret: %d\n", ret);
     return ret;
   }
@@ -675,12 +675,12 @@ __device__ inline int gbench_recv_send_lat(int sock) {
   ggettimeofday(&tv1);
 
   for (int i = 0; i < NR_ITERATION; i++) {
-    if (ret = gbench_recv<LEN_MSG, 1>(sock, g_message[blockIdx.x])) {
+    if (ret = gbench_recv<LEN_MSG, 1>(sock, g_message[gloop::logicalBlockIdx.x])) {
       printf("gbench_send_recv gbench_recv ret: %d\n", ret);
       return ret;
     }
     
-    if (ret = gbench_send<LEN_MSG, 1>(sock, g_message[blockIdx.x])) {
+    if (ret = gbench_send<LEN_MSG, 1>(sock, g_message[gloop::logicalBlockIdx.x])) {
       printf("gbench_send_recv gbench_send ret: %d\n", ret);
       return ret;
     }
@@ -697,11 +697,11 @@ __device__ inline int gbench_recv_send_lat(int sock) {
     gprintf4_single("total time: %d ms, RTT: %d us\n", (int)t_in_ms, (int)(t_in_ms * 1000.0 / NR_ITERATION), 0, 0);
   } END_SINGLE_THREAD_PART;
 
-  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_recv<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_send ret: %d\n", ret);
     return ret;
   }
-  if (ret = gprepare_send<LEN_MSG>(sock, g_message[blockIdx.x])) {
+  if (ret = gprepare_send<LEN_MSG>(sock, g_message[gloop::logicalBlockIdx.x])) {
     printf("gbench_send_recv gprepare_send ret: %d\n", ret);
     return ret;
   }

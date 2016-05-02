@@ -48,7 +48,7 @@ __device__ void throttle(gloop::DeviceLoop* loop, int _, int limit)
     __shared__ uint64_t now;
     BEGIN_SINGLE_THREAD
     {
-        globalFunction = new (memory[blockIdx.x]) Callback(&hello1);
+        globalFunction = new (memory[gloop::logicalBlockIdx.x]) Callback(&hello1);
     }
     END_SINGLE_THREAD
     #pragma unroll 0
@@ -57,7 +57,7 @@ __device__ void throttle(gloop::DeviceLoop* loop, int _, int limit)
         BEGIN_SINGLE_THREAD
         {
             globalFunction->~Callback();
-            new (memory[blockIdx.x]) Callback([] {
+            new (memory[gloop::logicalBlockIdx.x]) Callback([] {
                 return nullptr;
             });
             now = clock64();

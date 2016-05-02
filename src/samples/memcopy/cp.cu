@@ -18,7 +18,7 @@ __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, i
                 if (toRead != written) {
                     assert(NULL);
                 }
-                perform_copy(loop, scratch, zfd, zfd1, me + FS_BLOCKSIZE * gridDim.x, filesize);
+                perform_copy(loop, scratch, zfd, zfd1, me + FS_BLOCKSIZE * gloop::logicalGridDim.x, filesize);
             });
         });
         return;
@@ -43,7 +43,7 @@ __device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
     gloop::fs::open(loop, src, O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd) {
         gloop::fs::open(loop, dst, O_WRONLY | O_CREAT, [=](gloop::DeviceLoop* loop, int zfd1) {
             gloop::fs::fstat(loop, zfd, [=](gloop::DeviceLoop* loop, int filesize) {
-                size_t me = blockIdx.x * FS_BLOCKSIZE;
+                size_t me = gloop::logicalBlockIdx.x * FS_BLOCKSIZE;
                 perform_copy(loop, scratch, zfd, zfd1, me, filesize);
             });
         });

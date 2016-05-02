@@ -41,11 +41,11 @@ __global__ void grepText(char* buffer)
         return gloop::fs::open("result.txt", [=](int dstFd) {
             return gloop::fs::fstat(srcFd, [=](std::size_t sourceSize) {
                 std::size_t totalWords = sourceSize / 32;
-                std::size_t wordsPerChunk= totalWords / gridDim.x;
+                std::size_t wordsPerChunk= totalWords / gloop::logicalGridDim.x;
 
                 if (wordsPerChunk == 0) {
                     wordsPerChunk = 1;
-                    if (blockIdx.x > totalWords) {
+                    if (gloop::logicalBlockIdx.x > totalWords) {
                         wordsPerChunk = 0;
                     }
                 }

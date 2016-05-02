@@ -59,7 +59,7 @@ __global__ void gpuserver(struct sockaddr_in *addr, volatile int* tb_alloc_tbl, 
 	__shared__ int sock;
 	__shared__ int nr_connection;
 
-	if (blockIdx.x == 0) {
+	if (gloop::logicalBlockIdx.x == 0) {
 		BEGIN_SINGLE_THREAD_PART {
 			nr_connection = 0;
 			server_done = 0;

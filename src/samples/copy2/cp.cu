@@ -29,7 +29,7 @@ __forceinline__ __device__ void performCopyMiddle(gloop::DeviceLoop* loop, Paire
             }
             END_SINGLE_THREAD
             if (goTo) {
-                performCopyMiddle(loop, pairedBuffers, zfd, zfd1, me, me + GLOOP_SHARED_PAGE_SIZE * gridDim.x, filesize, toRead, readBuffer ^ 1);
+                performCopyMiddle(loop, pairedBuffers, zfd, zfd1, me, me + GLOOP_SHARED_PAGE_SIZE * gloop::logicalGridDim.x, filesize, toRead, readBuffer ^ 1);
             }
         };
 
@@ -77,7 +77,7 @@ __device__ void performCopyFirst(gloop::DeviceLoop* loop, PairedBuffers pairedBu
             if (toRead != read) {
                 assert(NULL);
             }
-            performCopyMiddle(loop, pairedBuffers, zfd, zfd1, me, me + GLOOP_SHARED_PAGE_SIZE * gridDim.x, filesize, toRead, 0);
+            performCopyMiddle(loop, pairedBuffers, zfd, zfd1, me, me + GLOOP_SHARED_PAGE_SIZE * gloop::logicalGridDim.x, filesize, toRead, 0);
         });
         return;
     }
@@ -106,7 +106,7 @@ __device__ void gpuMain(gloop::DeviceLoop* loop, char* src, char* dst)
     gloop::fs::open(loop, src, O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd) {
         gloop::fs::open(loop, dst, O_WRONLY | O_CREAT, [=](gloop::DeviceLoop* loop, int zfd1) {
             gloop::fs::fstat(loop, zfd, [=](gloop::DeviceLoop* loop, int filesize) {
-                size_t me = blockIdx.x * GLOOP_SHARED_PAGE_SIZE;
+                size_t me = gloop::logicalBlockIdx.x * GLOOP_SHARED_PAGE_SIZE;
                 performCopyFirst(loop, pairedBuffers, zfd, zfd1, me, filesize);
             });
         });

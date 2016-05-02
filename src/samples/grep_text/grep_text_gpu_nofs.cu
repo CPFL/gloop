@@ -138,20 +138,20 @@ void __global__ grep_text_nofiles(char* src, int total_words, char* out, char* d
 
 	int data_to_process=0;
 
-	int words_per_chunk=total_words/gridDim.x;
+	int words_per_chunk=total_words/gloop::logicalGridDim.x;
 
 	if (words_per_chunk==0) 
 	{
 		words_per_chunk=1;
-		if (blockIdx.x>total_words) {
+		if (gloop::logicalBlockIdx.x>total_words) {
 			words_per_chunk=0;
 		}
 	}
 		
 			
 
-	if (blockIdx.x==gridDim.x-1){
-		data_to_process=32*(total_words-words_per_chunk*blockIdx.x);
+	if (gloop::logicalBlockIdx.x==gloop::logicalGridDim.x-1){
+		data_to_process=32*(total_words-words_per_chunk*gloop::logicalBlockIdx.x);
 	}else{
 		data_to_process=32*words_per_chunk;
 	}
@@ -203,7 +203,7 @@ void __global__ grep_text_nofiles(char* src, int total_words, char* out, char* d
 			///////////////////// NOW WE ARE DEALING WITH THE INPUT							
 			//
 			// indexing is in chars, not in row size
-			char* input_tmp=src+blockIdx.x*words_per_chunk*32;				
+			char* input_tmp=src+gloop::logicalBlockIdx.x*words_per_chunk*32;				
 			for(int input_block=0;input_block<data_to_process;input_block+=INPUT_PREFETCH_SIZE){
 
 				int data_left=data_to_process-input_block;

@@ -13,7 +13,7 @@ __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, i
                 if (toRead != written) {
                     assert(NULL);
                 }
-                perform_copy(loop, scratch, zfd, zfd1, me + GLOOP_SHARED_PAGE_SIZE * gridDim.x, filesize);
+                perform_copy(loop, scratch, zfd, zfd1, me + GLOOP_SHARED_PAGE_SIZE * gloop::logicalGridDim.x, filesize);
             });
         });
         return;
@@ -37,7 +37,7 @@ __device__ void gpuMain(gloop::DeviceLoop* loop, char* src, char* dst)
     gloop::fs::open(loop, src, O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd) {
         gloop::fs::open(loop, dst, O_WRONLY | O_CREAT, [=](gloop::DeviceLoop* loop, int zfd1) {
             gloop::fs::fstat(loop, zfd, [=](gloop::DeviceLoop* loop, int filesize) {
-                size_t me = blockIdx.x * GLOOP_SHARED_PAGE_SIZE;
+                size_t me = gloop::logicalBlockIdx.x * GLOOP_SHARED_PAGE_SIZE;
                 perform_copy(loop, scratch, zfd, zfd1, me, filesize);
             });
         });

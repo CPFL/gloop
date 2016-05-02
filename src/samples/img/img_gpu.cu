@@ -258,13 +258,13 @@ void __device__ img_gpu(
                 total_rows=(in_size/src_row_len)>>2;
 
                 int rows_per_chunk;
-                rows_per_chunk=total_rows/gridDim.x;
+                rows_per_chunk=total_rows/gloop::logicalGridDim.x;
                 if (rows_per_chunk==0) rows_per_chunk=1;
 
                 int rows_to_process;
                 rows_to_process=rows_per_chunk;
 
-                if (blockIdx.x==gridDim.x-1) rows_to_process=(total_rows - blockIdx.x*rows_per_chunk);
+                if (gloop::logicalBlockIdx.x==gloop::logicalGridDim.x-1) rows_to_process=(total_rows - gloop::logicalBlockIdx.x*rows_per_chunk);
 
                 __shared__ int toInit;
                 __shared__ Context* context;
@@ -305,14 +305,14 @@ void __device__ img_gpu(
                    5. write to output
                    */
                 int out_count=0;
-                int start=blockIdx.x*rows_per_chunk;
+                int start=gloop::logicalBlockIdx.x*rows_per_chunk;
 
                 process_one_data(loop, context, start, out_count, start + rows_to_process, [=] (gloop::DeviceLoop* loop) {
                     //we are done.
                     //write the output and finish
                     //if (gmunmap(ptr_row_in,0)) GPU_ERROR("Failed to unmap input");
                     int write_size=rows_to_process*sizeof(int)*3;
-                    gloop::fs::write(loop, zfd_o, blockIdx.x*rows_per_chunk*sizeof(int)*3, write_size, (uchar*)context->out_buffer, [=](gloop::DeviceLoop* loop, int written_size) {
+                    gloop::fs::write(loop, zfd_o, gloop::logicalBlockIdx.x*rows_per_chunk*sizeof(int)*3, write_size, (uchar*)context->out_buffer, [=](gloop::DeviceLoop* loop, int written_size) {
                         if (written_size!=write_size) GPU_ERROR("Failed to write output");
                         gloop::fs::close(loop, zfd_src, [=](gloop::DeviceLoop* loop, int error) {
                             BEGIN_SINGLE_THREAD

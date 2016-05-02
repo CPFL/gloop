@@ -30,7 +30,7 @@ __device__ void write1(gloop::DeviceLoop* loop, Write1Data* data)
     if (toRead != written) {
         assert(NULL);
     }
-    perform_copy(loop, scratch, zfd, zfd1, me + FS_BLOCKSIZE * gridDim.x, filesize);
+    perform_copy(loop, scratch, zfd, zfd1, me + FS_BLOCKSIZE * gloop::logicalGridDim.x, filesize);
 }
 
 __device__ void read1(gloop::DeviceLoop* loop, Read1Data* data)
@@ -86,7 +86,7 @@ __device__ void fstat1(gloop::DeviceLoop* loop, Fstat1Data* data)
     int zfd = data->zfd;
     int zfd1 = data->zfd1;
     size_t filesize = data->filesize;
-    size_t me = blockIdx.x * FS_BLOCKSIZE;
+    size_t me = gloop::logicalBlockIdx.x * FS_BLOCKSIZE;
     perform_copy(loop, scratch, zfd, zfd1, me, filesize);
 }
 

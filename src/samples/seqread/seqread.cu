@@ -36,7 +36,7 @@ __device__ void perform_read(gloop::DeviceLoop* loop, uchar* scratch, int fd, si
                 assert(NULL);
             }
 
-            perform_read(loop, scratch, fd, me + GLOOP_SHARED_PAGE_SIZE * gridDim.x, filesize);
+            perform_read(loop, scratch, fd, me + GLOOP_SHARED_PAGE_SIZE * gloop::logicalGridDim.x, filesize);
         });
         return;
     }
@@ -58,7 +58,7 @@ __device__ void entry(gloop::DeviceLoop* loop, char* filename)
 
     gloop::fs::open(loop, filename, O_RDONLY, [=](gloop::DeviceLoop* loop, int fd) {
         gloop::fs::fstat(loop, fd, [=](gloop::DeviceLoop* loop, int filesize) {
-            size_t me = blockIdx.x * GLOOP_SHARED_PAGE_SIZE;
+            size_t me = gloop::logicalBlockIdx.x * GLOOP_SHARED_PAGE_SIZE;
             perform_read(loop, scratch, fd, me, filesize);
         });
     });

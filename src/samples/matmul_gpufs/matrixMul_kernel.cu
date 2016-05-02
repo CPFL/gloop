@@ -46,8 +46,8 @@ template <int BLOCK_SIZE> __global__ void
 matrixMulCUDA(float *C, float *A, float *B, int wA, int wB)
 {
     // Block index
-    int bx = blockIdx.x;
-    int by = blockIdx.y;
+    int bx = gloop::logicalBlockIdx.x;
+    int by = gloop::logicalBlockIdx.y;
 
     // Thread index
     int tx = threadIdx.x;
@@ -146,7 +146,7 @@ matrixMul( int wA, int wB, int perBlockX, int perBlockY, char n)
         ERROR("Failed to open c");
     }
 
-    for (int by=blockIdx.y*perBlockY;by<(blockIdx.y+1)*perBlockY;by++){
+    for (int by=gloop::logicalBlockIdx.y*perBlockY;by<(gloop::logicalBlockIdx.y+1)*perBlockY;by++){
 
         int wC=wB;
         int cBegin = wC*BLOCK_SIZE*by*sizeof(float);

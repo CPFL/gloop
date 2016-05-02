@@ -139,7 +139,7 @@ int gpunet_loop(GPUNETGlobals* gpunet, cudaStream_t kernel_stream) {
 }
 
 
-// called by (blockIdx 0) thread
+// called by (gloop::logicalBlockIdx 0) thread
 __device__
 int gpunet_notify_connection(int conn_sock, volatile int* tb_alloc_tbl, int nr_tb) {
 	// to be optimized.
@@ -160,7 +160,7 @@ int gpunet_notify_connection(int conn_sock, volatile int* tb_alloc_tbl, int nr_t
 	return ret;
 }
 
-// called by threads within non-zero blockIdx
+// called by threads within non-zero gloop::logicalBlockIdx
 __device__
 void gpunet_wait_for_connection(int *sock, volatile int* tb_alloc_tbl, int nr_tb, volatile int *conn_finished) {
 	__shared__ int ret;
@@ -169,8 +169,8 @@ void gpunet_wait_for_connection(int *sock, volatile int* tb_alloc_tbl, int nr_tb
 		ret = -1;
 
 		while(!*conn_finished) {
-			if (tb_alloc_tbl[blockIdx.x] != -1) {
-				ret = tb_alloc_tbl[blockIdx.x];
+			if (tb_alloc_tbl[gloop::logicalBlockIdx.x] != -1) {
+				ret = tb_alloc_tbl[gloop::logicalBlockIdx.x];
 				break;
 			}
 		}
@@ -183,7 +183,7 @@ void gpunet_wait_for_connection(int *sock, volatile int* tb_alloc_tbl, int nr_tb
 __device__
 void gpunet_finalize_connection(int sock, volatile int* tb_alloc_tbl) {
 	BEGIN_SINGLE_THREAD_PART {
-		tb_alloc_tbl[blockIdx.x] = -1;
+		tb_alloc_tbl[gloop::logicalBlockIdx.x] = -1;
 	} END_SINGLE_THREAD_PART;
 }
 #endif

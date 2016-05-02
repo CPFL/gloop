@@ -47,8 +47,8 @@ template <int BLOCK_SIZE> __global__ void
 matrixMulCUDA(float *C, float *A, float *B, int wA, int wB)
 {
     // Block index
-    int bx = blockIdx.x;
-    int by = blockIdx.y;
+    int bx = gloop::logicalBlockIdx.x;
+    int by = gloop::logicalBlockIdx.y;
 
     // Thread index
     int tx = threadIdx.x;
@@ -218,7 +218,7 @@ performInnerLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int per
 template <int BLOCK_SIZE> __device__ void
 performOuterLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY, int f_a, int f_b, int f_c, int by)
 {
-    if (by == (blockIdx.y+1)*perBlockY) {
+    if (by == (gloop::logicalBlockIdx.y+1)*perBlockY) {
         gloop::fs::close(loop, f_a, [=](gloop::DeviceLoop* loop, int error) {
             gloop::fs::close(loop, f_b, [=](gloop::DeviceLoop* loop, int error) {
                 gloop::fs::close(loop, f_c, [=](gloop::DeviceLoop* loop, int error) {
@@ -259,8 +259,8 @@ performOuterLoop(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int per
 template <int BLOCK_SIZE> __device__ void
 performOperation(gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY, int f_a, int f_b, int f_c)
 {
-    // for (int by=blockIdx.y*perBlockY;by<(blockIdx.y+1)*perBlockY;by++){
-    int by=blockIdx.y*perBlockY;
+    // for (int by=gloop::logicalBlockIdx.y*perBlockY;by<(gloop::logicalBlockIdx.y+1)*perBlockY;by++){
+    int by=gloop::logicalBlockIdx.y*perBlockY;
     performOuterLoop<BLOCK_SIZE>(loop, wA, wB, perBlockX, perBlockY, f_a, f_b, f_c, by);
 }
 

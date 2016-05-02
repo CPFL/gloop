@@ -49,18 +49,18 @@ void __global__ img_gpu_nofs(float* src, int src_len,
 {
     int total_rows=src_len>>2;
 
-    int rows_per_chunk=total_rows/gridDim.x;
+    int rows_per_chunk=total_rows/gloop::logicalGridDim.x;
     if (rows_per_chunk==0) rows_per_chunk=1;
         
     int rows_to_process=rows_per_chunk;
 
-    if (blockIdx.x==gridDim.x-1) rows_to_process=(total_rows - blockIdx.x*rows_per_chunk);
+    if (gloop::logicalBlockIdx.x==gloop::logicalGridDim.x-1) rows_to_process=(total_rows - gloop::logicalBlockIdx.x*rows_per_chunk);
     
 
     
     int out_count=sizeof(int)*3;
     int found=0;
-    int start=blockIdx.x*rows_per_chunk;
+    int start=gloop::logicalBlockIdx.x*rows_per_chunk;
     int matched_count=0;
     for ( size_t _cursor=0;_cursor<db_len;_cursor+=(GREP_ROW_WIDTH<<2)){
         

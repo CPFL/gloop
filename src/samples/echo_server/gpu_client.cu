@@ -47,12 +47,12 @@ __device__ void close(gloop::DeviceLoop* loop, gloop::net::Socket* socket)
 __device__ void perform(gloop::DeviceLoop* loop, gloop::net::Socket* socket, int iteration)
 {
     if (iteration != ITERATION) {
-        gloop::net::tcp::send(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
+        gloop::net::tcp::send(loop, socket, BUF_SIZE, g_message[gloop::logicalBlockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
             if (sentCount == 0) {
                 close(loop, socket);
                 return;
             }
-            gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[blockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+            gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[gloop::logicalBlockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
                 if (receiveCount == 0) {
                     close(loop, socket);
                     return;

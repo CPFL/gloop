@@ -41,8 +41,8 @@ template <int BLOCK_SIZE> __global__ void
 matrixMulCUDA(float *C, float *A, float *B, int wA, int wB)
 {
     // Block index
-    int bx = blockIdx.x;
-    int by = blockIdx.y;
+    int bx = gloop::logicalBlockIdx.x;
+    int by = gloop::logicalBlockIdx.y;
 
     // Thread index
     int tx = threadIdx.x;
