@@ -64,7 +64,7 @@ HostContext::~HostContext()
             cudaFree(m_context.context);
         }
         m_ipc.reset();
-        m_pending.reset();
+        m_kernel.reset();
     }
     // GLOOP_DATA_LOG("let's cleanup context done\n");
 }
@@ -75,13 +75,12 @@ bool HostContext::initialize(HostLoop& hostLoop)
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
 
         m_ipc = make_unique<IPC[]>(m_physicalBlocks.x * m_physicalBlocks.y * GLOOP_SHARED_SLOT_SIZE);
-        m_pending = MappedMemory::create(sizeof(uint32_t));
-
+        m_kernel = MappedMemory::create(sizeof(DeviceContext::KernelContext));
         m_context.killClock = hostLoop.killClock();
         m_context.logicalBlocks = m_logicalBlocks;
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.channels, m_ipc.get(), 0));
 
-        GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.pending, m_pending->mappedPointer(), 0));
+        GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.kernel, m_kernel->mappedPointer(), 0));
 
         GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceContext::PerBlockContext) * m_physicalBlocks.x * m_physicalBlocks.y));
         if (m_pageCount) {
@@ -93,12 +92,13 @@ bool HostContext::initialize(HostLoop& hostLoop)
 
 uint32_t HostContext::pending() const
 {
-    return readNoCache<uint32_t>(m_pending->mappedPointer());
+    return readNoCache<uint32_t>(&((DeviceContext::KernelContext*)m_kernel->mappedPointer())->pending);
 }
 
 void HostContext::prepareForLaunch()
 {
-    writeNoCache<uint32_t>(m_pending->mappedPointer(), 0);
+    writeNoCache<uint64_t>(&((DeviceContext::KernelContext*)m_kernel->mappedPointer())->globalClock, 0);
+    writeNoCache<uint32_t>(&((DeviceContext::KernelContext*)m_kernel->mappedPointer())->pending, 0);
     // Clean up ExitRequired flags.
     {
         std::lock_guard<Mutex> guard(m_mutex);

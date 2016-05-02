@@ -82,7 +82,7 @@ private:
     Mutex m_mutex;
     FileDescriptorTable m_table { };
     std::unique_ptr<IPC[]> m_ipc { nullptr };
-    std::shared_ptr<MappedMemory> m_pending { nullptr };
+    std::shared_ptr<MappedMemory> m_kernel { nullptr };
     DeviceContext m_context { nullptr };
     dim3 m_logicalBlocks { };
     dim3 m_physicalBlocks { };

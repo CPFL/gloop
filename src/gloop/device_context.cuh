@@ -87,10 +87,15 @@ struct DeviceContext {
         DeviceLoopControl control;
     };
 
+    struct KernelContext {
+        uint32_t pending;
+        uint64_t globalClock;
+    };
+
     PerBlockContext* context;
     IPC* channels;
     OnePage* pages;
-    uint32_t* pending;
+    KernelContext* kernel;
     uint64_t killClock;
     uint3 logicalBlocks;
 };

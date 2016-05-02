@@ -44,6 +44,11 @@ __device__ void DeviceLoop::initializeImpl(volatile uint32_t* signal, DeviceCont
     m_slots = reinterpret_cast<DeviceCallback*>(&context()->slots);
     m_signal = signal;
 
+    uint64_t startClock = clock64();
+    m_start = atomicCAS((unsigned long long*)&deviceContext.kernel->globalClock, 0ULL, (unsigned long long)startClock);
+    if (m_start == 0)
+        m_start = startClock;
+
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     m_scratchIndex1 = invalidPosition();
     m_scratchIndex2 = invalidPosition();
@@ -75,7 +80,7 @@ __device__ int DeviceLoop::suspend()
     DeviceContext::PerBlockContext* blockContext = context();
     int suspended = m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
     if (suspended) {
-        atomicAdd(m_deviceContext.pending, 1);
+        atomicAdd(&m_deviceContext.kernel->pending, 1);
     } else {
         // This logical thread block is done.
         if (--m_control.logicalBlocksCount != 0) {

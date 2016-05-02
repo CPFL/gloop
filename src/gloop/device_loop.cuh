@@ -96,6 +96,8 @@ private:
     DeviceCallback* m_slots;
     DeviceContext::DeviceLoopControl m_control;
     volatile uint32_t* m_signal;
+    uint64_t m_start;
+
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     uint32_t m_scratchIndex1;
     uint32_t m_scratchIndex2;
@@ -317,7 +319,7 @@ __device__ int DeviceLoop::drain()
     BEGIN_SINGLE_THREAD
     {
         killClock = m_deviceContext.killClock;
-        start = clock64();
+        start = m_start;
         callback = nullptr;
         position = invalidPosition();
     }
