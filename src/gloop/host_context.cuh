@@ -25,9 +25,10 @@
 #define GLOOP_HOST_CONTEXT_CU_H_
 #include <cuda.h>
 #include <memory>
+#include <mutex>
+#include <unordered_set>
 #include <utility>
 #include <vector>
-#include <unordered_set>
 #include "config.h"
 #include "device_context.cuh"
 #include "io.cuh"
@@ -62,13 +63,13 @@ public:
 
     uint32_t pending() const;
 
-    void addExitRequired(IPC* ipc)
+    void addExitRequired(const std::lock_guard<Mutex>&, IPC* ipc)
     {
         // Mutex should be held.
         m_exitRequired.push_back(ipc);
     }
 
-    bool addUnmapRequest(std::shared_ptr<MmapResult> result)
+    bool addUnmapRequest(const std::lock_guard<Mutex>&, std::shared_ptr<MmapResult> result)
     {
         // Mutex should be held.
         m_unmapRequests.insert(result);

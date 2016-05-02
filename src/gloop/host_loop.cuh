@@ -161,6 +161,7 @@ private:
     bool m_stopThreadGroup { false };
 
     std::unique_ptr<boost::asio::io_service::work> m_kernelWork;
+    boost::condition_variable m_ioCompletionNotify;
 };
 
 template<typename DeviceLambda, class... Args>
