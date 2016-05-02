@@ -101,7 +101,7 @@ void HostContext::prepareForLaunch()
     writeNoCache<uint32_t>(&((DeviceContext::KernelContext*)m_kernel->mappedPointer())->pending, 0);
     // Clean up ExitRequired flags.
     {
-        std::lock_guard<Mutex> guard(m_mutex);
+        std::unique_lock<Mutex> guard(m_mutex);
         for (IPC* ipc : m_exitRequired) {
             ipc->emit(Code::Complete);
         }

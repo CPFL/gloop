@@ -110,7 +110,6 @@ __device__ int DeviceLoop::suspend()
         reinterpret_cast<DeviceCallback*>(&m_scratch2)->~DeviceCallback();
     }
 #endif
-    __threadfence_system();  // FIXME
     return suspended;
 }
 

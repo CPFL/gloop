@@ -63,6 +63,7 @@ inline __global__ void launch(volatile uint32_t* signal, DeviceContext context, 
         callback(&sharedDeviceLoop, args...);
         suspended = sharedDeviceLoop.drain();
     } while (!suspended);
+    __threadfence_system();  // FIXME
 }
 
 template<typename DeviceLambda, class... Args>
@@ -89,6 +90,7 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, 
 callbackKickedLabel:
         suspended = sharedDeviceLoop.drain();
     } while (!suspended);
+    __threadfence_system();  // FIXME
 }
 
 }  // namespace gloop
