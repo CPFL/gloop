@@ -27,8 +27,9 @@
 namespace gloop {
 
 enum class Code : int32_t {
-    ExitRequired = -2,
-    Complete = -1,
+    ExitRequired = -3,
+    Complete = -2,
+    Handling = -1,
     None = 0,
 
     // FS APIs.
@@ -59,6 +60,12 @@ enum class Code : int32_t {
 
     Stop
 };
+
+inline bool IsIOOperation(Code code)
+{
+    int32_t value = static_cast<int32_t>(code);
+    return value >= static_cast<int32_t>(Code::Open) && value <= static_cast<int32_t>(Code::NetTCPClose);
+}
 
 inline bool IsOperationCode(Code code)
 {

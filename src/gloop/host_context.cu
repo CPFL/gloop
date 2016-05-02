@@ -124,6 +124,20 @@ void HostContext::prepareForLaunch()
             }
         }
         m_unmapRequests.clear();
+
+        bool isIOCompleted = false;
+        int blocks = m_physicalBlocks.x * m_physicalBlocks.y;
+        for (int i = 0; i < blocks; ++i) {
+            for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
+                IPC ipc { i * GLOOP_SHARED_SLOT_SIZE + j };
+                Code code = ipc.peek(this);
+                if (code != Code::None && code != Code::Handling) {
+                    isIOCompleted = true;
+                }
+            }
+        }
+
+        // GLOOP_DATA_LOG("IO completed %d\n", (int)isIOCompleted);
     }
     __sync_synchronize();
 }

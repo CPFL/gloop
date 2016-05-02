@@ -169,7 +169,7 @@ void HostLoop::pollerMain()
             request::Request req { };
             Code code = ipc.peek(m_currentContext);
             memcpy(&req, (request::Request*)ipc.request(m_currentContext), sizeof(request::Request));
-            ipc.emit(m_currentContext, Code::None);
+            emit(*m_currentContext, ipc, Code::Handling);
             handleIO(ipc, code, req);
         });
         if (found) {
@@ -465,13 +465,14 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([ipc, req, this]() {
             // GLOOP_DEBUG("msync:address:(%p),size:(%u),flags:(%u)\n", req.u.msync.address, req.u.msync.size, req.u.msync.flags);
+            void* host = nullptr;
             {
                 std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-                void* host = m_currentContext->table().lookupHostByDevice((void*)req.u.msync.address);
-                int error = ::msync(host, req.u.msync.size, req.u.msync.flags);
-                ipc.request(m_currentContext)->u.msyncResult.error = error;
-                emit(guard, *m_currentContext, ipc, Code::Complete);
+                host = m_currentContext->table().lookupHostByDevice((void*)req.u.msync.address);
             }
+            int error = ::msync(host, req.u.msync.size, req.u.msync.flags);
+            ipc.request(m_currentContext)->u.msyncResult.error = error;
+            emit(*m_currentContext, ipc, Code::Complete);
         });
         break;
     }

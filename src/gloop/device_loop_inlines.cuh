@@ -158,15 +158,15 @@ __device__ auto DeviceLoop::dequeue() -> uint32_t
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
-    uint32_t candidate = m_control.freeSlots;
-    if (candidate == DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
+    uint32_t freeSlots = m_control.freeSlots;
+    if (freeSlots == DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
         return shouldExitPosition();
     }
 
     // __threadfence_system();
     // We first search wake up slots. It is always ready to execute.
     // And we can get the slot without costly DMA.
-    uint32_t wakeupSlots = m_control.freeSlots ^ DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+    uint32_t wakeupSlots = freeSlots ^ DeviceContext::DeviceLoopControl::allFilledFreeSlots();
     wakeupSlots &= m_control.sleepSlots;
     wakeupSlots &= m_control.wakeupSlots;
 
@@ -180,7 +180,7 @@ __device__ auto DeviceLoop::dequeue() -> uint32_t
     for (uint32_t i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
         // Look into ICP status to run callbacks.
         uint32_t bit = 1U << i;
-        if (!(m_control.freeSlots & bit)) {
+        if (!(freeSlots & bit)) {
             IPC ipc { i };
             Code code = ipc.peek(this);
             if (code == Code::Complete) {

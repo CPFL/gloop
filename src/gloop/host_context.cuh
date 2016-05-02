@@ -55,7 +55,7 @@ public:
     dim3 physicalBlocks() const { return m_physicalBlocks; }
 
     template<typename Callback>
-    __host__ bool tryPeekRequest(const Callback& callback);
+    __host__ bool tryPeekRequest(Callback callback);
 
     FileDescriptorTable& table() { return m_table; }
 
@@ -81,6 +81,9 @@ public:
 private:
     HostContext(HostLoop& hostLoop, dim3 logicalBlocks, dim3 physicalBlocks, uint32_t pageCount);
     bool initialize(HostLoop&);
+
+    template<typename Callback>
+    void forEachIPC(Callback callback);
 
     HostLoop& m_hostLoop;
     Mutex m_mutex;
@@ -115,20 +118,28 @@ GLOOP_ALWAYS_INLINE __host__ request::Payload* IPC::request(HostContext* hostCon
 }
 
 template<typename Callback>
-inline bool HostContext::tryPeekRequest(const Callback& callback)
+inline void HostContext::forEachIPC(Callback callback)
 {
-    bool found = false;
     int blocks = m_physicalBlocks.x * m_physicalBlocks.y;
     for (int i = 0; i < blocks; ++i) {
         for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
             IPC ipc { i * GLOOP_SHARED_SLOT_SIZE + j };
-            Code code = ipc.peek(this);
-            if (IsOperationCode(code)) {
-                found = true;
-                callback(ipc);
-            }
+            callback(ipc);
         }
     }
+}
+
+template<typename Callback>
+inline bool HostContext::tryPeekRequest(Callback callback)
+{
+    bool found = false;
+    forEachIPC([&](IPC ipc) {
+        Code code = ipc.peek(this);
+        if (IsOperationCode(code)) {
+            found = true;
+            callback(ipc);
+        }
+    });
     return found;
 }
 
