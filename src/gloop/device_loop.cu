@@ -58,6 +58,7 @@ __device__ void DeviceLoop::initializeImpl(volatile uint32_t* signal, DeviceCont
 
 __device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext)
 {
+    GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(signal, deviceContext);
     m_control.initialize(deviceContext.logicalBlocks);
     logicalGridDim = m_control.logicalGridDim;
@@ -66,6 +67,7 @@ __device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext 
 
 __device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, ResumeTag)
 {
+    GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(signal, deviceContext);
     resume();
     logicalGridDim = m_control.logicalGridDim;
