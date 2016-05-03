@@ -23,6 +23,7 @@
 */
 #ifndef GLOOP_HOST_CONTEXT_CU_H_
 #define GLOOP_HOST_CONTEXT_CU_H_
+#include <boost/thread.hpp>
 #include <cuda.h>
 #include <memory>
 #include <mutex>
@@ -60,7 +61,10 @@ public:
     FileDescriptorTable& table() { return m_table; }
 
     typedef Spinlock Mutex;
+    typedef boost::condition_variable_any Condition;
     Mutex& mutex() { return m_mutex; }
+    Condition& condition() { return m_condition; }
+
 
     void prepareForLaunch();
 
@@ -78,6 +82,8 @@ public:
         m_unmapRequests.insert(result);
     }
 
+    bool isReadyForResume(const std::unique_lock<Mutex>&);
+
 private:
     HostContext(HostLoop& hostLoop, dim3 logicalBlocks, dim3 physicalBlocks, uint32_t pageCount);
     bool initialize(HostLoop&);
@@ -86,13 +92,16 @@ private:
     void forEachIPC(Callback callback);
 
     HostLoop& m_hostLoop;
-    Mutex m_mutex;
+    Mutex m_mutex { };
+    Condition m_condition { };
     FileDescriptorTable m_table { };
     std::shared_ptr<MappedMemory> m_codesMemory { nullptr };
     std::shared_ptr<MappedMemory> m_payloadsMemory { nullptr };
     std::shared_ptr<MappedMemory> m_kernel { nullptr };
+    std::shared_ptr<MappedMemory> m_hostContextMemory { nullptr };
     DeviceContext m_context { nullptr };
     int32_t* m_codes;
+    DeviceContext::PerBlockHostContext* m_hostContext { nullptr };
     request::Payload* m_payloads;
     dim3 m_logicalBlocks { };
     dim3 m_physicalBlocks { };

@@ -207,7 +207,16 @@ inline __host__ void HostLoop::resume(DeviceLambda callback, Args... args)
     m_kernelService.post(std::bind([=] (Args... args) {
         bool acquireLockSoon = false;
         {
-            m_kernelLock.lock();
+            {
+#if 1
+                // FIXME: Provide I/O boosting.
+                std::unique_lock<HostContext::Mutex> lock(m_currentContext->mutex());
+                while (!m_currentContext->isReadyForResume(lock)) {
+                    m_currentContext->condition().wait(lock);
+                }
+#endif
+                m_kernelLock.lock();
+            }
             // GLOOP_DATA_LOG("acquire for resume\n");
             prepareForLaunch();
 
@@ -223,7 +232,10 @@ inline __host__ void HostLoop::resume(DeviceLambda callback, Args... args)
 
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             acquireLockSoon = m_currentContext->pending();
-            m_kernelLock.unlock(acquireLockSoon);
+
+            // FIXME: Fix this.
+            // m_kernelLock.unlock(acquireLockSoon);
+            m_kernelLock.unlock();
         }
         if (acquireLockSoon) {
             resume(callback, args...);

@@ -75,13 +75,17 @@ bool HostContext::initialize(HostLoop& hostLoop)
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
 
-        size_t allSlotsSize = m_physicalBlocks.x * m_physicalBlocks.y * GLOOP_SHARED_SLOT_SIZE;
+        size_t blocksSize = m_physicalBlocks.x * m_physicalBlocks.y;
+        size_t allSlotsSize = blocksSize * GLOOP_SHARED_SLOT_SIZE;
 
         m_codesMemory = MappedMemory::create(sizeof(int32_t) * allSlotsSize);
         m_codes = (int32_t*)m_codesMemory->mappedPointer();
 
         m_payloadsMemory = MappedMemory::create(sizeof(request::Payload) * allSlotsSize);
         m_payloads = (request::Payload*)m_payloadsMemory->mappedPointer();
+
+        m_hostContextMemory = MappedMemory::create(sizeof(DeviceContext::PerBlockHostContext) * blocksSize);
+        m_hostContext = (DeviceContext::PerBlockHostContext*)m_hostContextMemory->mappedPointer();
 
         m_kernel = MappedMemory::create(sizeof(DeviceContext::KernelContext));
 
@@ -90,11 +94,12 @@ bool HostContext::initialize(HostLoop& hostLoop)
 
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.codes, m_codesMemory->mappedPointer(), 0));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.payloads, m_payloadsMemory->mappedPointer(), 0));
+        GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.hostContext, m_hostContextMemory->mappedPointer(), 0));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.kernel, m_kernel->mappedPointer(), 0));
 
-        GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceContext::PerBlockContext) * m_physicalBlocks.x * m_physicalBlocks.y));
+        GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceContext::PerBlockContext) * blocksSize));
         if (m_pageCount) {
-            GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceContext::OnePage) * m_pageCount * m_physicalBlocks.x * m_physicalBlocks.y));
+            GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceContext::OnePage) * m_pageCount * blocksSize));
         }
     }
     return true;
@@ -103,6 +108,41 @@ bool HostContext::initialize(HostLoop& hostLoop)
 uint32_t HostContext::pending() const
 {
     return readNoCache<uint32_t>(&((DeviceContext::KernelContext*)m_kernel->mappedPointer())->pending);
+}
+
+bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
+{
+    if (!m_exitRequired.empty()) {
+        return true;
+    }
+
+    int blocks = m_physicalBlocks.x * m_physicalBlocks.y;
+    for (int i = 0; i < blocks; ++i) {
+        DeviceContext::PerBlockHostContext hostContext = m_hostContext[i];
+        if (hostContext.freeSlots == DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
+            continue;
+        }
+
+        uint32_t allocatedSlots = hostContext.freeSlots ^ DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+        for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
+            uint32_t bit = 1U << j;
+            if (allocatedSlots & bit) {
+                if (hostContext.sleepSlots & bit) {
+                    if (hostContext.wakeupSlots & bit) {
+                        return true;
+                    }
+                    continue;
+                }
+
+                IPC ipc { i * GLOOP_SHARED_SLOT_SIZE + j };
+                Code code = ipc.peek(this);
+                if (code == Code::Complete) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 void HostContext::prepareForLaunch()
@@ -124,20 +164,6 @@ void HostContext::prepareForLaunch()
             }
         }
         m_unmapRequests.clear();
-
-        bool isIOCompleted = false;
-        int blocks = m_physicalBlocks.x * m_physicalBlocks.y;
-        for (int i = 0; i < blocks; ++i) {
-            for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
-                IPC ipc { i * GLOOP_SHARED_SLOT_SIZE + j };
-                Code code = ipc.peek(this);
-                if (code != Code::None && code != Code::Handling) {
-                    isIOCompleted = true;
-                }
-            }
-        }
-
-        // GLOOP_DATA_LOG("IO completed %d\n", (int)isIOCompleted);
     }
     __sync_synchronize();
 }

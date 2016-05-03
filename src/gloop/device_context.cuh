@@ -90,7 +90,14 @@ struct DeviceContext {
         uint64_t globalClock;
     };
 
+    struct PerBlockHostContext {
+        uint32_t freeSlots;
+        uint32_t sleepSlots;
+        uint32_t wakeupSlots;
+    };
+
     PerBlockContext* context;
+    PerBlockHostContext* hostContext;
     int32_t* codes;
     request::Payload* payloads;
     OnePage* pages;

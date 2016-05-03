@@ -80,7 +80,6 @@ __device__ int DeviceLoop::suspend()
     // FIXME: always save.
     GLOOP_ASSERT_SINGLE_THREAD();
     // __threadfence_system();  // FIXME
-    DeviceContext::PerBlockContext* blockContext = context();
     int suspended = m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
     if (suspended) {
         atomicAdd(&m_deviceContext.kernel->pending, 1);
@@ -101,7 +100,12 @@ __device__ int DeviceLoop::suspend()
     }
 
     // Save the control state.
+    DeviceContext::PerBlockContext* blockContext = context();
+    DeviceContext::PerBlockHostContext* hostContext = m_deviceContext.hostContext + GLOOP_BID();
     blockContext->control = m_control;
+    hostContext->freeSlots = m_control.freeSlots;
+    hostContext->sleepSlots = m_control.sleepSlots;
+    hostContext->wakeupSlots = m_control.wakeupSlots;
 
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     if (m_scratchIndex1 != invalidPosition()) {

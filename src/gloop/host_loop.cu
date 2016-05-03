@@ -50,6 +50,7 @@ namespace gloop {
 GLOOP_ALWAYS_INLINE static void emit(const std::lock_guard<HostContext::Mutex>&, HostContext& context, IPC ipc, Code code)
 {
     ipc.emit(&context, code);
+    context.condition().notify_one();
 }
 
 GLOOP_ALWAYS_INLINE static void emit(HostContext& context, IPC ipc, Code code)
