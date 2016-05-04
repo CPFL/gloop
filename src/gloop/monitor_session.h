@@ -59,6 +59,12 @@ public:
 
     bool isAttemptingToLaunch() const { return m_attemptToLaunch.load(); }
 
+    bool isScheduledDuringIO() const { return m_scheduledDuringIO.load(); }
+    void setScheduledDuringIO()
+    {
+        m_scheduledDuringIO.store(true);
+    }
+
     void handShake();
 
     const Duration& used() const { return m_used; }
@@ -81,6 +87,7 @@ private:
     void kill();
 
     std::atomic<bool> m_attemptToLaunch { false };
+    std::atomic<bool> m_scheduledDuringIO { false };
     uint32_t m_id;
     Server& m_server;
     Lock m_lock;

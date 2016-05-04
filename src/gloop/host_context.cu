@@ -124,9 +124,10 @@ bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
         }
 
         uint32_t allocatedSlots = hostContext.freeSlots ^ DeviceContext::DeviceLoopControl::allFilledFreeSlots();
-        for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
+        for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE && allocatedSlots; ++j) {
             uint32_t bit = 1U << j;
             if (allocatedSlots & bit) {
+                allocatedSlots &= ~bit;
                 if (hostContext.sleepSlots & bit) {
                     if (hostContext.wakeupSlots & bit) {
                         return true;

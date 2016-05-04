@@ -40,6 +40,11 @@ struct Command {
         Complete
     };
 
+    enum class ReleaseStatus : uint32_t {
+        IO,
+        Ready,
+    };
+
     Type type;
     uintptr_t payload;
     request::Request request;

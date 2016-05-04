@@ -83,9 +83,9 @@ public:
             m_hostLoop.unlockLaunch();
         }
 
-        void unlock(bool acquireLockSoon)
+        void unlock(Command::ReleaseStatus status)
         {
-            m_hostLoop.unlockLaunch(acquireLockSoon);
+            m_hostLoop.unlockLaunch(status);
         }
 
     private:
@@ -120,7 +120,7 @@ private:
     void resume(DeviceLambda callback, Args... args);
 
     void lockLaunch();
-    void unlockLaunch(bool acquireLockSoon = false);
+    void unlockLaunch(Command::ReleaseStatus = Command::ReleaseStatus::IO);
 
     void prepareForLaunch();
 
@@ -233,9 +233,18 @@ inline __host__ void HostLoop::resume(DeviceLambda callback, Args... args)
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             acquireLockSoon = m_currentContext->pending();
 
-            // FIXME: Fix this.
             // m_kernelLock.unlock(acquireLockSoon);
-            m_kernelLock.unlock();
+            // m_kernelLock.unlock();
+
+            {
+                // FIXME: Fix this.
+                std::unique_lock<HostContext::Mutex> lock(m_currentContext->mutex());
+                Command::ReleaseStatus releaseStatus = Command::ReleaseStatus::IO;
+                if (m_currentContext->isReadyForResume(lock)) {
+                    releaseStatus = Command::ReleaseStatus::Ready;
+                }
+                m_kernelLock.unlock(releaseStatus);
+            }
         }
         if (acquireLockSoon) {
             resume(callback, args...);
@@ -257,11 +266,11 @@ inline void HostLoop::lockLaunch()
     m_responseQueue->receive(&command, sizeof(Command), size, priority);
 }
 
-inline void HostLoop::unlockLaunch(bool acquireLockSoon)
+inline void HostLoop::unlockLaunch(Command::ReleaseStatus releaseStatus)
 {
     Command command {
         .type = Command::Type::Unlock,
-        .payload = static_cast<uint64_t>(acquireLockSoon)
+        .payload = static_cast<uint64_t>(releaseStatus)
     };
     m_requestQueue->send(&command, sizeof(Command), 0);
 }

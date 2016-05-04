@@ -30,6 +30,8 @@
 namespace gloop {
 namespace monitor {
 
+static const Session::Duration BoostThreshold = std::chrono::microseconds(10);
+
 Server::Server(Monitor& monitor, uint32_t serverId)
     : m_monitor(monitor)
     , m_id(serverId)
@@ -88,19 +90,29 @@ void Server::unregisterSession(Session& session)
     progressCurrentVirtualTime(guard);
 }
 
+static void setLowestSession(Session*& target, Session* given)
+{
+    if (!target) {
+        target = given;
+        return;
+    }
+
+    if (target->used() > given->used()) {
+        target = given;
+    }
+}
+
 Session* Server::calculateNextSession(std::lock_guard<Lock>& locker)
 {
     Session* target = nullptr;
+    Session* lowestIncludingIO = nullptr;
     for (auto& session : sessionList()) {
         if (session.isAttemptingToLaunch()) {
             // GLOOP_DATA_LOG("  candidate[%u], ticks:(%llu)\n", session.id(), (long long unsigned)session.used().count());
-            if (!target) {
-                target = &session;
-            } else {
-                if (target->used() > session.used()) {
-                    target = &session;
-                }
-            }
+            setLowestSession(target, &session);
+        }
+        if (session.isAttemptingToLaunch() || !session.isScheduledDuringIO()) {
+            setLowestSession(lowestIncludingIO, &session);
         }
     }
 #if 0
@@ -112,6 +124,11 @@ Session* Server::calculateNextSession(std::lock_guard<Lock>& locker)
     } else {
         m_toBeAllowed = target->id();
     }
+
+    if (lowestIncludingIO && lowestIncludingIO != target) {
+        lowestIncludingIO->setScheduledDuringIO();
+    }
+
     // GLOOP_DATA_LOG("Next ID[%u]\n", m_toBeAllowed);
     return target;
 #endif

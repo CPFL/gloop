@@ -147,8 +147,9 @@ bool Session::handle(Command& command)
             m_timer.cancel();
             m_timeWatch.end();
 
-            bool acquireLockSoon = static_cast<bool>(command.payload);
-            if (acquireLockSoon) {
+            m_scheduledDuringIO.store(false);
+            Command::ReleaseStatus status = static_cast<Command::ReleaseStatus>(command.payload);
+            if (status == Command::ReleaseStatus::Ready) {
                 // This flag makes the current ready to schedule.
                 m_attemptToLaunch.store(true);
             }
