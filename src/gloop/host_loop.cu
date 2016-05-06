@@ -322,8 +322,12 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
 {
     switch (static_cast<Code>(code)) {
     case Code::Open: {
-        int fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
-        // GLOOP_DEBUG("open:(%s),fd:(%d)\n", req.u.open.filename.data, fd);
+        int fd = 0;
+        {
+            std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
+            fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
+        }
+        // GLOOP_DATA_LOG("open:(%s),fd:(%d)\n", req.u.open.filename.data, fd);
         ipc.request(m_currentContext)->u.openResult.fd = fd;
         emit(*m_currentContext, ipc, Code::Complete);
         break;
@@ -383,8 +387,11 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     }
 
     case Code::Close: {
-        m_currentContext->table().close(req.u.close.fd);
-        // GLOOP_DEBUG("Close %d\n", req.u.close.fd);
+        {
+            std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
+            m_currentContext->table().close(req.u.close.fd);
+        }
+        // GLOOP_DATA_LOG("Close %d\n", req.u.close.fd);
         ipc.request(m_currentContext)->u.closeResult.error = 0;
         emit(*m_currentContext, ipc, Code::Complete);
         break;

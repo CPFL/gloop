@@ -28,6 +28,7 @@
 #include <unordered_map>
 #include "noncopyable.h"
 #include "hash_tuple.h"
+#include "spinlock.h"
 namespace gloop {
 
 struct File {
@@ -64,6 +65,8 @@ inline MmapResult::MmapResult(MmapRequest request)
 class FileDescriptorTable {
 GLOOP_NONCOPYABLE(FileDescriptorTable)
 public:
+    typedef Spinlock Mutex;
+
     FileDescriptorTable() { };
     ~FileDescriptorTable();
 
@@ -76,6 +79,7 @@ public:
 
     bool requestMmap(int fd, size_t offset, size_t size, std::shared_ptr<MmapResult>& result);
     void dropMmapResult(std::shared_ptr<MmapResult> result);
+    void dropMmapResult(const std::lock_guard<Mutex>&, std::shared_ptr<MmapResult> result);
 
 private:
     // This merges file open requests from the blocks.
@@ -87,6 +91,8 @@ private:
 
     typedef std::unordered_map<MmapRequest, std::shared_ptr<MmapResult>, hash_tuple::hash<MmapRequest>> MmapRequests;
     MmapRequests m_mmapRequestsTable;
+
+    Mutex m_mutex { };
 };
 
 }  // namespace gloop

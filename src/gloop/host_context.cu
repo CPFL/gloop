@@ -159,8 +159,9 @@ void HostContext::prepareForLaunch()
         m_exitRequired.clear();
         for (std::shared_ptr<MmapResult> result : m_unmapRequests) {
             if (!result->refCount) {
+                // GLOOP_DATA_LOG("Unmapping. fd:(%d),offset:(%llx),size:(%llx)\n", std::get<0>(result->request), std::get<1>(result->request), std::get<2>(result->request));
                 GLOOP_CUDA_SAFE_CALL(cudaHostUnregister(result->device));
-                ::munmap(((char*)result->host) + std::get<1>(result->request), result->size);
+                ::munmap((char*)result->host, result->size);
                 table().dropMmapResult(result);
             }
         }
