@@ -52,6 +52,11 @@ public:
     Session(Server&, uint32_t id);
     ~Session();
 
+    static Duration boostThreshold()
+    {
+        return std::chrono::milliseconds(GLOOP_ROUGH_TIMESLICE);
+    }
+
     boost::asio::local::stream_protocol::socket& socket() { return m_socket; }
     uint32_t id() const { return m_id; }
 
@@ -68,9 +73,12 @@ public:
     void handShake();
 
     const Duration& used() const { return m_used; }
+    Duration& used() { return m_used; }
 
     void burnUsed(const Duration&);
     void setUsed(const Duration&);
+
+    uint64_t costPerBit() const { return m_costPerBit; }
 
 private:
     Command* buffer() { return reinterpret_cast<Command*>(&m_buffer); }

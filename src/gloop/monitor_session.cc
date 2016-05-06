@@ -127,6 +127,14 @@ bool Session::handle(Command& command)
             std::lock_guard<Lock> guard(m_lock);
             m_attemptToLaunch.store(true);
 
+            // IO boosting.
+            if (m_scheduledDuringIO) {
+                auto compensation = std::min(std::max(std::chrono::duration_cast<std::chrono::microseconds>(TimeWatch::Clock::now() - m_timeWatch.endPoint()), std::chrono::microseconds(0)), boostThreshold());
+                auto value = m_used;
+                m_used -= (compensation / m_costPerBit);
+                GLOOP_DATA_LOG("  boosting candidate[%u], ticks:(%lld), previous:(%lld)\n", m_id, (long long int)used().count(), (long long int)value.count());
+            }
+
             m_kernelLock.lock();
             while (!m_server.isAllowed(*this)) {
                 GLOOP_DEBUG("[%u] Sleep\n", m_id);

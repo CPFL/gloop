@@ -70,13 +70,13 @@ public:
 
     boost::condition_variable_any& condition() { return m_condition; }
 
-    Session* calculateNextSession(std::lock_guard<Lock>&);
+    Session* calculateNextSession(const std::lock_guard<Lock>&);
     Lock& serverStatusLock() { return m_serverStatusLock; }
 
 private:
     void accept();
 
-    void progressCurrentVirtualTime(std::lock_guard<Lock>&);
+    void progressCurrentVirtualTime(const std::lock_guard<Lock>&);
 
     Monitor& m_monitor;
     uint32_t m_id;

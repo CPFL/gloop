@@ -29,15 +29,17 @@ namespace gloop {
 
 class Benchmark {
 public:
-    typedef std::chrono::high_resolution_clock clock;
-    inline void begin()
+    typedef std::chrono::high_resolution_clock Clock;
+    inline Clock::time_point begin()
     {
-        m_begin = clock::now();
+        m_begin = Clock::now();
+        return m_begin;
     }
 
-    inline void end()
+    inline Clock::time_point end()
     {
-        m_end = clock::now();
+        m_end = Clock::now();
+        return m_end;
     }
 
     std::chrono::microseconds ticks()
@@ -50,9 +52,12 @@ public:
         std::cout << prefix << "result:us(" << ticks().count() << ")" << std::endl;
     }
 
+    inline Clock::time_point beginPoint() const { return m_begin; }
+    inline Clock::time_point endPoint() const { return m_end; }
+
 private:
-    clock::time_point m_begin { };
-    clock::time_point m_end { };
+    Clock::time_point m_begin { };
+    Clock::time_point m_end { };
 };
 
 typedef Benchmark TimeWatch;

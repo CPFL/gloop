@@ -30,8 +30,6 @@
 namespace gloop {
 namespace monitor {
 
-static const Session::Duration BoostThreshold = std::chrono::microseconds(10);
-
 Server::Server(Monitor& monitor, uint32_t serverId)
     : m_monitor(monitor)
     , m_id(serverId)
@@ -54,17 +52,23 @@ void Server::accept()
     });
 }
 
-void Server::progressCurrentVirtualTime(std::lock_guard<Lock>&)
+static void setLowestSession(Session*& target, Session* given)
+{
+    if (!target) {
+        target = given;
+        return;
+    }
+
+    if (target->used() > given->used()) {
+        target = given;
+    }
+}
+
+void Server::progressCurrentVirtualTime(const std::lock_guard<Lock>&)
 {
     Session* target = nullptr;
     for (auto& session : sessionList()) {
-        if (!target) {
-            target = &session;
-        } else {
-            if (target->used() > session.used()) {
-                target = &session;
-            }
-        }
+        setLowestSession(target, &session);
     }
     if (target) {
         // Burn the used. This always aligns CVT to 0.
@@ -90,25 +94,13 @@ void Server::unregisterSession(Session& session)
     progressCurrentVirtualTime(guard);
 }
 
-static void setLowestSession(Session*& target, Session* given)
-{
-    if (!target) {
-        target = given;
-        return;
-    }
-
-    if (target->used() > given->used()) {
-        target = given;
-    }
-}
-
-Session* Server::calculateNextSession(std::lock_guard<Lock>& locker)
+Session* Server::calculateNextSession(const std::lock_guard<Lock>& locker)
 {
     Session* target = nullptr;
     Session* lowestIncludingIO = nullptr;
     for (auto& session : sessionList()) {
+        GLOOP_DATA_LOG("  candidate[%u], ticks:(%lld)\n", session.id(), (long long int)session.used().count());
         if (session.isAttemptingToLaunch()) {
-            // GLOOP_DATA_LOG("  candidate[%u], ticks:(%llu)\n", session.id(), (long long unsigned)session.used().count());
             setLowestSession(target, &session);
         }
         if (session.isAttemptingToLaunch() || !session.isScheduledDuringIO()) {
@@ -122,11 +114,19 @@ Session* Server::calculateNextSession(std::lock_guard<Lock>& locker)
     if (!target) {
         m_toBeAllowed = anySessionAllowed();
     } else {
-        m_toBeAllowed = target->id();
-    }
+        GLOOP_DATA_LOG("  selected candidate[%u], ticks:(%lld)\n", target->id(), (long long int)target->used().count());
+        // Align to the least active session's time.
+        Session::Duration smallest = target->used();
+        for (auto& session : sessionList()) {
+            session.burnUsed(smallest);
+        }
 
-    if (lowestIncludingIO && lowestIncludingIO != target) {
-        lowestIncludingIO->setScheduledDuringIO();
+        m_toBeAllowed = target->id();
+        // If the lowestIncludingIO does not perform IO and sleep, it will be scheduled.
+        // Adds the chance to boost when it is waken up.
+        if (lowestIncludingIO && lowestIncludingIO != target) {
+            lowestIncludingIO->setScheduledDuringIO();
+        }
     }
 
     // GLOOP_DATA_LOG("Next ID[%u]\n", m_toBeAllowed);
