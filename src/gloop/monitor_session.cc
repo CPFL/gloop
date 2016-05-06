@@ -122,17 +122,18 @@ bool Session::handle(Command& command)
         return false;
 
     case Command::Type::Lock: {
-        GLOOP_DEBUG("[%u] Attempt to lock kernel token.\n", m_id);
+        // GLOOP_DATA_LOG("[%u] Attempt to lock kernel token.\n", m_id);
         {
             std::lock_guard<Lock> guard(m_lock);
             m_attemptToLaunch.store(true);
 
             // IO boosting.
             if (m_scheduledDuringIO) {
-                auto compensation = std::min(std::max(std::chrono::duration_cast<std::chrono::microseconds>(TimeWatch::Clock::now() - m_timeWatch.endPoint()), std::chrono::microseconds(0)), boostThreshold());
+                // auto polling = std::max<std::chrono::microseconds>(std::chrono::duration_cast<std::chrono::microseconds>(TimeWatch::Clock::now() - m_timeWatch.endPoint()), std::chrono::microseconds(0));
+                auto compensation = std::min<std::chrono::microseconds>(m_burned, std::chrono::duration_cast<std::chrono::microseconds>(boostThreshold()));
                 auto value = m_used;
                 m_used -= (compensation / m_costPerBit);
-                GLOOP_DATA_LOG("  boosting candidate[%u], ticks:(%lld), previous:(%lld)\n", m_id, (long long int)used().count(), (long long int)value.count());
+                // GLOOP_DATA_LOG("  boosting candidate[%u], polling:(%lld),ticks:(%lld), previous:(%lld)\n", m_id, (long long int)m_burned.count(), (long long int)used().count(), (long long int)value.count());
             }
 
             m_kernelLock.lock();
@@ -140,7 +141,7 @@ bool Session::handle(Command& command)
                 GLOOP_DEBUG("[%u] Sleep\n", m_id);
                 m_server.condition().wait(m_kernelLock);
             }
-            GLOOP_DEBUG("[%u] Lock kernel token.\n", m_id);
+            // GLOOP_DATA_LOG("[%u] Lock kernel token.\n", m_id);
 
             m_timeWatch.begin();
             m_attemptToLaunch.store(false);
@@ -155,6 +156,7 @@ bool Session::handle(Command& command)
             m_timer.cancel();
             m_timeWatch.end();
 
+            m_burned = Duration(0);
             m_scheduledDuringIO.store(false);
             Command::ReleaseStatus status = static_cast<Command::ReleaseStatus>(command.payload);
             if (status == Command::ReleaseStatus::Ready) {
@@ -168,8 +170,8 @@ bool Session::handle(Command& command)
                 m_server.calculateNextSession(serverStatusGuard);
             }
             m_kernelLock.unlock();
+            // GLOOP_DATA_LOG("[%u] Unlock kernel token, used:(%llu).\n", m_id, (long long unsigned)m_used.count());
             m_server.condition().notify_all();
-            GLOOP_DEBUG("[%u] Unlock kernel token, used:(%llu).\n", m_id, (long long unsigned)m_used.count());
         }
         return false;
     }
@@ -228,8 +230,10 @@ void Session::main()
 void Session::burnUsed(const Duration& currentVirtualTime)
 {
     m_used -= currentVirtualTime;
-    if (m_used < Duration(0))
+    if (m_used < Duration(0)) {
+        m_burned += -m_used;
         m_used = Duration(0);
+    }
 }
 
 void Session::setUsed(const Duration& used)

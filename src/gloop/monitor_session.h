@@ -112,6 +112,7 @@ private:
     // Scheduler members.
     TimeWatch m_timeWatch;
     Duration m_used { 0 };
+    Duration m_burned { 0 };
     uint64_t m_costPerBit { 1 };
 };
 

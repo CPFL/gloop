@@ -99,7 +99,7 @@ Session* Server::calculateNextSession(const std::lock_guard<Lock>& locker)
     Session* target = nullptr;
     Session* lowestIncludingIO = nullptr;
     for (auto& session : sessionList()) {
-        GLOOP_DATA_LOG("  candidate[%u], ticks:(%lld)\n", session.id(), (long long int)session.used().count());
+        // GLOOP_DATA_LOG("  candidate[%u], ticks:(%lld)\n", session.id(), (long long int)session.used().count());
         if (session.isAttemptingToLaunch()) {
             setLowestSession(target, &session);
         }
@@ -114,7 +114,7 @@ Session* Server::calculateNextSession(const std::lock_guard<Lock>& locker)
     if (!target) {
         m_toBeAllowed = anySessionAllowed();
     } else {
-        GLOOP_DATA_LOG("  selected candidate[%u], ticks:(%lld)\n", target->id(), (long long int)target->used().count());
+        // GLOOP_DATA_LOG("  selected candidate[%u], ticks:(%lld)\n", target->id(), (long long int)target->used().count());
         // Align to the least active session's time.
         Session::Duration smallest = target->used();
         for (auto& session : sessionList()) {
@@ -126,6 +126,7 @@ Session* Server::calculateNextSession(const std::lock_guard<Lock>& locker)
         // Adds the chance to boost when it is waken up.
         if (lowestIncludingIO && lowestIncludingIO != target) {
             lowestIncludingIO->setScheduledDuringIO();
+            // GLOOP_DATA_LOG("  selected candidate[%u] IO marked\n", lowestIncludingIO->id());
         }
     }
 
