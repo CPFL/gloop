@@ -14,8 +14,6 @@
 #include <gloop/utility/util.cu.h>
 #include "img.cuh"
 
-#define GLOOP_NON_MMAP
-
 __device__ volatile gpunet::INIT_LOCK init_lock;
 __device__ volatile gpunet::LAST_SEMAPHORE last_lock;
 
@@ -44,38 +42,6 @@ struct Context {
 template<typename Callback>
 __device__ volatile float* get_row(gloop::DeviceLoop* loop, volatile uchar** cur_page_ptr, size_t* cur_page_offset, int* isFilled, size_t req_file_offset, int max_file_size, int fd, int type, int id, int db_idx, Callback callback)
 {
-#if !defined(GLOOP_NON_MMAP)
-    if (*cur_page_ptr!=NULL && *cur_page_offset+GLOOP_PAGE_SIZE>req_file_offset) {
-        callback(loop, (volatile float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
-        return;
-    }
-
-    auto continuation = [=] (gloop::DeviceLoop* loop) {
-        int mapsize = (max_file_size-req_file_offset)>GLOOP_PAGE_SIZE?GLOOP_PAGE_SIZE:(max_file_size-req_file_offset);
-
-        *cur_page_offset=(req_file_offset& (~(GLOOP_PAGE_SIZE-1)));// round to the beg. of the page
-        gloop::fs::mmap(loop, nullptr, mapsize, type, MAP_SHARED, fd, *cur_page_offset, [=](gloop::DeviceLoop* loop, volatile void* memory) {
-            *cur_page_ptr=(volatile uchar*) memory;
-            if (*cur_page_ptr == MAP_FAILED)
-                GPU_ERROR("MMAP failed");
-            // BEGIN_SINGLE_THREAD
-            //     printf("db:(%d),data:(%d),offset:(%u),checksum:(%04x)\n", db_idx, id, (unsigned)(*cur_page_offset), (unsigned)checksum((const uint8_t*)*cur_page_ptr, mapsize));
-            // END_SINGLE_THREAD
-            callback(loop, (volatile float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
-        });
-    };
-
-    // remap
-    if (*cur_page_ptr) {
-        gloop::fs::munmap(loop, *cur_page_ptr, 0, [=](gloop::DeviceLoop* loop, int error) {
-            if (error)
-                GPU_ERROR("Unmap failed");
-            continuation(loop);
-        });
-        return;
-    }
-    continuation(loop);
-#else
     if (*isFilled && *cur_page_offset+GLOOP_PAGE_SIZE>req_file_offset) {
         callback(loop, (volatile float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
         return;
@@ -95,7 +61,6 @@ __device__ volatile float* get_row(gloop::DeviceLoop* loop, volatile uchar** cur
         });
     }
     END_SINGLE_THREAD
-#endif
 }
 
 GLOOP_ALWAYS_INLINE __device__ float inner_product( volatile float* a, volatile float* b, int size)
@@ -189,20 +154,6 @@ void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int da
                 get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, &context->ph_db.isFilled, 0, db_size, zfd_db, PROT_READ | PROT_WRITE, -1, db_idx, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db) {
 
                     process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, 0, db_rows, ptr_row_db, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db, int found) {
-#if !defined(GLOOP_NON_MMAP)
-                        gloop::fs::munmap(loop, ptr_row_db, 0, [=](gloop::DeviceLoop* loop, int error) {
-                            if(error)
-                                GPU_ERROR("Failed to unmap db");
-                            context->ph_db.page=NULL; context->ph_db.file_offset=0;
-                            gloop::fs::close(loop, zfd_db, [=](gloop::DeviceLoop* loop, int error) {
-                                if (found) {
-                                    callback(loop, found);
-                                    return;
-                                }
-                                process_one_db(loop, context, data_idx, db_idx + 1, out_count, callback);
-                            });
-                        });
-#else
                         context->ph_db.file_offset = 0;
                         context->ph_db.isFilled = false;
                         gloop::fs::close(loop, zfd_db, [=](gloop::DeviceLoop* loop, int error) {
@@ -212,19 +163,14 @@ void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int da
                             }
                             process_one_db(loop, context, data_idx, db_idx + 1, out_count, callback);
                         });
-#endif
                     });
                 });
             });
         });
         return;
     }
-#if !defined(GLOOP_NON_MMAP)
-    context->ph_db.page=NULL; context->ph_db.file_offset=0;
-#else
     context->ph_db.file_offset=0;
     context->ph_db.isFilled=false;
-#endif
     callback(loop, /* found */ 0);
 }
 
@@ -240,12 +186,8 @@ void __device__ process_one_data(gloop::DeviceLoop* loop, Context* context, size
 
 
             int db_idx = 0;
-#if !defined(GLOOP_NON_MMAP)
-            context->ph_db.page=NULL; context->ph_db.file_offset=0;
-#else
             context->ph_db.file_offset=0;
             context->ph_db.isFilled=false;
-#endif
             process_one_db(loop, context, data_idx, db_idx, out_count, [=] (gloop::DeviceLoop* loop, int found) {
                 BEGIN_SINGLE_THREAD
                 {
@@ -308,11 +250,7 @@ void __device__ img_gpu(
                     context->total_rows = total_rows;
                     context->src_row_len = src_row_len;
                     context->num_db_files = num_db_files;
-#if !defined(GLOOP_NON_MMAP)
-                    context->ph_db = {nullptr,0, false};
-#else
                     context->ph_db = {(volatile uchar*)malloc(GLOOP_PAGE_SIZE),0, false};
-#endif
                     context->zfd_src = zfd_src;
 
                     toInit=init_lock.try_wait();
