@@ -103,11 +103,8 @@ inline __device__ auto readOnePage(DeviceLoop* loop, int fd, size_t offset, size
         BEGIN_SINGLE_THREAD
         {
             auto ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
-                volatile request::Request oneTimeRequest;
-                oneTimeRequest.u.readOnePageResult.page = page;
-                oneTimeRequest.u.readOnePageResult.readCount = req->u.readResult.readCount;
                 __threadfence();
-                callback(loop, &oneTimeRequest);
+                callback(loop, req->u.readResult.readCount, page);
             });
             volatile request::Read& req = ipc.request(loop)->u.read;
             req.fd = fd;
@@ -121,10 +118,8 @@ inline __device__ auto readOnePage(DeviceLoop* loop, int fd, size_t offset, size
 }
 
 template<typename Lambda>
-inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, size_t requestedOffset, volatile request::Request* req, Lambda callback) -> void
+inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, size_t requestedOffset, ssize_t readCount, void* page, Lambda callback) -> void
 {
-    ssize_t readCount = req->u.readOnePageResult.readCount;
-    void* page = req->u.readOnePageResult.page;
     ssize_t cursor = requestedOffset + readCount;
     ssize_t last = offset + count;
 
@@ -136,8 +131,8 @@ inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offse
     }
 
     if (cursor != last) {
-        readOnePage(loop, fd, cursor, min((last - cursor), GLOOP_SHARED_PAGE_SIZE), [=](DeviceLoop* loop, volatile request::Request* req) {
-            performOnePageRead(loop, fd, offset, count, buffer, cursor, req, callback);
+        readOnePage(loop, fd, cursor, min((last - cursor), GLOOP_SHARED_PAGE_SIZE), [=](DeviceLoop* loop, ssize_t readCount, void* page) {
+            performOnePageRead(loop, fd, offset, count, buffer, cursor, readCount, page, callback);
         });
     }
 
@@ -158,8 +153,8 @@ inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offse
 template<typename Lambda>
 inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
-    readOnePage(loop, fd, offset, min(count, GLOOP_SHARED_PAGE_SIZE), [=](DeviceLoop* loop, volatile request::Request* req) {
-        performOnePageRead(loop, fd, offset, count, buffer, offset, req, callback);
+    readOnePage(loop, fd, offset, min(count, GLOOP_SHARED_PAGE_SIZE), [=](DeviceLoop* loop, ssize_t readCount, void* page) {
+        performOnePageRead(loop, fd, offset, count, buffer, offset, readCount, page, callback);
     });
 }
 
@@ -176,9 +171,7 @@ inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, siz
                     loop->freeOnePage(page);
                 }
                 END_SINGLE_THREAD
-                volatile request::Request oneTimeRequest;
-                oneTimeRequest.u.writeOnePageResult.writtenCount = req->u.writeResult.writtenCount;
-                callback(loop, &oneTimeRequest);
+                callback(loop, req->u.writeResult.writtenCount);
             });
             volatile request::Write& req = ipc.request(loop)->u.write;
             req.fd = fd;
@@ -192,9 +185,8 @@ inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, siz
 }
 
 template<typename Lambda>
-inline __device__ auto performOnePageWrite(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, size_t requestedOffset, volatile request::Request* req, Lambda callback) -> void
+inline __device__ auto performOnePageWrite(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, size_t requestedOffset, ssize_t writtenCount, Lambda callback) -> void
 {
-    ssize_t writtenCount = req->u.writeOnePageResult.writtenCount;
     ssize_t cursor = requestedOffset + writtenCount;
     ssize_t last = offset + count;
 
@@ -206,8 +198,8 @@ inline __device__ auto performOnePageWrite(DeviceLoop* loop, int fd, size_t offs
     }
 
     if (cursor != last) {
-        writeOnePage(loop, fd, cursor, min((last - cursor), GLOOP_SHARED_PAGE_SIZE), buffer + (cursor - offset), [=](DeviceLoop* loop, volatile request::Request* req) {
-            performOnePageWrite(loop, fd, offset, count, buffer, cursor, req, callback);
+        writeOnePage(loop, fd, cursor, min((last - cursor), GLOOP_SHARED_PAGE_SIZE), buffer + (cursor - offset), [=](DeviceLoop* loop, ssize_t writtenCount) {
+            performOnePageWrite(loop, fd, offset, count, buffer, cursor, writtenCount, callback);
         });
     } else {
         callback(loop, count);
@@ -220,8 +212,8 @@ inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t cou
 {
     // Ensure buffer's modification is flushed.
     __threadfence_system();
-    writeOnePage(loop, fd, offset, min(count, GLOOP_SHARED_PAGE_SIZE), buffer, [=](DeviceLoop* loop, volatile request::Request* req) {
-        performOnePageWrite(loop, fd, offset, count, buffer, offset, req, callback);
+    writeOnePage(loop, fd, offset, min(count, GLOOP_SHARED_PAGE_SIZE), buffer, [=](DeviceLoop* loop, ssize_t writtenCount) {
+        performOnePageWrite(loop, fd, offset, count, buffer, offset, writtenCount, callback);
     });
 }
 

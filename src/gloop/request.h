@@ -96,15 +96,6 @@ struct AllocOnePageResult {
     void* page;
 };
 
-struct ReadOnePageResult {
-    ssize_t readCount;
-    void* page;
-};
-
-struct WriteOnePageResult {
-    ssize_t writtenCount;
-};
-
 struct Mmap {
     void* address;
     size_t size;
@@ -218,8 +209,6 @@ struct Payload {
         ReadResult readResult;
 
         AllocOnePageResult allocOnePageResult;
-        ReadOnePageResult readOnePageResult;
-        WriteOnePageResult writeOnePageResult;
 
         Mmap mmap;
         MmapResult mmapResult;

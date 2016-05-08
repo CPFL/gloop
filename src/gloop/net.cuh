@@ -103,15 +103,6 @@ template<typename Lambda>
 inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     GPU_ASSERT(count <= GLOOP_SHARED_PAGE_SIZE);
-#if 0
-    __shared__ long long t1;
-    BEGIN_SINGLE_THREAD
-    {
-        t1 = clock64();
-    }
-    END_SINGLE_THREAD
-#endif
-
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
         BEGIN_SINGLE_THREAD
         {
@@ -132,10 +123,6 @@ inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t cou
             req.count = count;
             req.buffer = static_cast<unsigned char*>(buffer);
             ipc.emit(loop, Code::NetTCPReceive);
-#if 0
-            long long t2 = clock64();
-            printf("receive clocks %ld, size: %d\n", t2-t1, (int)count);
-#endif
         }
         END_SINGLE_THREAD
     });
