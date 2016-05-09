@@ -51,22 +51,24 @@ __device__ void throttle(gloop::DeviceLoop* loop, int count, int limit)
 
 int main(int argc, char** argv) {
 
-    if(argc<4) {
-        fprintf(stderr,"<kernel_iterations> <blocks> <threads>\n");
+    if(argc<5) {
+        fprintf(stderr,"<kernel_iterations> <blocks> <pblocks> <threads>\n");
         return -1;
     }
     int trials=atoi(argv[1]);
     int nblocks=atoi(argv[2]);
-    int nthreads=atoi(argv[3]);
-    int id=atoi(argv[4]);
+    int physblocks=atoi(argv[3]);
+    int nthreads=atoi(argv[4]);
+    int id=atoi(argv[5]);
 
     fprintf(stderr," iterations: %d blocks %d threads %d id %d\n",trials, nblocks, nthreads, id);
 
     {
         uint32_t pipelinePageCount = 0;
         dim3 blocks(nblocks);
+        dim3 psblocks(physblocks);
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks, blocks, pipelinePageCount);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks, psblocks, pipelinePageCount);
 
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());

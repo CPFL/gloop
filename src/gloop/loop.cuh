@@ -31,26 +31,26 @@ namespace loop {
 template<typename Lambda>
 inline __device__ auto postTask(DeviceLoop* loop, Lambda callback) -> void
 {
-    BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
+    BEGIN_SINGLE_THREAD
     {
         loop->enqueueLater([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop);
         });
     }
-    END_SINGLE_THREAD_WITHOUT_BARRIER
+    END_SINGLE_THREAD
 }
 
 template<typename Lambda>
 inline __device__ auto forceExit(DeviceLoop* loop, Lambda callback) -> void
 {
-    BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
+    BEGIN_SINGLE_THREAD
     {
         auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop);
         });
         ipc.emit(loop, Code::Exit);
     }
-    END_SINGLE_THREAD_WITHOUT_BARRIER
+    END_SINGLE_THREAD
 }
 
 } }  // namespace gloop::loop
