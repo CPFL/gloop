@@ -145,7 +145,7 @@ inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offse
 
     if (cursor == last) {
         // Ensure buffer's modification is flushed.
-        __threadfence_system();
+        // __threadfence();
         callback(loop, count);
     }
 }
@@ -201,11 +201,10 @@ inline __device__ auto performOnePageWrite(DeviceLoop* loop, int fd, size_t offs
         writeOnePage(loop, fd, cursor, min((last - cursor), GLOOP_SHARED_PAGE_SIZE), buffer + (cursor - offset), [=](DeviceLoop* loop, ssize_t writtenCount) {
             performOnePageWrite(loop, fd, offset, count, buffer, cursor, writtenCount, callback);
         });
-    } else {
-        callback(loop, count);
+        return;
     }
+    callback(loop, count);
 }
-
 
 template<typename Lambda>
 inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void

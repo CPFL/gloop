@@ -28,11 +28,11 @@
 
 #define THREADS_PER_TB 256
 #define BLOCKS 1
-#define BUF_SIZE 65536
-#define NR_MSG   60000
+#define MATRIX_SIZE (1024 * 1024 * sizeof(float))
+#define BUF_SIZE (MATRIX_SIZE * 3)
 #define MSG_SIZE BUF_SIZE
 
-__device__ unsigned char g_message[512][MSG_SIZE];
+__device__ unsigned char g_message[BLOCKS][MSG_SIZE];
 
 __device__ void accept(gloop::DeviceLoop* loop, gloop::net::Server* server);
 
@@ -45,7 +45,7 @@ __device__ void close(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop
 
 __device__ void perform(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop::net::Socket* socket)
 {
-    gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[gloop::logicalBlockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+    gloop::net::tcp::receive(loop, socket, MSG_SIZE, g_message[gloop::logicalBlockIdx.x], 0, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
         if (receiveCount == 0) {
             close(loop, server, socket);
             return;
