@@ -165,11 +165,10 @@ inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t cou
 }
 
 template<typename Lambda>
-inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
+inline __device__ auto sendOnePage(DeviceLoop* loop, net::Socket* socket, size_t transferringSize, unsigned char* buffer, Lambda callback) -> void
 {
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
-        gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, count);
-        // __threadfence_system();
+        gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, transferringSize);
         BEGIN_SINGLE_THREAD
         {
             auto ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
@@ -182,15 +181,44 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
             });
             volatile request::NetTCPSend& req = ipc.request(loop)->u.netTCPSend;
             req.socket = socket;
-            req.count = count;
-            req.buffer = static_cast<unsigned char*>(buffer);
+            req.count = transferringSize;
+            req.buffer = static_cast<unsigned char*>(page);
             ipc.emit(loop, Code::NetTCPSend);
-#if 0
-            long long t2 = clock64();
-            printf("send clocks %ld\n", t2-t1);
-#endif
         }
         END_SINGLE_THREAD
+    });
+}
+
+template<typename Lambda>
+inline __device__ auto performOnePageSend(DeviceLoop* loop, net::Socket* socket, ssize_t requestedCount, size_t count, unsigned char* buffer, ssize_t requestedOffset, ssize_t sentCount, Lambda callback) -> void
+{
+    ssize_t accumulatedCount = requestedOffset + sentCount;
+
+    GPU_ASSERT(sentCount <= count);
+    GPU_ASSERT(accumulatedCount <= count);
+    if (sentCount < 0) {
+        callback(loop, -1);
+        return;
+    }
+
+    bool nextCall = sentCount != 0 && sentCount == requestedCount && accumulatedCount != count;
+    if (nextCall) {
+        ssize_t requestedCount = min((count - accumulatedCount), GLOOP_SHARED_PAGE_SIZE);
+        sendOnePage(loop, socket, requestedCount, buffer + accumulatedCount, [=](DeviceLoop* loop, ssize_t sentCount) {
+            performOnePageSend(loop, socket, requestedCount, count, buffer, accumulatedCount, sentCount, callback);
+        });
+        return;
+    }
+    callback(loop, accumulatedCount);
+}
+
+template<typename Lambda>
+inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
+{
+    // __threadfence_system();
+    ssize_t requestedCount = min(count, GLOOP_SHARED_PAGE_SIZE);
+    sendOnePage(loop, socket, requestedCount, buffer, [=](DeviceLoop* loop, ssize_t sentCount) {
+        performOnePageSend(loop, socket, requestedCount, count, buffer, 0, sentCount, callback);
     });
 }
 
