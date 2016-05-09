@@ -28,11 +28,82 @@
 
 #define THREADS_PER_TB 256
 #define BLOCKS 1
-#define MATRIX_SIZE (1024 * 1024 * sizeof(float))
-#define BUF_SIZE (MATRIX_SIZE * 3)
-#define MSG_SIZE BUF_SIZE
+#define MATRIX_HW 1024
+#define MATRIX_SIZE (MATRIX_HW * MATRIX_HW)
+#define MSG_SIZE (MATRIX_SIZE * 3)
 
-__device__ unsigned char g_message[BLOCKS][MSG_SIZE];
+template <int BLOCK_SIZE>
+__device__ void matrixMulCUDA(float *C, float *A, float *B, int wA, int wB)
+{
+    // Block index
+    int bx = gloop::logicalBlockIdx.x;
+    int by = gloop::logicalBlockIdx.y;
+
+    // Thread index
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    // Index of the first sub-matrix of A processed by the block
+    int aBegin = wA * BLOCK_SIZE * by;
+
+    // Index of the last sub-matrix of A processed by the block
+    int aEnd   = aBegin + wA - 1;
+
+    // Step size used to iterate through the sub-matrices of A
+    int aStep  = BLOCK_SIZE;
+
+    // Index of the first sub-matrix of B processed by the block
+    int bBegin = BLOCK_SIZE * bx;
+
+    // Step size used to iterate through the sub-matrices of B
+    int bStep  = BLOCK_SIZE * wB;
+
+    // Csub is used to store the element of the block sub-matrix
+    // that is computed by the thread
+    float Csub = 0;
+
+    // Loop over all the sub-matrices of A and B
+    // required to compute the block sub-matrix
+    for (int a = aBegin, b = bBegin; a <= aEnd; a += aStep, b += bStep) {
+        // Declaration of the shared memory array As used to
+        // store the sub-matrix of A
+        __shared__ float As[BLOCK_SIZE][BLOCK_SIZE];
+
+        // Declaration of the shared memory array Bs used to
+        // store the sub-matrix of B
+        __shared__ float Bs[BLOCK_SIZE][BLOCK_SIZE];
+
+        // Load the matrices from device memory
+        // to shared memory; each thread loads
+        // one element of each matrix
+        As[ty][tx] = A[a + wA * ty + tx];
+        Bs[ty][tx] = B[b + wB * ty + tx];
+
+        // Synchronize to make sure the matrices are loaded
+        __syncthreads();
+
+        // Multiply the two matrices together;
+        // each thread computes one element
+        // of the block sub-matrix
+        //#pragma unroll
+
+        for (int k = 0; k < BLOCK_SIZE; ++k) {
+            Csub += As[ty][k] * Bs[k][tx];
+        }
+
+        // Synchronize to make sure that the preceding
+        // computation is done before loading two new
+        // sub-matrices of A and B in the next iteration
+        __syncthreads();
+    }
+
+    // Write the block sub-matrix to device memory;
+    // each thread writes one element
+    int c = wB * BLOCK_SIZE * by + BLOCK_SIZE * bx;
+    C[c + wB * ty + tx] = Csub;
+}
+
+__device__ float g_message[BLOCKS][MSG_SIZE];
 
 __device__ void accept(gloop::DeviceLoop* loop, gloop::net::Server* server);
 
@@ -45,12 +116,16 @@ __device__ void close(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop
 
 __device__ void perform(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop::net::Socket* socket)
 {
-    gloop::net::tcp::receive(loop, socket, MSG_SIZE, g_message[gloop::logicalBlockIdx.x], 0, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+    gloop::net::tcp::receive(loop, socket, MATRIX_SIZE * 2, (uint8_t*)(g_message[gloop::logicalBlockIdx.x]), 0, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
         if (receiveCount == 0) {
             close(loop, server, socket);
             return;
         }
-        gloop::net::tcp::send(loop, socket, receiveCount, g_message[gloop::logicalBlockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
+        float* lhs = g_message[gloop::logicalBlockIdx.x];
+        float* rhs = g_message[gloop::logicalBlockIdx.x] + MATRIX_SIZE;
+        float* out = g_message[gloop::logicalBlockIdx.x] + MATRIX_SIZE * 2;
+        matrixMulCUDA<1>(out, lhs, rhs, MATRIX_HW, MATRIX_HW);
+        gloop::net::tcp::send(loop, socket, receiveCount, (uint8_t*)out, [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
             if (sentCount == 0) {
                 close(loop, server, socket);
                 return;
