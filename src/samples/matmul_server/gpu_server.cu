@@ -68,12 +68,12 @@ __device__ void matrixMulCUDA(float *C, float *A, float *B, int wA, int wB, int 
         // to shared memory; each thread loads
         // one element of each matrix
         // FIXME
-        // As[ty][tx] = A[a + wA * ty + tx];
-        // Bs[ty][tx] = B[b + wB * ty + tx];
         GPU_ASSERT(A[a + wA * ty + tx] == 1);
         GPU_ASSERT(B[b + wB * ty + tx] == 1);
         As[ty][tx] = A[a + wA * ty + tx];
         Bs[ty][tx] = B[b + wB * ty + tx];
+        // As[ty][tx] = 1;
+        // Bs[ty][tx] = 1;
         GPU_ASSERT(As[ty][tx] == 1);
         GPU_ASSERT(Bs[ty][tx] == 1);
 
@@ -116,11 +116,12 @@ __device__ void close(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop
 
 __device__ void perform(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop::net::Socket* socket)
 {
-    gloop::net::tcp::receive(loop, socket, MATRIX_SIZE * sizeof(float) * 2, (uint8_t*)(g_message[gloop::logicalBlockIdx.x]), 0, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+    gloop::net::tcp::receive(loop, socket, MATRIX_SIZE * sizeof(float) * 2, (uint8_t*)(g_message[gloop::logicalBlockIdx.x]), MSG_WAITALL, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
         if (receiveCount == 0) {
             close(loop, server, socket);
             return;
         }
+        GPU_ASSERT(receiveCount == (MATRIX_SIZE * sizeof(float) * 2));
         float* lhs = g_message[gloop::logicalBlockIdx.x];
         float* rhs = g_message[gloop::logicalBlockIdx.x] + MATRIX_SIZE;
         float* out = g_message[gloop::logicalBlockIdx.x] + MATRIX_SIZE * 2;
