@@ -164,6 +164,7 @@ struct NetTCPReceive {
     net::Socket* socket;
     size_t count;
     unsigned char* buffer;
+    int flags;
 };
 
 struct NetTCPReceiveResult {

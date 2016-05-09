@@ -100,28 +100,21 @@ inline __device__ auto accept(DeviceLoop* loop, net::Server* server, Lambda call
 }
 
 template<typename Lambda>
-inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
+inline __device__ auto receiveOnePage(DeviceLoop* loop, net::Socket* socket, size_t count, int flags, Lambda callback) -> void
 {
     GPU_ASSERT(count <= GLOOP_SHARED_PAGE_SIZE);
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
         BEGIN_SINGLE_THREAD
         {
             auto ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
-                ssize_t receiveCount = req->u.netTCPReceiveResult.receiveCount;
                 __threadfence_system();
-                GPU_ASSERT(receiveCount <= GLOOP_SHARED_PAGE_SIZE);
-                gpunet::copy_block_src_volatile(buffer, reinterpret_cast<volatile uchar*>(page), receiveCount);
-                BEGIN_SINGLE_THREAD
-                {
-                    loop->freeOnePage(page);
-                }
-                END_SINGLE_THREAD
-                callback(loop, receiveCount);
+                callback(loop, req->u.netTCPReceiveResult.receiveCount, page);
             });
             volatile request::NetTCPReceive& req = ipc.request(loop)->u.netTCPReceive;
             req.socket = socket;
             req.count = count;
-            req.buffer = static_cast<unsigned char*>(buffer);
+            req.buffer = static_cast<unsigned char*>(page);
+            req.flags = flags;
             ipc.emit(loop, Code::NetTCPReceive);
         }
         END_SINGLE_THREAD
@@ -129,17 +122,51 @@ inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t cou
 }
 
 template<typename Lambda>
-inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
+inline __device__ auto performOnePageReceive(DeviceLoop* loop, net::Socket* socket, ssize_t requestedCount, int flags, size_t count, unsigned char* buffer, size_t requestedOffset, ssize_t receiveCount, void* page, Lambda callback) -> void
 {
-    GPU_ASSERT(count <= GLOOP_SHARED_PAGE_SIZE);
-#if 0
-    __shared__ long long t1;
+    ssize_t accumulatedCount = requestedOffset + receiveCount;
+
+    GPU_ASSERT(receiveCount <= count);
+    GPU_ASSERT(accumulatedCount <= count);
+    if (receiveCount < 0) {
+        callback(loop, -1);
+        return;
+    }
+
+    bool nextCall = receiveCount != 0 && receiveCount == requestedCount && accumulatedCount != count;
+    if (nextCall) {
+        ssize_t requestedCount = min((count - accumulatedCount), GLOOP_SHARED_PAGE_SIZE);
+        receiveOnePage(loop, socket, requestedCount, flags, [=](DeviceLoop* loop, ssize_t receiveCount, void* page) {
+            performOnePageReceive(loop, socket, requestedCount, flags, count, buffer, accumulatedCount, receiveCount, page, callback);
+        });
+    }
+
+    gpunet::copy_block_src_volatile(buffer + requestedOffset, reinterpret_cast<volatile uchar*>(page), receiveCount);
     BEGIN_SINGLE_THREAD
     {
-        t1 = clock64();
+        loop->freeOnePage(page);
     }
     END_SINGLE_THREAD
-#endif
+
+    if (!nextCall) {
+        // Ensure buffer's modification is flushed.
+        // __threadfence();
+        callback(loop, accumulatedCount);
+    }
+}
+
+template<typename Lambda>
+inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, int flags, Lambda callback) -> void
+{
+    ssize_t requestedCount = min(count, GLOOP_SHARED_PAGE_SIZE);
+    receiveOnePage(loop, socket, requestedCount, flags, [=](DeviceLoop* loop, ssize_t receiveCount, void* page) {
+        performOnePageReceive(loop, socket, requestedCount, flags, count, buffer, 0, receiveCount, page, callback);
+    });
+}
+
+template<typename Lambda>
+inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
+{
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
         gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, count);
         // __threadfence_system();

@@ -547,7 +547,7 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
         assert(count <= GLOOP_SHARED_PAGE_SIZE);
         boost::asio::ip::tcp::socket* socket = reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPReceive.socket);
         CopyWork* copyWork = acquireCopyWork();
-        boost::asio::async_read(*socket, boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), boost::asio::transfer_at_least(1), [=](const boost::system::error_code& error, size_t receiveCount) {
+        auto callback = [=](const boost::system::error_code& error, size_t receiveCount) {
             if (error) {
                 if ((boost::asio::error::eof == error) || (boost::asio::error::connection_reset == error)) {
                     ipc.request(m_currentContext)->u.netTCPReceiveResult.receiveCount = 0;
@@ -563,7 +563,12 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
             emit(*m_currentContext, ipc, Code::Complete);
 //             benchmark->end();
 //             std::printf("receive: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
-        });
+        };
+        if (req.u.netTCPReceive.flags & MSG_WAITALL) {
+            boost::asio::async_read(*socket, boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), boost::asio::transfer_all(), callback);
+        } else {
+            boost::asio::async_read(*socket, boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), boost::asio::transfer_at_least(1), callback);
+        }
         break;
     }
 

@@ -45,7 +45,7 @@ __device__ void close(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop
 
 __device__ void perform(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop::net::Socket* socket)
 {
-    gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[gloop::logicalBlockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+    gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[gloop::logicalBlockIdx.x], 0, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
         if (receiveCount == 0) {
             close(loop, server, socket);
             return;
