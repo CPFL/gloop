@@ -28,12 +28,8 @@
 #include "matmul_server_config.h"
 
 template <int BLOCK_SIZE>
-__device__ void matrixMulCUDA(float *C, float *A, float *B, int wA, int wB)
+__device__ void matrixMulCUDA(float *C, float *A, float *B, int wA, int wB, int bx, int by)
 {
-    // Block index
-    int bx = gloop::logicalBlockIdx.x;
-    int by = gloop::logicalBlockIdx.y;
-
     // Thread index
     int tx = threadIdx.x;
     int ty = threadIdx.y;
@@ -57,22 +53,29 @@ __device__ void matrixMulCUDA(float *C, float *A, float *B, int wA, int wB)
     // that is computed by the thread
     float Csub = 0;
 
+    // Declaration of the shared memory array As used to
+    // store the sub-matrix of A
+    __shared__ float As[BLOCK_SIZE][BLOCK_SIZE];
+
+    // Declaration of the shared memory array Bs used to
+    // store the sub-matrix of B
+    __shared__ float Bs[BLOCK_SIZE][BLOCK_SIZE];
+
     // Loop over all the sub-matrices of A and B
     // required to compute the block sub-matrix
     for (int a = aBegin, b = bBegin; a <= aEnd; a += aStep, b += bStep) {
-        // Declaration of the shared memory array As used to
-        // store the sub-matrix of A
-        __shared__ float As[BLOCK_SIZE][BLOCK_SIZE];
-
-        // Declaration of the shared memory array Bs used to
-        // store the sub-matrix of B
-        __shared__ float Bs[BLOCK_SIZE][BLOCK_SIZE];
-
         // Load the matrices from device memory
         // to shared memory; each thread loads
         // one element of each matrix
+        // FIXME
+        // As[ty][tx] = A[a + wA * ty + tx];
+        // Bs[ty][tx] = B[b + wB * ty + tx];
+        GPU_ASSERT(A[a + wA * ty + tx] == 1);
+        GPU_ASSERT(B[b + wB * ty + tx] == 1);
         As[ty][tx] = A[a + wA * ty + tx];
         Bs[ty][tx] = B[b + wB * ty + tx];
+        GPU_ASSERT(As[ty][tx] == 1);
+        GPU_ASSERT(Bs[ty][tx] == 1);
 
         // Synchronize to make sure the matrices are loaded
         __syncthreads();
@@ -83,6 +86,8 @@ __device__ void matrixMulCUDA(float *C, float *A, float *B, int wA, int wB)
         //#pragma unroll
 
         for (int k = 0; k < BLOCK_SIZE; ++k) {
+            GPU_ASSERT(As[ty][k] == 1);
+            GPU_ASSERT(Bs[k][tx] == 1);
             Csub += As[ty][k] * Bs[k][tx];
         }
 
@@ -111,7 +116,7 @@ __device__ void close(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop
 
 __device__ void perform(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop::net::Socket* socket)
 {
-    gloop::net::tcp::receive(loop, socket, MATRIX_SIZE * 2, (uint8_t*)(g_message[gloop::logicalBlockIdx.x]), 0, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+    gloop::net::tcp::receive(loop, socket, MATRIX_SIZE * sizeof(float) * 2, (uint8_t*)(g_message[gloop::logicalBlockIdx.x]), 0, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
         if (receiveCount == 0) {
             close(loop, server, socket);
             return;
@@ -119,8 +124,15 @@ __device__ void perform(gloop::DeviceLoop* loop, gloop::net::Server* server, glo
         float* lhs = g_message[gloop::logicalBlockIdx.x];
         float* rhs = g_message[gloop::logicalBlockIdx.x] + MATRIX_SIZE;
         float* out = g_message[gloop::logicalBlockIdx.x] + MATRIX_SIZE * 2;
-        matrixMulCUDA<1>(out, lhs, rhs, MATRIX_HW, MATRIX_HW);
-        gloop::net::tcp::send(loop, socket, receiveCount, (uint8_t*)out, [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
+
+        int xtimes = MATRIX_HW / blockDim.x;
+        int ytimes = MATRIX_HW / blockDim.y;
+        for (int y = 0; y < ytimes; ++y) {
+            for (int x = 0; x < xtimes; ++x) {
+                matrixMulCUDA<SHARED_BLOCK_SIZE>(out, lhs, rhs, MATRIX_HW, MATRIX_HW, x, y);
+            }
+        }
+        gloop::net::tcp::send(loop, socket, MATRIX_SIZE * sizeof(float), (uint8_t*)out, [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
             if (sentCount == 0) {
                 close(loop, server, socket);
                 return;
