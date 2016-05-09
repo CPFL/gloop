@@ -26,11 +26,11 @@
 #include <gloop/benchmark.h>
 #include "microbench_util.h"
 
-#define THREADS_PER_TB 256
-#define BLOCKS 1
 #define MATRIX_HW 1024
 #define MATRIX_SIZE (MATRIX_HW * MATRIX_HW)
 #define MSG_SIZE (MATRIX_SIZE * 3)
+#define THREADS_PER_TB MATRIX_HW
+#define BLOCKS 12
 
 template <int BLOCK_SIZE>
 __device__ void matrixMulCUDA(float *C, float *A, float *B, int wA, int wB)
