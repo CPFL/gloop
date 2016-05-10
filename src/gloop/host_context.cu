@@ -120,10 +120,13 @@ bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
         return true;
     }
 
+#if defined(GLOOP_ENABLE_IO_BOOSTING)
 // TODO: Without elastic kernels, this state becomes super large.
 // To avoid this situation, we need to stop the device loop from the host loop.
 // At that time, we should lock the context to prevent event completion.
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
+#error "Elastic kernels are needed to enable I/O boosting."
+#endif
     int blocks = m_physicalBlocks.x * m_physicalBlocks.y;
     for (int i = 0; i < blocks; ++i) {
         DeviceContext::PerBlockHostContext hostContext = m_hostContext[i];
