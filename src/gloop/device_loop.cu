@@ -35,7 +35,7 @@ __device__ __shared__ DeviceLoop sharedDeviceLoop;
 __device__ __shared__ uint2 logicalGridDim;
 __device__ __shared__ uint2 logicalBlockIdx;
 
-__device__ void DeviceLoop::initializeImpl(volatile uint32_t* signal, DeviceContext deviceContext)
+__device__ void DeviceLoop::initializeImpl(DeviceContext deviceContext)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
@@ -43,7 +43,6 @@ __device__ void DeviceLoop::initializeImpl(volatile uint32_t* signal, DeviceCont
     m_codes = deviceContext.codes + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
     m_payloads = deviceContext.payloads + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
     m_slots = reinterpret_cast<DeviceCallback*>(&context()->slots);
-    m_signal = signal;
 
     uint64_t startClock = clock64();
     m_start = atomicCAS((unsigned long long*)&deviceContext.kernel->globalClock, 0ULL, (unsigned long long)startClock);
@@ -59,8 +58,8 @@ __device__ void DeviceLoop::initializeImpl(volatile uint32_t* signal, DeviceCont
 __device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    initializeImpl(signal, deviceContext);
-    m_control.initialize(deviceContext.logicalBlocks);
+    initializeImpl(deviceContext);
+    m_control.initialize(deviceContext.logicalBlocks, signal);
     logicalGridDim = m_control.logicalGridDim;
     logicalBlockIdx = m_control.logicalBlockIdx;
 }
@@ -68,7 +67,7 @@ __device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext 
 __device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, ResumeTag)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    initializeImpl(signal, deviceContext);
+    initializeImpl(deviceContext);
     resume();
     logicalGridDim = m_control.logicalGridDim;
     logicalBlockIdx = m_control.logicalBlockIdx;

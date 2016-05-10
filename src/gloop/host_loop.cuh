@@ -221,7 +221,7 @@ inline __host__ void HostLoop::resume(DeviceLambda callback, Args... args)
             prepareForLaunch();
 
             while (true) {
-                gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext(), callback, args...);
+                gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(nullptr, m_currentContext->deviceContext(), callback, args...);
                 cudaError_t error = cudaGetLastError();
                 if (cudaErrorLaunchOutOfResources == error) {
                     continue;

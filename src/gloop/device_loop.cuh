@@ -68,7 +68,7 @@ public:
     GLOOP_ALWAYS_INLINE __device__ unsigned logicalBlocksCount() const { return m_control.logicalBlocksCount; }
 
 private:
-    __device__ void initializeImpl(volatile uint32_t* signal, DeviceContext);
+    __device__ void initializeImpl(DeviceContext);
 
     template<typename Lambda>
     inline __device__ uint32_t enqueueSleep(Lambda lambda);
@@ -100,7 +100,6 @@ private:
 
     DeviceCallback* m_slots;
     DeviceContext::DeviceLoopControl m_control;
-    volatile uint32_t* m_signal;
     uint64_t m_start;
 
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
