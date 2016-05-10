@@ -268,7 +268,7 @@ __device__ int DeviceLoop::drain()
 
             uint64_t now = clock64();
             if (((now - start) > killClock)) {
-                start = ((now - start) / killClock * killClock);
+                start = ((now / killClock) * killClock);
                 if (gloop::readNoCache<uint32_t>(m_control.signal) != 0) {
                     position = shouldExitPosition();
                     goto next;
