@@ -142,7 +142,7 @@ bool Session::handle(Command& command)
                 GLOOP_DEBUG("[%u] Sleep\n", m_id);
                 m_server.condition().wait(m_kernelLock);
             }
-            // GLOOP_DATA_LOG("[%u] Lock kernel token.\n", m_id);
+            GLOOP_DATA_LOG("[%u] Lock kernel token.\n", m_id);
 
             m_killed = false;
             m_timeWatch.begin();
@@ -154,12 +154,12 @@ bool Session::handle(Command& command)
 
     case Command::Type::Unlock: {
         {
-            bool killed = false;
+            // bool killed = false;
             {
                 std::lock_guard<Lock> guard(m_lock);
                 m_timer.cancel();
                 m_killTimer.end();
-                killed = m_killed;
+                // killed = m_killed;
                 m_timeWatch.end();
 
                 m_burned = Duration(0);

@@ -21,7 +21,7 @@ __device__ volatile gpunet::LAST_SEMAPHORE last_lock;
 // #define GLOOP_PAGE_SIZE GLOOP_SHARED_PAGE_SIZE
 
 struct _pagehelper{
-    volatile uchar* page;
+    uchar* page;
     size_t file_offset;
     int isFilled;
 };
@@ -40,10 +40,10 @@ struct Context {
 };
 
 template<typename Callback>
-__device__ volatile float* get_row(gloop::DeviceLoop* loop, volatile uchar** cur_page_ptr, size_t* cur_page_offset, int* isFilled, size_t req_file_offset, int max_file_size, int fd, int type, int id, int db_idx, Callback callback)
+__device__ void get_row(gloop::DeviceLoop* loop, uchar** cur_page_ptr, size_t* cur_page_offset, int* isFilled, size_t req_file_offset, int max_file_size, int fd, int type, int id, int db_idx, Callback callback)
 {
     if (*isFilled && *cur_page_offset+GLOOP_PAGE_SIZE>req_file_offset) {
-        callback(loop, (volatile float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
+        callback(loop, (float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
         return;
     }
 
@@ -57,16 +57,16 @@ __device__ volatile float* get_row(gloop::DeviceLoop* loop, volatile uchar** cur
 //             BEGIN_SINGLE_THREAD
 //                 printf("db:(%d),data:(%d),offset:(%u),checksum:(%04x)\n", db_idx, id, (unsigned)(*cur_page_offset), (unsigned)checksum((const uint8_t*)*cur_page_ptr, mapsize));
 //             END_SINGLE_THREAD
-            callback(loop, (volatile float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
+            callback(loop, (float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
         });
     }
     END_SINGLE_THREAD
 }
 
-GLOOP_ALWAYS_INLINE __device__ float inner_product( volatile float* a, volatile float* b, int size)
+GLOOP_ALWAYS_INLINE __device__ float inner_product( float* a, float* b, int size)
 {
     #define ACCUM_N 512
-    __shared__ volatile float s_reduction[ACCUM_N];
+    __shared__ float s_reduction[ACCUM_N];
 
     float tmp=0;
     //      __syncthreads();
@@ -97,7 +97,7 @@ GLOOP_ALWAYS_INLINE __device__ float inner_product( volatile float* a, volatile 
     return s_reduction[0];
 }
 
-GLOOP_ALWAYS_INLINE __device__ bool match(volatile float* a, volatile float* b, int size, float match_threshold, int data_idx, int db_idx)
+GLOOP_ALWAYS_INLINE __device__ bool match(float* a, float* b, int size, float match_threshold, int data_idx, int db_idx)
 {
 //     float result = sqrt(inner_product(a,b,size));
 //     BEGIN_SINGLE_THREAD
@@ -107,11 +107,11 @@ GLOOP_ALWAYS_INLINE __device__ bool match(volatile float* a, volatile float* b, 
 }
 
 template<typename Callback>
-void __device__ process_one_row(gloop::DeviceLoop* loop, Context* context, int data_idx, int db_idx, int out_count, int db_size, int zfd_db, int _cursor, int db_rows, volatile float* ptr_row_db, Callback callback)
+void __device__ process_one_row(gloop::DeviceLoop* loop, Context* context, int data_idx, int db_idx, int out_count, int db_size, int zfd_db, int _cursor, int db_rows, float* ptr_row_db, Callback callback)
 {
     if (_cursor < db_rows) {
         size_t _req_offset=(_cursor*context->src_row_len)<<2;
-        auto continuation = [=] (gloop::DeviceLoop* loop, volatile float* ptr_row_db) {
+        auto continuation = [=] (gloop::DeviceLoop* loop, float* ptr_row_db) {
 
             int found = match(context->input_img_row, ptr_row_db, context->src_row_len, context->match_threshold, data_idx, db_idx);
             BEGIN_SINGLE_THREAD
@@ -151,9 +151,9 @@ void __device__ process_one_db(gloop::DeviceLoop* loop, Context* context, int da
             gloop::fs::fstat(loop, zfd_db, [=](gloop::DeviceLoop* loop, size_t db_size) {
                 size_t db_rows=(db_size/context->src_row_len)>>2;
 
-                get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, &context->ph_db.isFilled, 0, db_size, zfd_db, PROT_READ | PROT_WRITE, -1, db_idx, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db) {
+                get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, &context->ph_db.isFilled, 0, db_size, zfd_db, PROT_READ | PROT_WRITE, -1, db_idx, [=](gloop::DeviceLoop* loop, float* ptr_row_db) {
 
-                    process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, 0, db_rows, ptr_row_db, [=](gloop::DeviceLoop* loop, volatile float* ptr_row_db, int found) {
+                    process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, 0, db_rows, ptr_row_db, [=](gloop::DeviceLoop* loop, float* ptr_row_db, int found) {
                         context->ph_db.file_offset = 0;
                         context->ph_db.isFilled = false;
                         gloop::fs::close(loop, zfd_db, [=](gloop::DeviceLoop* loop, int error) {
@@ -250,7 +250,7 @@ void __device__ img_gpu(
                     context->total_rows = total_rows;
                     context->src_row_len = src_row_len;
                     context->num_db_files = num_db_files;
-                    context->ph_db = {(volatile uchar*)malloc(GLOOP_PAGE_SIZE),0, false};
+                    context->ph_db = {(uchar*)malloc(GLOOP_PAGE_SIZE),0, false};
                     context->zfd_src = zfd_src;
 
                     toInit=init_lock.try_wait();
@@ -298,8 +298,8 @@ void __device__ img_gpu(
 
 void init_device_app()
 {
-    GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitPrintfFifoSize, 1<<25));
-    GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, 1<<30));
+    // GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitPrintfFifoSize, 1<<25));
+    GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, ((1024 + 512) <<20)));
 }
 
 void init_app()
