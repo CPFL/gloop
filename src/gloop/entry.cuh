@@ -47,32 +47,17 @@ inline void tryLaunch(const Lambda& lambda)
 typedef std::aligned_storage<sizeof(DeviceLoop), alignof(DeviceLoop)>::type UninitializedDeviceLoopStorage;
 
 template<typename DeviceLambda, class... Args>
-inline __global__ void launch(volatile uint32_t* signal, DeviceContext context, const DeviceLambda& callback, Args... args)
-{
-    BEGIN_SINGLE_THREAD
-    {
-        sharedDeviceLoop.initialize(signal, context);
-    }
-    END_SINGLE_THREAD
-
-    if (sharedDeviceLoop.logicalBlocksCount() == 0)
-        return;
-
-    int suspended = 0;
-    do {
-        callback(&sharedDeviceLoop, args...);
-        suspended = sharedDeviceLoop.drain();
-    } while (!suspended);
-    __threadfence_system();  // FIXME
-}
-
-template<typename DeviceLambda, class... Args>
 inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     __shared__ int callbackKicked;
     BEGIN_SINGLE_THREAD
     {
-        callbackKicked = sharedDeviceLoop.initialize(signal, context, DeviceLoop::Resume);
+        if (signal) {
+            callbackKicked = 0;
+            sharedDeviceLoop.initialize(signal, context);
+        } else {
+            callbackKicked = sharedDeviceLoop.initialize(signal, context, DeviceLoop::Resume);
+        }
     }
     END_SINGLE_THREAD
 
@@ -82,12 +67,16 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, 
     // __threadfence_system();
     int suspended = 0;
 
-    if (callbackKicked)
-        goto callbackKickedLabel;
-
     do {
-        callback(&sharedDeviceLoop, args...);
-callbackKickedLabel:
+        if (!callbackKicked) {
+            callback(&sharedDeviceLoop, args...);
+        } else {
+            BEGIN_SINGLE_THREAD
+            {
+                callbackKicked = 0;
+            }
+            END_SINGLE_THREAD
+        }
         suspended = sharedDeviceLoop.drain();
     } while (!suspended);
     __threadfence_system();  // FIXME

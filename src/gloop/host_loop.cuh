@@ -178,7 +178,7 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, De
                 // GLOOP_DATA_LOG("acquire for launch\n");
                 prepareForLaunch();
                 while (true) {
-                    gloop::launch<<<hostContext.physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, args...);
+                    gloop::resume<<<hostContext.physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, args...);
                     cudaError_t error = cudaGetLastError();
                     if (cudaErrorLaunchOutOfResources == error) {
                         continue;
