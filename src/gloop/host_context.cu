@@ -96,7 +96,7 @@ bool HostContext::initialize(HostLoop& hostLoop)
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.payloads, m_payloadsMemory->mappedPointer(), 0));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.hostContext, m_hostContextMemory->mappedPointer(), 0));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.kernel, m_kernel->mappedPointer(), 0));
-
+        printf("SIZE %u / %u\n", sizeof(DeviceContext::PerBlockContext) * blocksSize, sizeof(DeviceContext::PerBlockContext));
         GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceContext::PerBlockContext) * blocksSize));
         if (m_pageCount) {
             GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceContext::OnePage) * m_pageCount * blocksSize));
