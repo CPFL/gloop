@@ -88,6 +88,8 @@ void Session::kill()
 {
     std::lock_guard<Lock> guard(m_lock);
     if (m_kernelLock.owns_lock()) {
+        m_killed = true;
+        m_killTimer.begin();
         syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 1);
     }
 }
@@ -142,6 +144,7 @@ bool Session::handle(Command& command)
             }
             // GLOOP_DATA_LOG("[%u] Lock kernel token.\n", m_id);
 
+            m_killed = false;
             m_timeWatch.begin();
             m_attemptToLaunch.store(false);
             configureTick(m_timer);
@@ -151,26 +154,34 @@ bool Session::handle(Command& command)
 
     case Command::Type::Unlock: {
         {
-            std::lock_guard<Lock> guard(m_lock);
-            m_timer.cancel();
-            m_timeWatch.end();
-
-            m_burned = Duration(0);
-            m_scheduledDuringIO.store(false);
-            Command::ReleaseStatus status = static_cast<Command::ReleaseStatus>(command.payload);
-            if (status == Command::ReleaseStatus::Ready) {
-                // This flag makes the current ready to schedule.
-                m_attemptToLaunch.store(true);
-            }
-
+            bool killed = false;
             {
-                std::lock_guard<Lock> serverStatusGuard(m_server.serverStatusLock());
-                m_used += (m_timeWatch.ticks() * m_costPerBit);
-                m_server.calculateNextSession(serverStatusGuard);
+                std::lock_guard<Lock> guard(m_lock);
+                m_timer.cancel();
+                m_killTimer.end();
+                killed = m_killed;
+                m_timeWatch.end();
+
+                m_burned = Duration(0);
+                m_scheduledDuringIO.store(false);
+                Command::ReleaseStatus status = static_cast<Command::ReleaseStatus>(command.payload);
+                if (status == Command::ReleaseStatus::Ready) {
+                    // This flag makes the current ready to schedule.
+                    m_attemptToLaunch.store(true);
+                }
+
+                {
+                    std::lock_guard<Lock> serverStatusGuard(m_server.serverStatusLock());
+                    m_used += (m_timeWatch.ticks() * m_costPerBit);
+                    m_server.calculateNextSession(serverStatusGuard);
+                }
+                m_kernelLock.unlock();
+                // GLOOP_DATA_LOG("[%u] Unlock kernel token, used:(%llu).\n", m_id, (long long unsigned)m_used.count());
+                m_server.condition().notify_all();
             }
-            m_kernelLock.unlock();
-            // GLOOP_DATA_LOG("[%u] Unlock kernel token, used:(%llu).\n", m_id, (long long unsigned)m_used.count());
-            m_server.condition().notify_all();
+            if (killed) {
+                GLOOP_DATA_LOG("%u %lld\n", m_id, (long long int)m_killTimer.ticks().count());
+            }
         }
         return false;
     }

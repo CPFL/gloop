@@ -114,6 +114,9 @@ private:
     Duration m_used { 0 };
     Duration m_burned { 0 };
     uint64_t m_costPerBit { 1 };
+
+    bool m_killed { false };
+    TimeWatch m_killTimer;
 };
 
 } }  // namsepace gloop::monitor
