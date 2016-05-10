@@ -179,9 +179,9 @@ bool Session::handle(Command& command)
                 // GLOOP_DATA_LOG("[%u] Unlock kernel token, used:(%llu).\n", m_id, (long long unsigned)m_used.count());
                 m_server.condition().notify_all();
             }
-            if (killed) {
-                printf("%u %lld\n", m_id, (long long int)m_killTimer.ticks().count());
-            }
+            // if (killed) {
+            //     printf("%u %lld\n", m_id, (long long int)m_killTimer.ticks().count());
+            // }
         }
         return false;
     }
