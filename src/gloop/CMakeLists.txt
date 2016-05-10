@@ -8,6 +8,8 @@ include_directories("../")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 option(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY "Enable hierarchical slot memory" ON)
+option(GLOOP_ENABLE_ELASTIC_KERNELS "Enable elastic kernels" ON)
+
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/generated_config.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/generated_config.h

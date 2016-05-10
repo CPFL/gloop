@@ -49,7 +49,11 @@ std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 logica
 HostContext::HostContext(HostLoop& hostLoop, dim3 logicalBlocks, dim3 physicalBlocks, uint32_t pageCount)
     : m_hostLoop(hostLoop)
     , m_logicalBlocks(logicalBlocks)
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     , m_physicalBlocks(isZeroBlocks(physicalBlocks) ? logicalBlocks : physicalBlocks)
+#else
+    , m_physicalBlocks(logicalBlocks)
+#endif
     , m_pageCount(pageCount)
 {
 }
@@ -116,6 +120,10 @@ bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
         return true;
     }
 
+// TODO: Without elastic kernels, this state becomes super large.
+// To avoid this situation, we need to stop the device loop from the host loop.
+// At that time, we should lock the context to prevent event completion.
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     int blocks = m_physicalBlocks.x * m_physicalBlocks.y;
     for (int i = 0; i < blocks; ++i) {
         DeviceContext::PerBlockHostContext hostContext = m_hostContext[i];
@@ -144,6 +152,9 @@ bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
         }
     }
     return false;
+#else
+    return true;
+#endif
 }
 
 void HostContext::prepareForLaunch()

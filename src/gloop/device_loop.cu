@@ -60,8 +60,10 @@ __device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext 
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);
     m_control.initialize(deviceContext.logicalBlocks, signal);
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     logicalGridDim = m_control.logicalGridDim;
     logicalBlockIdx = m_control.logicalBlockIdx;
+#endif
 }
 
 __device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, ResumeTag)
@@ -69,8 +71,10 @@ __device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext d
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);
     resume();
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     logicalGridDim = m_control.logicalGridDim;
     logicalBlockIdx = m_control.logicalBlockIdx;
+#endif
     return m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
 }
 
@@ -83,6 +87,7 @@ __device__ int DeviceLoop::suspend()
     if (suspended) {
         atomicAdd(&m_deviceContext.kernel->pending, 1);
     } else {
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
         // This logical thread block is done.
         if (--m_control.logicalBlocksCount != 0) {
             // There is some remaining logical thread blocks.
@@ -96,6 +101,7 @@ __device__ int DeviceLoop::suspend()
         } else {
             suspended = 1;
         }
+#endif
     }
 
     // Save the control state.

@@ -57,6 +57,7 @@ public:
 
     inline __device__ int drain();
 
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     // GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() -> uint2 const { return m_control.logicalBlockIdx; }
     // GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxX() -> unsigned const { return m_control.logicalBlockIdx.x; }
     // GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxY() -> unsigned const { return m_control.logicalBlockIdx.y; }
@@ -66,6 +67,7 @@ public:
     // GLOOP_ALWAYS_INLINE __device__ auto logicalGridDimY() -> unsigned const { return m_control.logicalGridDim.y; }
 
     GLOOP_ALWAYS_INLINE __device__ unsigned logicalBlocksCount() const { return m_control.logicalBlocksCount; }
+#endif
 
 private:
     __device__ void initializeImpl(DeviceContext);

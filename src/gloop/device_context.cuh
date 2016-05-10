@@ -45,6 +45,7 @@ struct DeviceContext {
             wakeupSlots = 0;
             pageSleepSlots = 0;
 
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
             // Calculate the logical blocks per physical blocks.
             uint32_t logicalBlocks = logicalBlocksDim.x * logicalBlocksDim.y;
             uint32_t physicalBlocks = GLOOP_BMAX();
@@ -61,6 +62,7 @@ struct DeviceContext {
 
             logicalBlockIdx = make_uint2(currentLogicalBlockCount % logicalBlocksDim.x, currentLogicalBlockCount / logicalBlocksDim.x);
             logicalGridDim = make_uint2(logicalBlocksDim.x, logicalGridDim.y);
+#endif
             signal = sig;
         }
 
@@ -69,10 +71,14 @@ struct DeviceContext {
         uint32_t sleepSlots;
         uint32_t wakeupSlots;
         uint32_t pageSleepSlots;
+
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
         uint32_t logicalBlocksCount;
         uint32_t currentLogicalBlockCount;
         uint2 logicalBlockIdx;
         uint2 logicalGridDim;
+#endif
+
         volatile uint32_t* signal;
     };
 
