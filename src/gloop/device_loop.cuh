@@ -55,7 +55,7 @@ public:
     inline __device__ void allocOnePage(Lambda lambda);
     __device__ void freeOnePage(void* page);
 
-    inline __device__ int drain();
+    inline __device__ int drain(int executeAtLeastOne);
 
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     // GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() -> uint2 const { return m_control.logicalBlockIdx; }

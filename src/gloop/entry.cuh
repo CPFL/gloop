@@ -56,7 +56,12 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, 
             callbackKicked = 0;
             sharedDeviceLoop.initialize(signal, context);
         } else {
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
             callbackKicked = sharedDeviceLoop.initialize(signal, context, DeviceLoop::Resume);
+#else
+            callbackKicked = 1;
+            sharedDeviceLoop.initialize(signal, context, DeviceLoop::Resume);
+#endif
         }
     }
     END_SINGLE_THREAD
@@ -73,6 +78,7 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, 
     do {
 #endif
         {
+            int old = callbackKicked;
             if (!callbackKicked) {
                 callback(&sharedDeviceLoop, args...);
             } else {
@@ -82,7 +88,7 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, 
                 }
                 END_SINGLE_THREAD
             }
-            suspended = sharedDeviceLoop.drain();
+            suspended = sharedDeviceLoop.drain(old);
         }
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     } while (!suspended);

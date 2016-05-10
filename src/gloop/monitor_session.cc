@@ -48,7 +48,7 @@ Session::~Session()
 {
     // NOTE: This destructor is always executed in single thread.
     m_server.unregisterSession(*this);
-    GLOOP_DATA_LOG("server:(%u),close:(%u)\n", m_server.id(), static_cast<unsigned>(id()));
+    // GLOOP_DATA_LOG("server:(%u),close:(%u)\n", m_server.id(), static_cast<unsigned>(id()));
     if (m_thread) {
         m_thread->interrupt();
         m_thread->join();
@@ -58,7 +58,7 @@ Session::~Session()
 
 void Session::handShake()
 {
-    GLOOP_DATA_LOG("server:(%u),open:(%u)\n", m_server.id(), static_cast<unsigned>(id()));
+    // GLOOP_DATA_LOG("server:(%u),open:(%u)\n", m_server.id(), static_cast<unsigned>(id()));
     boost::asio::async_read(m_socket, boost::asio::buffer(&m_buffer, sizeof(Command)), boost::bind(&Session::handleRead, this, boost::asio::placeholders::error));
 }
 
@@ -180,7 +180,7 @@ bool Session::handle(Command& command)
                 m_server.condition().notify_all();
             }
             if (killed) {
-                GLOOP_DATA_LOG("%u %lld\n", m_id, (long long int)m_killTimer.ticks().count());
+                printf("%u %lld\n", m_id, (long long int)m_killTimer.ticks().count());
             }
         }
         return false;
@@ -207,7 +207,7 @@ bool Session::initialize(Command& command)
     uint64_t costPerBit = command.payload;
     if (costPerBit != 0)
         m_costPerBit = costPerBit;
-    GLOOP_DATA_LOG("[%u] costPerBit:(%u)\n", (unsigned)id(), (unsigned)costPerBit);
+    // GLOOP_DATA_LOG("[%u] costPerBit:(%u)\n", (unsigned)id(), (unsigned)costPerBit);
 
     // NOTE: This initialize method is always executed in the single event loop thread.
     m_server.registerSession(*this);

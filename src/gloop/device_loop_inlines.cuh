@@ -225,7 +225,7 @@ __device__ void DeviceLoop::deallocate(uint32_t pos)
     m_control.freeSlots |= (1U << pos);
 }
 
-__device__ int DeviceLoop::drain()
+__device__ int DeviceLoop::drain(int executeAtLeastOne)
 {
     uint64_t start;
     uint64_t killClock;
@@ -238,6 +238,13 @@ __device__ int DeviceLoop::drain()
         start = m_start;
         callback = nullptr;
         position = invalidPosition();
+
+        if (executeAtLeastOne) {
+            position = dequeue();
+            if (isValidPosition(position)) {
+                callback = slots(position);
+            }
+        }
     }
     END_SINGLE_THREAD
 
