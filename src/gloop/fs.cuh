@@ -43,7 +43,7 @@ inline __device__ auto open(DeviceLoop* loop, const char* filename, int mode, La
             callback(loop, req->u.openResult.fd);
         });
         volatile request::Open& req = ipc.request(loop)->u.open;
-        memcpyIO(req.filename.data, filename, GLOOP_FILENAME_SIZE);
+        gpunet::strncpy_thread(req.filename.data, filename, GLOOP_FILENAME_SIZE - 1);
         req.mode = mode;
         ipc.emit(loop, Code::Open);
     }
