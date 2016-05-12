@@ -24,12 +24,12 @@ struct context {
     int zfd_dbs;
     int zfd_o;
     char* output_buffer;
+    int* output_count;
     char* input_tmp;
     char* db_files;
     int to_read;
     char* current_db_name;
     char* corpus;
-    int* output_count;
 };
 
 __forceinline__ __device__ void memcpy_thread(volatile char* dst, const volatile char* src, uint size)
@@ -355,9 +355,12 @@ __device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char
             gloop::fs::close(loop, ctx.zfd_o, [=](gloop::DeviceLoop* loop, int err) {
                 BEGIN_SINGLE_THREAD
                 {
-                    free(ctx.output_buffer);
                     free(ctx.input_tmp);
+                    free(ctx.output_buffer);
+                    free(ctx.output_count);
                     free(ctx.db_files);
+                    free(ctx.current_db_name);
+                    free(ctx.corpus);
                 }
                 END_SINGLE_THREAD
             });
@@ -417,6 +420,7 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                         output_buffer=(char*)malloc(data_to_process/32*(32+GLOOP_FILENAME_SIZE+sizeof(int)));
                         assert(output_buffer);
                         output_count = (int*)malloc(sizeof(int));
+                        assert(output_cout);
                         *output_count = 0;
 
                         db_files=(char*) malloc(3*1024*1024);
@@ -432,7 +436,9 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                             init_lock.signal();
                         }
                         current_db_name = (char*)malloc(GLOOP_FILENAME_SIZE+1);
+                        assert(current_db_name);
                         corpus = (char*)malloc(CORPUS_PREFETCH_SIZE+32+1); // just in case we need the leftovers
+                        assert(corpus);
                     }
                     END_SINGLE_THREAD
 
@@ -449,12 +455,12 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                                     zfd_dbs,
                                     zfd_o,
                                     output_buffer,
+                                    output_count,
                                     input_tmp,
                                     db_files,
                                     to_read,
                                     current_db_name,
                                     corpus,
-                                    output_count
                                 };
                                 process_one_db(loop, ctx, db_files);
                             });
