@@ -51,19 +51,15 @@
 #include <shrUtils.h>
 #else
 // CUDA 7.5 helper functions.
-#include <helper_functions.h>
-#include <helper_cuda.h>
-#include "shrQATest.h"
+// #include <helper_functions.h>
+// #include <helper_cuda.h>
+// #include "shrQATest.h"
 #endif
 
 #include <cuda_runtime.h>
 #include <unistd.h>
 
 #include <gloop/gloop.h>
-
-#include "fs_debug.cu.h"
-#include "fs_initializer.cu.h"
-#include "host_loop.h"
 
 #define shrLog printf
 static char *sSDKsample = "matrixMul";

@@ -24,6 +24,12 @@ set(CMAKE_CUDA_FLAGS "\
 set(GLOOP_CUDA_RUNTIME_LIBS cuda cudart_static;dl;rt;m;${CMAKE_THREAD_LIBS_INIT})
 link_directories(/usr/local/cuda-7.5/lib64)
 
+add_definitions(
+#     -D_FORCE_INLINES
+    -D_HAVE_STRING_ARCH_mempcpy
+#     -D_MWAITXINTRIN_H_INCLUDED
+)
+
 if (CMAKE_BUILD_TYPE MATCHES Release)
     add_definitions(
         -DNDEBUG
@@ -46,6 +52,6 @@ include_directories(".")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/gloop")
 
 add_subdirectory(cmalloc)
-add_subdirectory(gpufs)
+# add_subdirectory(gpufs)
 add_subdirectory(gloop)
 add_subdirectory(samples)

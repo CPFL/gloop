@@ -84,7 +84,7 @@ add_custom_command(
         "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.pb.cc"
         "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.pb.h"
     COMMAND
-        ${PROTOC} "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" --proto_path="${CMAKE_CURRENT_SOURCE_DIR}" --cpp_out="${CMAKE_CURRENT_BINARY_DIR}"
+        "${PROTOC}" "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" --proto_path="${CMAKE_CURRENT_SOURCE_DIR}" --cpp_out="${CMAKE_CURRENT_BINARY_DIR}"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" protobuf
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
@@ -94,7 +94,7 @@ add_custom_command(
         "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.grpc.pb.cc"
         "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.grpc.pb.h"
     COMMAND
-        ${PROTOC} "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" --proto_path="${CMAKE_CURRENT_SOURCE_DIR}" --grpc_out="${CMAKE_CURRENT_BINARY_DIR}" --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN_PATH}"
+        "${PROTOC}" "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" --proto_path="${CMAKE_CURRENT_SOURCE_DIR}" --grpc_out="${CMAKE_CURRENT_BINARY_DIR}" --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN_PATH}"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/monitor_service.proto" protobuf
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
@@ -118,12 +118,12 @@ add_executable(gloop-monitor
 target_link_libraries(gloop-monitor
     grpc++_unsecure
     grpc
-    protobuf
     gloop
     rt
     ${CMAKE_THREAD_LIBS_INIT}
     boost_system
     boost_thread
     boost_date_time
+    protobuf
 )
-add_dependencies(gloop-monitor protobuf monitor-service)
+add_dependencies(gloop-monitor monitor-service)

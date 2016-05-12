@@ -32,7 +32,7 @@
 #endif
 
 __device__ volatile gpunet::INIT_LOCK init_lock;
-__device__ volatile gpunet::LAST_SEMAPHORE last_lock;
+__device__ volatile LAST_SEMAPHORE last_lock;
 
 ////////////////////////////////////////////////////////////////////////////////
 //! Matrix multiplication on the device: C = A * B
