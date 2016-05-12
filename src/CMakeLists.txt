@@ -5,7 +5,7 @@
 
 # set(CMAKE_CXX_FLAGS "-g3 -std=c++11")
 # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -g -G -rdc=true --expt-extended-lambda -std=c++11 -w --keep")
-set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unused-parameter -g3")
 # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -maxrregcount 32 --generate-code code=sm_30,arch=compute_30 -rdc=true --expt-extended-lambda -std=c++11 -w --keep")
 set(CMAKE_CUDA_FLAGS "\
     ${CMAKE_CUDA_FLAGS}\
@@ -19,6 +19,19 @@ set(CMAKE_CUDA_FLAGS "\
     -w\
     --keep\
 ")
+#  set(CMAKE_CUDA_FLAGS "\
+#      ${CMAKE_CUDA_FLAGS}\
+#      -maxrregcount 32\
+#      --generate-code code=sm_30,arch=compute_30\
+#      -rdc=true\
+#      --expt-extended-lambda\
+#      -std=c++11\
+#      -Xptxas -v,--warn-on-spills,--warn-on-local-memory-usage\
+#      -Xcompiler -Wall,-Wno-unused-parameter,-Wextra\
+#      -w\
+#      --keep\
+#      -G\
+#  ")
 # -Xptxas --warn-on-spills,--warn-on-local-memory-usage\
 
 set(GLOOP_CUDA_RUNTIME_LIBS cuda cudart_static;dl;rt;m;${CMAKE_THREAD_LIBS_INIT})

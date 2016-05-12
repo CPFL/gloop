@@ -126,15 +126,17 @@ bool Session::handle(Command& command)
     case Command::Type::Lock: {
         // GLOOP_DATA_LOG("[%u] Attempt to lock kernel token.\n", m_id);
         {
-            std::lock_guard<Lock> guard(m_lock);
-            m_attemptToLaunch.store(true);
+            {
+                std::lock_guard<Lock> guard(m_lock);
+                m_attemptToLaunch.store(true);
 
-            // IO boosting.
-            if (m_scheduledDuringIO) {
-                // auto polling = std::max<std::chrono::microseconds>(std::chrono::duration_cast<std::chrono::microseconds>(TimeWatch::Clock::now() - m_timeWatch.endPoint()), std::chrono::microseconds(0));
-                auto compensation = std::min<std::chrono::microseconds>(m_burned, std::chrono::duration_cast<std::chrono::microseconds>(boostThreshold()));
-                m_used -= (compensation / m_costPerBit);
-                // GLOOP_DATA_LOG("  boosting candidate[%u], polling:(%lld),ticks:(%lld), previous:(%lld)\n", m_id, (long long int)m_burned.count(), (long long int)used().count(), (long long int)value.count());
+                // IO boosting.
+                if (m_scheduledDuringIO) {
+                    // auto polling = std::max<std::chrono::microseconds>(std::chrono::duration_cast<std::chrono::microseconds>(TimeWatch::Clock::now() - m_timeWatch.endPoint()), std::chrono::microseconds(0));
+                    auto compensation = std::min<std::chrono::microseconds>(m_burned, std::chrono::duration_cast<std::chrono::microseconds>(boostThreshold()));
+                    m_used -= (compensation / m_costPerBit);
+                    // GLOOP_DATA_LOG("  boosting candidate[%u], polling:(%lld),ticks:(%lld), previous:(%lld)\n", m_id, (long long int)m_burned.count(), (long long int)used().count(), (long long int)value.count());
+                }
             }
 
             m_kernelLock.lock();
@@ -142,12 +144,16 @@ bool Session::handle(Command& command)
                 GLOOP_DEBUG("[%u] Sleep\n", m_id);
                 m_server.condition().wait(m_kernelLock);
             }
-            GLOOP_DATA_LOG("[%u] Lock kernel token.\n", m_id);
 
-            m_killed = false;
-            m_timeWatch.begin();
-            m_attemptToLaunch.store(false);
-            configureTick(m_timer);
+            {
+                std::lock_guard<Lock> guard(m_lock);
+                GLOOP_DATA_LOG("[%u] Lock kernel token.\n", m_id);
+
+                m_killed = false;
+                m_timeWatch.begin();
+                m_attemptToLaunch.store(false);
+                configureTick(m_timer);
+            }
         }
         return true;
     }
