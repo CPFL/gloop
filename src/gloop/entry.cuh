@@ -30,20 +30,6 @@
 
 namespace gloop {
 
-template<typename Lambda>
-inline void tryLaunch(const Lambda& lambda)
-{
-    while (true) {
-        lambda();
-        cudaError_t error = cudaGetLastError();
-        if (cudaErrorLaunchOutOfResources == error) {
-            continue;
-        }
-        GLOOP_CUDA_SAFE_CALL(error);
-        break;
-    }
-}
-
 typedef std::aligned_storage<sizeof(DeviceLoop), alignof(DeviceLoop)>::type UninitializedDeviceLoopStorage;
 
 template<typename DeviceLambda, class... Args>
