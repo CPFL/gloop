@@ -147,7 +147,7 @@ bool Session::handle(Command& command)
 
             {
                 std::lock_guard<Lock> guard(m_lock);
-                GLOOP_DATA_LOG("[%u] Lock kernel token.\n", m_id);
+                // GLOOP_DATA_LOG("[%u] Lock kernel token.\n", m_id);
 
                 m_killed = false;
                 m_timeWatch.begin();
