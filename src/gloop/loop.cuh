@@ -24,7 +24,7 @@
 #ifndef GLOOP_LOOP_CU_H_
 #define GLOOP_LOOP_CU_H_
 #include <utility>
-#include "device_loop.cuh"
+#include "device_loop_inlines.cuh"
 namespace gloop {
 namespace loop {
 

@@ -26,7 +26,7 @@
 #include "device_context.cuh"
 #include "ipc.cuh"
 #include "host_context.cuh"
-#include "host_loop.cuh"
+#include "host_loop_inlines.cuh"
 #include "make_unique.h"
 #include "sync_read_write.h"
 

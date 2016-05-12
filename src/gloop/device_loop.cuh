@@ -118,5 +118,4 @@ extern __device__ __shared__ uint2 logicalGridDim;
 extern __device__ __shared__ uint2 logicalBlockIdx;
 
 }  // namespace gloop
-#include "device_loop_inlines.cuh"
 #endif  // GLOOP_DEVICE_LOOP_H_

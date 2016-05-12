@@ -23,12 +23,12 @@
 */
 #ifndef GLOOP_GLOOP_H_
 #define GLOOP_GLOOP_H_
-#include "device_loop.cuh"
+#include "device_loop_inlines.cuh"
 #include "entry.cuh"
 #include "loop.cuh"
 #include "fs.cuh"
 #include "host_context.cuh"
-#include "host_loop.cuh"
+#include "host_loop_inlines.cuh"
 #include "net.cuh"
 #include "utility/util.cu.h"
 #endif  // GLOOP_GLOOP_H_

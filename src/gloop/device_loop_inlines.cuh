@@ -23,6 +23,7 @@
 */
 #ifndef GLOOP_DEVICE_LOOP_INLINES_CU_H_
 #define GLOOP_DEVICE_LOOP_INLINES_CU_H_
+#include "device_loop.cuh"
 namespace gloop {
 
 GLOOP_ALWAYS_INLINE __device__ void IPC::emit(DeviceLoop* loop, Code code)

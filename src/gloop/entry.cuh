@@ -26,7 +26,7 @@
 #include <type_traits>
 #include <utility>
 #include "device_context.cuh"
-#include "device_loop.cuh"
+#include "device_loop_inlines.cuh"
 
 namespace gloop {
 

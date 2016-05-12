@@ -33,9 +33,11 @@
 #include "bitwise_cast.h"
 #include "command.h"
 #include "config.h"
+#include "copy_work_pool.cuh"
+#include "copy_worker.cuh"
 #include "data_log.h"
 #include "helper.cuh"
-#include "host_loop.cuh"
+#include "host_loop_inlines.cuh"
 #include "io.cuh"
 #include "ipc.cuh"
 #include "make_unique.h"
@@ -61,7 +63,6 @@ GLOOP_ALWAYS_INLINE static void emit(HostContext& context, IPC ipc, Code code)
 
 HostLoop::HostLoop(int deviceNumber, uint64_t costPerBit)
     : m_deviceNumber(deviceNumber)
-    // , m_loop(uv_loop_new())
     , m_ioService()
     , m_kernelService()
     , m_monitorConnection(m_ioService)
@@ -109,7 +110,6 @@ HostLoop::HostLoop(int deviceNumber, uint64_t costPerBit)
 
 HostLoop::~HostLoop()
 {
-    // uv_loop_close(m_loop);
     // GLOOP_DATA_LOG("let's cleanup\n");
     {
         std::lock_guard<KernelLock> lock(m_kernelLock);

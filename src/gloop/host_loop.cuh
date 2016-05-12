@@ -33,19 +33,10 @@
 #include <mutex>
 #include <string>
 #include <thread>
-#include <thrust/tuple.h>
 #include <unordered_map>
-#include <uv.h>
 #include "benchmark.h"
 #include "command.h"
-#include "copy_work_pool.cuh"
-#include "copy_worker.cuh"
-#include "data_log.h"
-#include "entry.cuh"
-#include "host_context.cuh"
-#include "host_memory.cuh"
 #include "ipc.cuh"
-#include "make_unique.h"
 #include "noncopyable.h"
 
 namespace boost {
@@ -53,6 +44,9 @@ class thread;
 }  // namespace boost
 
 namespace gloop {
+
+class CopyWork;
+class CopyWorkPool;
 
 class HostLoop {
 GLOOP_NONCOPYABLE(HostLoop);
@@ -66,7 +60,7 @@ public:
     static std::unique_ptr<HostLoop> create(int deviceNumber, uint64_t costPerBit = 1);
 
     template<typename DeviceLambda, class... Args>
-    __host__ void launch(HostContext& context, dim3 threads, DeviceLambda callback, Args... args);
+    inline __host__ void launch(HostContext& context, dim3 threads, DeviceLambda callback, Args... args);
 
     class KernelLock {
     GLOOP_NONCOPYABLE(KernelLock);
@@ -117,10 +111,10 @@ private:
     void send(Command);
 
     template<typename DeviceLambda, typename... Args>
-    void resume(DeviceLambda callback, Args... args);
+    inline void resume(DeviceLambda callback, Args... args);
 
-    void lockLaunch();
-    void unlockLaunch(Command::ReleaseStatus = Command::ReleaseStatus::IO);
+    inline void lockLaunch();
+    inline void unlockLaunch(Command::ReleaseStatus = Command::ReleaseStatus::IO);
 
     void prepareForLaunch();
 
@@ -132,7 +126,6 @@ private:
     bool threadReady();
 
     int m_deviceNumber { 0 };
-    uv_loop_t* m_loop { nullptr };
     std::unique_ptr<boost::thread> m_poller;
 
     dim3 m_threads { };
@@ -163,107 +156,6 @@ private:
     std::unique_ptr<boost::asio::io_service::work> m_kernelWork;
     boost::condition_variable m_ioCompletionNotify;
 };
-
-template<typename DeviceLambda, class... Args>
-inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, DeviceLambda callback, Args... args)
-{
-    std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
-    benchmark->begin();
-    prologue(hostContext, threads);
-    {
-        refKernel();
-        m_kernelService.post([=] {
-            {
-                std::lock_guard<KernelLock> lock(m_kernelLock);
-                // GLOOP_DATA_LOG("acquire for launch\n");
-                prepareForLaunch();
-                gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext(), callback, args...);
-                cudaError_t error = cudaGetLastError();
-                GLOOP_CUDA_SAFE(error);
-                GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
-            }
-
-            if (m_currentContext->pending()) {
-                resume(callback, args...);
-                return;
-            }
-            derefKernel();
-        });
-        drain();
-    }
-    epilogue();
-}
-
-template<typename DeviceLambda, typename... Args>
-inline __host__ void HostLoop::resume(DeviceLambda callback, Args... args)
-{
-    // GLOOP_DEBUG("resume\n");
-    m_kernelService.post([=] {
-        bool acquireLockSoon = false;
-        {
-            {
-#if 1
-                // FIXME: Provide I/O boosting.
-                std::unique_lock<HostContext::Mutex> lock(m_currentContext->mutex());
-                while (!m_currentContext->isReadyForResume(lock)) {
-                    m_currentContext->condition().wait(lock);
-                }
-#endif
-                m_kernelLock.lock();
-            }
-            // GLOOP_DATA_LOG("acquire for resume\n");
-            prepareForLaunch();
-
-            {
-                gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(nullptr, m_currentContext->deviceContext(), callback, args...);
-                cudaError_t error = cudaGetLastError();
-                GLOOP_CUDA_SAFE(error);
-                GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
-            }
-
-            acquireLockSoon = m_currentContext->pending();
-
-            // m_kernelLock.unlock(acquireLockSoon);
-            // m_kernelLock.unlock();
-
-            {
-                // FIXME: Fix this.
-                std::unique_lock<HostContext::Mutex> lock(m_currentContext->mutex());
-                Command::ReleaseStatus releaseStatus = Command::ReleaseStatus::IO;
-                if (m_currentContext->isReadyForResume(lock)) {
-                    releaseStatus = Command::ReleaseStatus::Ready;
-                }
-                m_kernelLock.unlock(releaseStatus);
-            }
-        }
-        if (acquireLockSoon) {
-            resume(callback, args...);
-            return;
-        }
-        derefKernel();
-    });
-}
-
-inline void HostLoop::lockLaunch()
-{
-    unsigned int priority { };
-    std::size_t size { };
-    Command command {
-        .type = Command::Type::Lock,
-        .payload = 0
-    };
-    m_requestQueue->send(&command, sizeof(Command), 0);
-    m_responseQueue->receive(&command, sizeof(Command), size, priority);
-}
-
-inline void HostLoop::unlockLaunch(Command::ReleaseStatus releaseStatus)
-{
-    Command command {
-        .type = Command::Type::Unlock,
-        .payload = static_cast<uint64_t>(releaseStatus)
-    };
-    m_requestQueue->send(&command, sizeof(Command), 0);
-}
 
 }  // namespace gloop
 #endif  // GLOOP_HOST_LOOP_H_

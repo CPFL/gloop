@@ -32,6 +32,7 @@
 #include <vector>
 #include "config.h"
 #include "device_context.cuh"
+#include "ipc.cuh"
 #include "io.cuh"
 #include "mapped_memory.cuh"
 #include "noncopyable.h"

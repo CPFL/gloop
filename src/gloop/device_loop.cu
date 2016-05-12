@@ -22,10 +22,9 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "device_context.cuh"
-#include "device_loop.cuh"
+#include "device_loop_inlines.cuh"
 #include "dump_memory.cuh"
 #include "function.cuh"
-#include "memcpy_io.cuh"
 #include "sync_read_write.h"
 #include "utility.h"
 namespace gloop {

@@ -27,8 +27,7 @@
 #include <sys/socket.h>
 #include <type_traits>
 #include <utility>
-#include "device_loop.cuh"
-#include "memcpy_io.cuh"
+#include "device_loop_inlines.cuh"
 #include "net_socket.h"
 #include "request.h"
 #include "utility/util.cu.h"
