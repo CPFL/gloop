@@ -13,7 +13,7 @@
 #include <gloop/utility/util.cu.h>
 
 
-#define MEMSIZE ((1 << 20) * 1024)
+#define MEMSIZE ((1 << 20) * 512)
 #define THREADS (128)
 
 __device__ volatile gpunet::INIT_LOCK init_lock;

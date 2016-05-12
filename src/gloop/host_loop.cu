@@ -366,6 +366,7 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
             ssize_t readCount = ::pread(req.u.read.fd, copyWork->hostMemory().hostPointer(), req.u.read.count, req.u.read.offset);
 
             // FIXME: Should use multiple streams. And execute async.
+            assert(req.u.read.buffer);
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, copyWork->hostMemory().hostPointer(), readCount, cudaMemcpyHostToDevice, copyWork->stream()));
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
 
