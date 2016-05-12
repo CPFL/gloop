@@ -299,7 +299,7 @@ void __device__ img_gpu(
 void init_device_app()
 {
     // GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitPrintfFifoSize, 1<<25));
-    GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, ((1024 + 512) <<20)));
+    GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, ((512) <<20)));
 }
 
 void init_app()
