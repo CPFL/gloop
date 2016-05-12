@@ -67,6 +67,11 @@
         exit(-1);\
     }
 
+#define GLOOP_CUDA_SAFE(x) if((x) != cudaSuccess) {\
+        fprintf(stderr, "CUDA ERROR %s: %d %s\n", __FILE__, __LINE__, cudaGetErrorString(x));\
+        exit(-1);\
+    }
+
 #if defined(__CUDACC__)
     #define GLOOP_ALWAYS_INLINE __forceinline__  /* inline __attribute__((__always_inline__)) */
 #else

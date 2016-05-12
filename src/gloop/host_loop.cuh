@@ -177,15 +177,9 @@ inline __host__ void HostLoop::launch(HostContext& hostContext, dim3 threads, De
                 std::lock_guard<KernelLock> lock(m_kernelLock);
                 // GLOOP_DATA_LOG("acquire for launch\n");
                 prepareForLaunch();
-                while (true) {
-                    gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext(), callback, args...);
-                    cudaError_t error = cudaGetLastError();
-                    if (cudaErrorLaunchOutOfResources == error) {
-                        continue;
-                    }
-                    GLOOP_CUDA_SAFE_CALL(error);
-                    break;
-                }
+                gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext(), callback, args...);
+                cudaError_t error = cudaGetLastError();
+                GLOOP_CUDA_SAFE(error);
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             }
 
@@ -220,17 +214,13 @@ inline __host__ void HostLoop::resume(DeviceLambda callback, Args... args)
             // GLOOP_DATA_LOG("acquire for resume\n");
             prepareForLaunch();
 
-            while (true) {
+            {
                 gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(nullptr, m_currentContext->deviceContext(), callback, args...);
                 cudaError_t error = cudaGetLastError();
-                if (cudaErrorLaunchOutOfResources == error) {
-                    continue;
-                }
-                GLOOP_CUDA_SAFE_CALL(error);
-                break;
+                GLOOP_CUDA_SAFE(error);
+                GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             }
 
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             acquireLockSoon = m_currentContext->pending();
 
             // m_kernelLock.unlock(acquireLockSoon);
