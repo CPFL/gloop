@@ -63,13 +63,12 @@ add_library(gloop STATIC
 )
 target_link_libraries(gloop
     dl
-    uv
     rt
     boost_system
     boost_thread
     boost_date_time
 )
-add_dependencies(gloop uv redirector)
+add_dependencies(gloop redirector)
 
 find_program(GRPC_CPP_PLUGIN_PATH
     NAMES "grpc_cpp_plugin"
