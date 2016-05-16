@@ -1,7 +1,3 @@
-include_directories(
-    ../common/include
-)
-
 add_executable(tpacf-gloop
     args.cc
     main.cu

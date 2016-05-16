@@ -1,7 +1,3 @@
-include_directories(
-    ../common/include
-)
-
 add_executable(lbm-gloop
     lbm.cu
     main.cc

@@ -1,2 +1,15 @@
-add_subdirectory(tpacf)
+include_directories(
+    common/include
+)
+
+add_subdirectory(bfs)
+add_subdirectory(cutcp)
+add_subdirectory(histo)
 add_subdirectory(lbm)
+add_subdirectory(mri-gridding)
+add_subdirectory(mri-q)
+add_subdirectory(sad)
+add_subdirectory(sgemm)
+add_subdirectory(spmv)
+add_subdirectory(stencil)
+add_subdirectory(tpacf)
