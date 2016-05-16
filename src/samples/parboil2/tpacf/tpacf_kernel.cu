@@ -46,9 +46,9 @@ void initBinB( struct pb_TimerSet *timers )
     free(binb);
 }
 
-    __global__
-void gen_hists( hist_t* histograms, REAL* all_x_data, REAL* all_y_data,
-        REAL* all_z_data, int NUM_SETS, int NUM_ELEMENTS )
+__device__
+// __global__
+void gen_hists(hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all_z_data, int NUM_SETS, int NUM_ELEMENTS)
 {
     unsigned int bx = blockIdx.x;
     unsigned int tid = threadIdx.x;
@@ -102,8 +102,7 @@ void gen_hists( hist_t* histograms, REAL* all_x_data, REAL* all_y_data,
         // (total of BLOCK_SIZE points loaded)
         if( tid + i < NUM_ELEMENTS )
         { // reading outside of bounds is a-okay
-            data_s[tid] = (struct cartesian)
-            {data_x[tid + i], data_y[tid + i], data_z[tid + i]};
+            data_s[tid] = (struct cartesian) {data_x[tid + i], data_y[tid + i], data_z[tid + i]};
         }
 
         __syncthreads();
@@ -198,16 +197,6 @@ void gen_hists( hist_t* histograms, REAL* all_x_data, REAL* all_y_data,
     }
 }
 
-void TPACF(hist_t * histograms, REAL* d_x_data, REAL* d_y_data,
-        REAL* d_z_data)
-{
-    dim3 dimBlock(BLOCK_SIZE);
-    dim3 dimGrid(NUM_SETS*2 + 1);
-
-    gen_hists <<< dimGrid, dimBlock >>> ( histograms, d_x_data,
-            d_y_data, d_z_data, NUM_SETS,
-            NUM_ELEMENTS);
-}
 // **===-----------------------------------------------------------===**
 
 
