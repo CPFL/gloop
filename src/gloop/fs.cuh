@@ -21,8 +21,8 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_FS_H_
-#define GLOOP_FS_H_
+#ifndef GLOOP_FS_CU_H_
+#define GLOOP_FS_CU_H_
 #include <sys/mman.h>
 #include <type_traits>
 #include <utility>
@@ -270,4 +270,4 @@ inline __device__ auto msync(DeviceLoop* loop, volatile void* address, size_t si
 }
 
 } }  // namespace gloop::fs
-#endif  // GLOOP_FS_H_
+#endif  // GLOOP_FS_CU_H_
