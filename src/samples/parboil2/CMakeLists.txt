@@ -13,3 +13,6 @@ add_subdirectory(sgemm)
 add_subdirectory(spmv)
 add_subdirectory(stencil)
 add_subdirectory(tpacf)
+
+# GLoop versions.
+add_subdirectory(tpacf-gloop)

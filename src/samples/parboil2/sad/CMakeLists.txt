@@ -1,4 +1,4 @@
-add_executable(sad-gloop
+add_executable(sad
     file.c
     image.c
     largerBlocks.cu
@@ -6,5 +6,4 @@ add_executable(sad-gloop
     sad4.cu
     ../common/src/parboil_cuda.c
 )
-target_link_libraries(sad-gloop gloop ${GLOOP_CUDA_RUNTIME_LIBS})
-set_target_properties(sad-gloop PROPERTIES LINKER_LANGUAGE CUDA)
+set_target_properties(sad PROPERTIES LINKER_LANGUAGE CUDA)

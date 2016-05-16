@@ -6,10 +6,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffast-math")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --use_fast_math -Xptxas -dlcm=cg")
 
-add_executable(stencil-gloop
+add_executable(stencil
     file.cc
     main.cu
     ../common/src/parboil_cuda.c
 )
-target_link_libraries(stencil-gloop gloop ${GLOOP_CUDA_RUNTIME_LIBS})
-set_target_properties(stencil-gloop PROPERTIES LINKER_LANGUAGE CUDA)
+target_link_libraries(stencil gloop ${GLOOP_CUDA_RUNTIME_LIBS})
+set_target_properties(stencil PROPERTIES LINKER_LANGUAGE CUDA)
