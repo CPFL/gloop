@@ -5,6 +5,7 @@
 - GCC 4.9 (You need to modify /usr/lib/nvidia-cuda-toolkit/{gcc, g++})
 - NVIDIA CUDA 7.5 or later
 - grpc
+- CMake with CUDA patch (https://github.com/CPFL/cmake cuda branch)
 
 ## Environment
 
