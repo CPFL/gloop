@@ -35,10 +35,8 @@ unsigned int NUM_ELEMENTS;
 void initBinB( struct pb_TimerSet *timers )
 {
     REAL *binb = (REAL*)malloc((NUM_BINS+1)*sizeof(REAL));
-    for (int k = 0; k < NUM_BINS+1; k++)
-    {
-        binb[k] = cos(pow(10.0, (log10(min_arcmin) + k*1.0/bins_per_dec))
-                / 60.0*D2R);
+    for (int k = 0; k < NUM_BINS+1; k++) {
+        binb[k] = cos(pow(10.0, (log10(min_arcmin) + k*1.0/bins_per_dec)) / 60.0*D2R);
     }
     pb_SwitchToTimer( timers, pb_TimerID_COPY );
     cudaMemcpyToSymbol(dev_binb, binb, (NUM_BINS+1)*sizeof(REAL));
@@ -46,9 +44,7 @@ void initBinB( struct pb_TimerSet *timers )
     free(binb);
 }
 
-__device__
-// __global__
-void gen_hists(hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all_z_data, int NUM_SETS, int NUM_ELEMENTS)
+__device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all_z_data, int NUM_SETS, int NUM_ELEMENTS)
 {
     unsigned int bx = blockIdx.x;
     unsigned int tid = threadIdx.x;
@@ -63,29 +59,23 @@ void gen_hists(hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all
 
     __shared__ struct cartesian data_s[BLOCK_SIZE];
 
-    __shared__ unsigned int
-        warp_hists[NUM_BINS][NUM_HISTOGRAMS]; // 640B <1k
+    __shared__ unsigned int warp_hists[NUM_BINS][NUM_HISTOGRAMS]; // 640B <1k
 
-    for(unsigned int w = 0; w < NUM_BINS*NUM_HISTOGRAMS; w += BLOCK_SIZE )
-    {
-        if(w+tid < NUM_BINS*NUM_HISTOGRAMS)
-        {
+    for(unsigned int w = 0; w < NUM_BINS*NUM_HISTOGRAMS; w += BLOCK_SIZE) {
+        if(w+tid < NUM_BINS*NUM_HISTOGRAMS) {
             warp_hists[(w+tid)/NUM_HISTOGRAMS][(w+tid)%NUM_HISTOGRAMS] = 0;
         }
     }
 
     // Get stuff into shared memory to kick off the loop.
-    if( !do_self)
-    {
+    if(!do_self) {
         data_x = all_x_data;
         data_y = all_y_data;
         data_z = all_z_data;
         random_x = all_x_data + NUM_ELEMENTS * (bx - NUM_SETS);
         random_y = all_y_data + NUM_ELEMENTS * (bx - NUM_SETS);
         random_z = all_z_data + NUM_ELEMENTS * (bx - NUM_SETS);
-    }
-    else
-    {
+    } else {
         random_x = all_x_data + NUM_ELEMENTS * (bx);
         random_y = all_y_data + NUM_ELEMENTS * (bx);
         random_z = all_z_data + NUM_ELEMENTS * (bx);
@@ -96,28 +86,24 @@ void gen_hists(hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all
     }
 
     // Iterate over all data points
-    for(unsigned int i = 0; i < NUM_ELEMENTS; i += BLOCK_SIZE )
-    {
+    for(unsigned int i = 0; i < NUM_ELEMENTS; i += BLOCK_SIZE) {
         // load current set of data into shared memory
         // (total of BLOCK_SIZE points loaded)
-        if( tid + i < NUM_ELEMENTS )
-        { // reading outside of bounds is a-okay
+        if(tid + i < NUM_ELEMENTS) {
+            // reading outside of bounds is a-okay
             data_s[tid] = (struct cartesian) {data_x[tid + i], data_y[tid + i], data_z[tid + i]};
         }
 
         __syncthreads();
 
         // Iterate over all random points
-        for(unsigned int j = (do_self ? i+1 : 0); j < NUM_ELEMENTS;
-                j += BLOCK_SIZE)
-        {
+        for(unsigned int j = (do_self ? i+1 : 0); j < NUM_ELEMENTS; j += BLOCK_SIZE) {
             // load current random point values
             REAL random_x_s;
             REAL random_y_s;
             REAL random_z_s;
 
-            if(tid + j < NUM_ELEMENTS)
-            {
+            if(tid + j < NUM_ELEMENTS) {
                 random_x_s = random_x[tid + j];
                 random_y_s = random_y[tid + j];
                 random_z_s = random_z[tid + j];
@@ -127,10 +113,7 @@ void gen_hists(hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all
             // (BLOCK_SIZE iterations per thread)
             // Each thread calcs against 1 random point within cur set of random
             // (so BLOCK_SIZE threads covers all random points within cur set)
-            for(unsigned int k = 0;
-                    (k < BLOCK_SIZE) && (k+i < NUM_ELEMENTS);
-                    k += 1)
-            {
+            for(unsigned int k = 0; (k < BLOCK_SIZE) && (k+i < NUM_ELEMENTS); k += 1) {
                 // do actual calculations on the values:
                 REAL distance =
                     data_s[k].x * random_x_s +
@@ -145,8 +128,7 @@ void gen_hists(hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all
                 {
                     unsigned int k2;
 
-                    while (max > min+1)
-                    {
+                    while (max > min+1) {
                         k2 = (min + max) / 2;
                         if (distance >= dev_binb[k2])
                             max = k2;
@@ -158,8 +140,7 @@ void gen_hists(hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all
 
                 unsigned int warpnum = tid / (WARP_SIZE/HISTS_PER_WARP);
                 if((distance < dev_binb[min]) && (distance >= dev_binb[max]) &&
-                        (!do_self || (tid + j > i + k)) && (tid + j < NUM_ELEMENTS))
-                {
+                        (!do_self || (tid + j > i + k)) && (tid + j < NUM_ELEMENTS)) {
                     atomicAdd(&warp_hists[bin_index][warpnum], 1U);
                 }
             }
@@ -169,15 +150,10 @@ void gen_hists(hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all
     // coalesce the histograms in a block
     unsigned int warp_index = tid & ( (NUM_HISTOGRAMS>>1) - 1);
     unsigned int bin_index = tid / (NUM_HISTOGRAMS>>1);
-    for(unsigned int offset = NUM_HISTOGRAMS >> 1; offset > 0;
-            offset >>= 1)
-    {
-        for(unsigned int bin_base = 0; bin_base < NUM_BINS;
-                bin_base += BLOCK_SIZE/ (NUM_HISTOGRAMS>>1))
-        {
+    for(unsigned int offset = NUM_HISTOGRAMS >> 1; offset > 0; offset >>= 1) {
+        for(unsigned int bin_base = 0; bin_base < NUM_BINS; bin_base += BLOCK_SIZE/ (NUM_HISTOGRAMS>>1)) {
             __syncthreads();
-            if(warp_index < offset && bin_base+bin_index < NUM_BINS )
-            {
+            if(warp_index < offset && bin_base+bin_index < NUM_BINS ) {
                 unsigned long sum =
                     warp_hists[bin_base + bin_index][warp_index] +
                     warp_hists[bin_base + bin_index][warp_index+offset];
@@ -191,8 +167,7 @@ void gen_hists(hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all
     // Put the results back in the real histogram
     // warp_hists[x][0] holds sum of all locations of bin x
     hist_t* hist_base = histograms + NUM_BINS * bx;
-    if(tid < NUM_BINS)
-    {
+    if(tid < NUM_BINS) {
         hist_base[tid] = warp_hists[tid][0];
     }
 }
