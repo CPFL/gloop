@@ -103,81 +103,94 @@ __device__ void matrixMulCUDA(float *C, float *A, float *B, int wA, int wB, int 
     C[c + wB * ty + tx] = Csub;
 }
 
-__device__ float g_message[BLOCKS][MSG_SIZE];
+class MatMulServer {
+public:
+    __device__ MatMulServer(gloop::net::Server* server)
+        : m_server(server)
+    {
+    }
 
-__device__ void accept(gloop::DeviceLoop* loop, gloop::net::Server* server);
-
-__device__ void close(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop::net::Socket* socket)
-{
-    gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop* loop, int error) {
-        accept(loop, server);
-    });
-}
-
-__device__ void perform(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop::net::Socket* socket)
-{
-    gloop::net::tcp::receive(loop, socket, MATRIX_SIZE * sizeof(float) * 2, (uint8_t*)(g_message[gloop::logicalBlockIdx.x]), MSG_WAITALL, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
-        if (receiveCount == 0) {
-            close(loop, server, socket);
-            return;
-        }
-        GPU_ASSERT(receiveCount == (MATRIX_SIZE * sizeof(float) * 2));
-        float* lhs = g_message[gloop::logicalBlockIdx.x];
-        float* rhs = g_message[gloop::logicalBlockIdx.x] + MATRIX_SIZE;
-        float* out = g_message[gloop::logicalBlockIdx.x] + MATRIX_SIZE * 2;
-
-        int xtimes = MATRIX_HW / blockDim.x;
-        int ytimes = MATRIX_HW / blockDim.y;
-        for (int y = 0; y < ytimes; ++y) {
-            for (int x = 0; x < xtimes; ++x) {
-                matrixMulCUDA<SHARED_BLOCK_SIZE>(out, lhs, rhs, MATRIX_HW, MATRIX_HW, x, y);
-            }
-        }
-        gloop::net::tcp::send(loop, socket, MATRIX_SIZE * sizeof(float), (uint8_t*)out, [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
-            if (sentCount == 0) {
-                close(loop, server, socket);
+    __device__ void accept(gloop::DeviceLoop* loop)
+    {
+        gloop::net::tcp::accept(loop, m_server, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
+            if (!socket) {
                 return;
             }
-            perform(loop, server, socket);
+            this->handle(loop, socket);
         });
-    });
-}
+    }
 
-__device__ void accept(gloop::DeviceLoop* loop, gloop::net::Server* server)
-{
-    gloop::net::tcp::accept(loop, server, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
-        if (!socket) {
-            return;
-        }
-        perform(loop, server, socket);
-    });
-}
+    __device__ void close(gloop::DeviceLoop* loop, gloop::net::Socket* socket)
+    {
+        gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop* loop, int error) {
+            this->accept(loop);
+        });
+    }
+
+    __device__ void handle(gloop::DeviceLoop* loop, gloop::net::Socket* socket)
+    {
+        gloop::net::tcp::receive(loop, socket, MATRIX_SIZE * sizeof(float) * 2, (uint8_t*)m_message, MSG_WAITALL, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+            if (receiveCount == 0) {
+                this->close(loop, socket);
+                return;
+            }
+            GPU_ASSERT(receiveCount == (MATRIX_SIZE * sizeof(float) * 2));
+            float* lhs = m_message;
+            float* rhs = m_message + MATRIX_SIZE;
+            float* out = m_message + MATRIX_SIZE * 2;
+
+            int xtimes = MATRIX_HW / blockDim.x;
+            int ytimes = MATRIX_HW / blockDim.y;
+            for (int y = 0; y < ytimes; ++y) {
+                for (int x = 0; x < xtimes; ++x) {
+                    matrixMulCUDA<SHARED_BLOCK_SIZE>(out, lhs, rhs, MATRIX_HW, MATRIX_HW, x, y);
+                }
+            }
+            gloop::net::tcp::send(loop, socket, MATRIX_SIZE * sizeof(float), (uint8_t*)out, [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
+                if (sentCount == 0) {
+                    this->close(loop, socket);
+                    return;
+                }
+                this->handle(loop, socket);
+            });
+        });
+    }
+
+private:
+    float m_message[MSG_SIZE];
+    gloop::net::Server* m_server;
+};
 
 __device__ gloop::net::Server* globalServer = nullptr;
 __device__ volatile gpunet::INIT_LOCK initLock;
 __device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
 {
+    __shared__ MatMulServer* matMulServer;
+    __shared__ int toInit;
     BEGIN_SINGLE_THREAD
     {
-        __shared__ int toInit;
         toInit = initLock.try_wait();
-        if (toInit == 1) {
-            gloop::net::tcp::bind(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Server* server) {
-                assert(server);
-                BEGIN_SINGLE_THREAD
-                {
-                    globalServer = server;
-                    __threadfence();
-                    initLock.signal();
-                }
-                END_SINGLE_THREAD
-                accept(loop, globalServer);
-            });
-            return;
-        }
+        if (toInit != 1)
+            matMulServer = new MatMulServer(globalServer);
     }
     END_SINGLE_THREAD
-    accept(loop, globalServer);
+    if (toInit == 1) {
+        gloop::net::tcp::bind(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Server* server) {
+            assert(server);
+            __shared__ MatMulServer* matMulServer;
+            BEGIN_SINGLE_THREAD
+            {
+                globalServer = server;
+                __threadfence();
+                initLock.signal();
+                matMulServer = new MatMulServer(globalServer);
+            }
+            END_SINGLE_THREAD
+            matMulServer->accept(loop);
+        });
+        return;
+    }
+    matMulServer->accept(loop);
 }
 
 int main(int argc, char** argv)
@@ -191,7 +204,7 @@ int main(int argc, char** argv)
     {
         if (argc > 2) {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
-            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (2 << 20) * 256));
+            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (512 << 20)));
             gpunet_client_init(&addr, &dev_addr, argv[1], argv[2]);
             printf("address:(%x),port:(%u)\n", ((struct sockaddr_in*)addr)->sin_addr.s_addr, ((struct sockaddr_in*)addr)->sin_port);
         } else {
