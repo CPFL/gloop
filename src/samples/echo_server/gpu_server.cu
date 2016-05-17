@@ -27,7 +27,7 @@
 #include "microbench_util.h"
 
 #define THREADS_PER_TB 256
-#define BLOCKS 1
+#define BLOCKS 16
 #define BUF_SIZE 65536
 #define NR_MSG   60000
 #define MSG_SIZE BUF_SIZE
