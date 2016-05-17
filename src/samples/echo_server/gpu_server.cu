@@ -32,69 +32,82 @@
 #define NR_MSG   60000
 #define MSG_SIZE BUF_SIZE
 
-__device__ unsigned char g_message[512][MSG_SIZE];
+class EchoServer {
+public:
+    __device__ EchoServer(gloop::net::Server* server)
+        : m_server(server)
+    {
+    }
 
-__device__ void accept(gloop::DeviceLoop* loop, gloop::net::Server* server);
-
-__device__ void close(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop::net::Socket* socket)
-{
-    gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop* loop, int error) {
-        accept(loop, server);
-    });
-}
-
-__device__ void perform(gloop::DeviceLoop* loop, gloop::net::Server* server, gloop::net::Socket* socket)
-{
-    gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[gloop::logicalBlockIdx.x], 0, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
-        if (receiveCount == 0) {
-            close(loop, server, socket);
-            return;
-        }
-        gloop::net::tcp::send(loop, socket, receiveCount, g_message[gloop::logicalBlockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
-            if (sentCount == 0) {
-                close(loop, server, socket);
+    __device__ void accept(gloop::DeviceLoop* loop)
+    {
+        gloop::net::tcp::accept(loop, m_server, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
+            if (!socket) {
                 return;
             }
-            perform(loop, server, socket);
+            this->handle(loop, socket);
         });
-    });
-}
+    }
 
-__device__ void accept(gloop::DeviceLoop* loop, gloop::net::Server* server)
-{
-    gloop::net::tcp::accept(loop, server, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
-        if (!socket) {
-            return;
-        }
-        perform(loop, server, socket);
-    });
-}
+    __device__ void close(gloop::DeviceLoop* loop, gloop::net::Socket* socket)
+    {
+        gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop* loop, int error) {
+            this->accept(loop);
+        });
+    }
+
+    __device__ void handle(gloop::DeviceLoop* loop, gloop::net::Socket* socket)
+    {
+        gloop::net::tcp::receive(loop, socket, BUF_SIZE, (uint8_t*)m_message, 0, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+            if (receiveCount == 0) {
+                this->close(loop, socket);
+                return;
+            }
+            gloop::net::tcp::send(loop, socket, receiveCount, (uint8_t*)m_message, [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
+                if (sentCount == 0) {
+                    this->close(loop, socket);
+                    return;
+                }
+                this->handle(loop, socket);
+            });
+        });
+    }
+
+private:
+    unsigned char m_message[BUF_SIZE];
+    gloop::net::Server* m_server;
+};
 
 __device__ gloop::net::Server* globalServer = nullptr;
 __device__ volatile gpunet::INIT_LOCK initLock;
 __device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
 {
+    __shared__ EchoServer* echoServer;
+    __shared__ int toInit;
     BEGIN_SINGLE_THREAD
     {
-        __shared__ int toInit;
         toInit = initLock.try_wait();
-        if (toInit == 1) {
-            gloop::net::tcp::bind(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Server* server) {
-                assert(server);
-                BEGIN_SINGLE_THREAD
-                {
-                    globalServer = server;
-                    __threadfence();
-                    initLock.signal();
-                }
-                END_SINGLE_THREAD
-                accept(loop, globalServer);
-            });
-            return;
-        }
+        if (toInit != 1)
+            echoServer = new EchoServer(globalServer);
     }
     END_SINGLE_THREAD
-    accept(loop, globalServer);
+    if (toInit == 1) {
+        gloop::net::tcp::bind(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Server* server) {
+            assert(server);
+            __shared__ EchoServer* echoServer;
+            BEGIN_SINGLE_THREAD
+            {
+                globalServer = server;
+                __threadfence();
+                initLock.signal();
+                echoServer = new EchoServer(globalServer);
+            }
+            END_SINGLE_THREAD
+            echoServer->accept(loop);
+        });
+        return;
+    }
+    echoServer->accept(loop);
 }
 
 int main(int argc, char** argv)
