@@ -45,10 +45,10 @@ void initBinB( struct pb_TimerSet *timers )
 }
 
 template<typename Callback>
-__device__ bool iterateOverAllRandomPoints(gloop::DeviceLoop* loop, struct cartesian* data, bool do_self, REAL* random_x, REAL* random_y, REAL* random_z, unsigned int (*warp_hists)[NUM_HISTOGRAMS], unsigned int NUM_ELEMENTS, unsigned int i, unsigned int j, Callback callback)
+__device__ void iterateOverAllRandomPoints(gloop::DeviceLoop* loop, struct cartesian* data, bool do_self, REAL* random_x, REAL* random_y, REAL* random_z, unsigned int (*warp_hists)[NUM_HISTOGRAMS], unsigned int NUM_ELEMENTS, unsigned int i, unsigned int j, Callback callback)
 {
     // Iterate over all random points
-    for(; j < NUM_ELEMENTS; j += BLOCK_SIZE) {
+    if (j < NUM_ELEMENTS) {
         // load current random point values
         REAL random_x_s;
         REAL random_y_s;
@@ -96,23 +96,20 @@ __device__ bool iterateOverAllRandomPoints(gloop::DeviceLoop* loop, struct carte
             }
         }
 
-        if (gloop::loop::postTaskIfNecessary(loop,
-            [=] (gloop::DeviceLoop* loop) {
-                if (iterateOverAllRandomPoints(loop, data, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, i, j + BLOCK_SIZE, callback))
-                    return;
-                callback(loop);
-            }))
-            return true;
+        gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
+            iterateOverAllRandomPoints(loop, data, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, i, j + BLOCK_SIZE, callback);
+        });
+        return;
     }
 
-    return gloop::loop::postTaskIfNecessary(loop, callback);
+    callback(loop);
 }
 
 template<typename Callback>
-__device__ bool iterateOverAllDataPoints(gloop::DeviceLoop* loop, struct cartesian* data, REAL* data_x, REAL* data_y, REAL* data_z, bool do_self, REAL* random_x, REAL* random_y, REAL* random_z, unsigned int (*warp_hists)[NUM_HISTOGRAMS], unsigned int NUM_ELEMENTS, unsigned int i, Callback callback)
+__device__ void iterateOverAllDataPoints(gloop::DeviceLoop* loop, struct cartesian* data, REAL* data_x, REAL* data_y, REAL* data_z, bool do_self, REAL* random_x, REAL* random_y, REAL* random_z, unsigned int (*warp_hists)[NUM_HISTOGRAMS], unsigned int NUM_ELEMENTS, unsigned int i, Callback callback)
 {
     // Iterate over all data points
-    for(; i < NUM_ELEMENTS; i += BLOCK_SIZE) {
+    if (i < NUM_ELEMENTS) {
         // load current set of data into shared memory
         // (total of BLOCK_SIZE points loaded)
         if(threadIdx.x + i < NUM_ELEMENTS) {
@@ -122,16 +119,13 @@ __device__ bool iterateOverAllDataPoints(gloop::DeviceLoop* loop, struct cartesi
 
         __syncthreads();
 
-        if (iterateOverAllRandomPoints(loop, data, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, i, (do_self ? i+1 : 0),
-            [=] (gloop::DeviceLoop* loop) {
-                if (iterateOverAllDataPoints(loop, data, data_x, data_y, data_z, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, i + BLOCK_SIZE, callback))
-                    return;
-                callback(loop);
-            }))
-            return;
+        iterateOverAllRandomPoints(loop, data, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, i, (do_self ? i+1 : 0), [=] (gloop::DeviceLoop* loop) {
+            iterateOverAllDataPoints(loop, data, data_x, data_y, data_z, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, i + BLOCK_SIZE, callback);
+        });
+        return;
     }
 
-    return gloop::loop::postTaskIfNecessary(loop, callback);
+    callback(loop);
 }
 
 
@@ -182,7 +176,7 @@ __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all
     }
 
     gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
-        auto callback = [=] (gloop::DeviceLoop* loop) {
+        iterateOverAllDataPoints(loop, data, data_x, data_y, data_z, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, 0, [=] (gloop::DeviceLoop* loop) {
             gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
                 // coalesce the histograms in a block
                 unsigned int warp_index = tid & ( (NUM_HISTOGRAMS>>1) - 1);
@@ -215,10 +209,7 @@ __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all
                 }
                 END_SINGLE_THREAD
             });
-        };
-        if (iterateOverAllDataPoints(loop, data, data_x, data_y, data_z, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, 0, callback))
-            return;
-        callback(loop);
+        });
     });
 }
 
