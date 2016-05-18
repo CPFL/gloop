@@ -44,7 +44,7 @@ int main( int argc, char** argv)
         dim3 dimBlock(BLOCK_SIZE);
         dim3 dimGrid(NUM_SETS*2 + 1);
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid, dimGrid);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid, 90);
 
         printf("Min distance: %f arcmin\n", min_arcmin);
         printf("Max distance: %f arcmin\n", max_arcmin);
@@ -101,9 +101,10 @@ int main( int argc, char** argv)
         REAL* d_x_data;
         REAL * d_y_data;
         REAL * d_z_data;
-        pb_SwitchToTimer( &timers, pb_TimerID_COPY );
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+
+            pb_SwitchToTimer( &timers, pb_TimerID_COPY );
             cudaMalloc((void**) & d_x_data, 3*f_mem_size);
             CUDA_ERRCK
             d_y_data = d_x_data + NUM_ELEMENTS*(NUM_SETS+1);
@@ -126,18 +127,18 @@ int main( int argc, char** argv)
             pb_SwitchToTimer( &timers, pb_TimerID_COPY );
             cudaMemcpy(d_x_data, h_x_data, 3*f_mem_size, cudaMemcpyHostToDevice);
             CUDA_ERRCK
+            pb_SwitchToTimer( &timers, pb_TimerID_KERNEL );
         }
 
-        pb_SwitchToTimer( &timers, pb_TimerID_KERNEL );
         {
             hostLoop->launch(*hostContext, dimBlock, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all_z_data, unsigned int NUM_SETS, unsigned int NUM_ELEMENTS) {
                 gen_hists(loop, histograms, all_x_data, all_y_data, all_z_data, NUM_SETS, NUM_ELEMENTS);
             }, d_hists, d_x_data, d_y_data, d_z_data, NUM_SETS, NUM_ELEMENTS);
         }
 
-        pb_SwitchToTimer( &timers, pb_TimerID_COPY );
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+            pb_SwitchToTimer( &timers, pb_TimerID_COPY );
             cudaMemcpy(new_hists, d_hists, NUM_BINS*(NUM_SETS*2+1)* sizeof(hist_t), cudaMemcpyDeviceToHost);
             CUDA_ERRCK
             pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
@@ -186,18 +187,21 @@ int main( int argc, char** argv)
             outfile = stdout;
         }
 
-        pb_SwitchToTimer( &timers, pb_TimerID_IO );
-        // print out final histograms + omega (while calculating omega)
-        for(int i=0; i<NUM_BINS; i++)
         {
-            //REAL w = (100.0 * dd_hist[i] - dr[i]) / rr[i] + 1.0;
-            //fprintf(outfile, "%f\n", w);
-            fprintf(outfile, "%d\n%d\n%d\n", dd_hist[i], dr[i], rr[i]);
-            //      dd_t += dd_hist[i];
-            //      dr_t += dr[i];
-            //      rr_t += rr[i];
+            std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+            pb_SwitchToTimer( &timers, pb_TimerID_IO );
+            // print out final histograms + omega (while calculating omega)
+            for(int i=0; i<NUM_BINS; i++)
+            {
+                //REAL w = (100.0 * dd_hist[i] - dr[i]) / rr[i] + 1.0;
+                //fprintf(outfile, "%f\n", w);
+                fprintf(outfile, "%d\n%d\n%d\n", dd_hist[i], dr[i], rr[i]);
+                //      dd_t += dd_hist[i];
+                //      dr_t += dr[i];
+                //      rr_t += rr[i];
+            }
+            pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
         }
-        pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
 
         if(outfile != stdout)
             fclose(outfile);
@@ -206,16 +210,15 @@ int main( int argc, char** argv)
         free(new_hists);
         free( h_x_data);
 
-        pb_SwitchToTimer( &timers, pb_TimerID_COPY );
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+            pb_SwitchToTimer( &timers, pb_TimerID_COPY );
             cudaFree( d_hists );
             cudaFree( d_x_data );
+            pb_SwitchToTimer(&timers, pb_TimerID_NONE);
+            pb_PrintTimerSet(&timers);
+            pb_FreeParameters(params);
         }
-
-        pb_SwitchToTimer(&timers, pb_TimerID_NONE);
-        pb_PrintTimerSet(&timers);
-        pb_FreeParameters(params);
     }
 }
 

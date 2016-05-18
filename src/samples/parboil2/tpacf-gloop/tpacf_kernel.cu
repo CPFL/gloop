@@ -44,9 +44,96 @@ void initBinB( struct pb_TimerSet *timers )
     free(binb);
 }
 
+template<typename Callback>
+__device__ bool iterateOverAllRandomPoints(gloop::DeviceLoop* loop, struct cartesian* data, bool do_self, REAL* random_x, REAL* random_y, REAL* random_z, unsigned int (*warp_hists)[NUM_HISTOGRAMS], unsigned int NUM_ELEMENTS, unsigned int i, unsigned int j, Callback callback)
+{
+    // Iterate over all random points
+    for(; j < NUM_ELEMENTS; j += BLOCK_SIZE) {
+        // load current random point values
+        REAL random_x_s;
+        REAL random_y_s;
+        REAL random_z_s;
+
+        if(threadIdx.x + j < NUM_ELEMENTS) {
+            random_x_s = random_x[threadIdx.x + j];
+            random_y_s = random_y[threadIdx.x + j];
+            random_z_s = random_z[threadIdx.x + j];
+        }
+
+        // Iterate for all elements of current set of data points
+        // (BLOCK_SIZE iterations per thread)
+        // Each thread calcs against 1 random point within cur set of random
+        // (so BLOCK_SIZE threads covers all random points within cur set)
+        for(unsigned int k = 0; (k < BLOCK_SIZE) && (k+i < NUM_ELEMENTS); k += 1) {
+            // do actual calculations on the values:
+            REAL distance =
+                data[k].x * random_x_s +
+                data[k].y * random_y_s +
+                data[k].z * random_z_s;
+
+            unsigned int bin_index;
+
+            // run binary search to find bin_index
+            unsigned int min = 0;
+            unsigned int max = NUM_BINS;
+            {
+                unsigned int k2;
+
+                while (max > min+1) {
+                    k2 = (min + max) / 2;
+                    if (distance >= dev_binb[k2])
+                        max = k2;
+                    else
+                        min = k2;
+                }
+                bin_index = max - 1;
+            }
+
+            unsigned int warpnum = threadIdx.x / (WARP_SIZE/HISTS_PER_WARP);
+            if((distance < dev_binb[min]) && (distance >= dev_binb[max]) &&
+                    (!do_self || (threadIdx.x + j > i + k)) && (threadIdx.x + j < NUM_ELEMENTS)) {
+                atomicAdd(&warp_hists[bin_index][warpnum], 1U);
+            }
+        }
+
+        if (gloop::loop::postTaskIfNecessary(loop, [=] (gloop::DeviceLoop* loop) {
+            iterateOverAllRandomPoints(loop, data, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, i, j + BLOCK_SIZE, callback);
+        }))
+            return true;
+    }
+
+    gloop::loop::postTask(loop, callback);
+    return true;
+}
+
+template<typename Callback>
+__device__ void iterateOverAllDataPoints(gloop::DeviceLoop* loop, struct cartesian* data, REAL* data_x, REAL* data_y, REAL* data_z, bool do_self, REAL* random_x, REAL* random_y, REAL* random_z, unsigned int (*warp_hists)[NUM_HISTOGRAMS], unsigned int NUM_ELEMENTS, unsigned int i, Callback callback)
+{
+    // Iterate over all data points
+    for(; i < NUM_ELEMENTS; i += BLOCK_SIZE) {
+        // load current set of data into shared memory
+        // (total of BLOCK_SIZE points loaded)
+        if(threadIdx.x + i < NUM_ELEMENTS) {
+            // reading outside of bounds is a-okay
+            data[threadIdx.x] = (struct cartesian) {data_x[threadIdx.x + i], data_y[threadIdx.x + i], data_z[threadIdx.x + i]};
+        }
+
+        __syncthreads();
+
+        if (iterateOverAllRandomPoints(loop, data, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, i, (do_self ? i+1 : 0), [=] (gloop::DeviceLoop* loop) {
+            iterateOverAllDataPoints(loop, data, data_x, data_y, data_z, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, i + BLOCK_SIZE, callback);
+            }))
+            return;
+    }
+
+    gloop::loop::postTask(loop, callback);
+    return;
+}
+
+
 __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all_z_data, int NUM_SETS, int NUM_ELEMENTS)
 {
-    unsigned int bx = blockIdx.x;
+    unsigned int bx = gloop::logicalBlockIdx.x;
     unsigned int tid = threadIdx.x;
     bool do_self = (bx < (NUM_SETS + 1));
 
@@ -57,11 +144,11 @@ __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all
     REAL* random_y;
     REAL* random_z;
 
-    __shared__ struct cartesian* data_s;
+    __shared__ struct cartesian* data;
     __shared__ unsigned int (*warp_hists)[NUM_HISTOGRAMS];
     BEGIN_SINGLE_THREAD
     {
-        data_s = new struct cartesian[BLOCK_SIZE];
+        data = new struct cartesian[BLOCK_SIZE];
         warp_hists = new unsigned int[NUM_BINS][NUM_HISTOGRAMS]; // 640B <1k
     }
     END_SINGLE_THREAD
@@ -91,99 +178,39 @@ __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all
     }
 
     gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
-        // Iterate over all data points
-        for(unsigned int i = 0; i < NUM_ELEMENTS; i += BLOCK_SIZE) {
-            // load current set of data into shared memory
-            // (total of BLOCK_SIZE points loaded)
-            if(tid + i < NUM_ELEMENTS) {
-                // reading outside of bounds is a-okay
-                data_s[tid] = (struct cartesian) {data_x[tid + i], data_y[tid + i], data_z[tid + i]};
-            }
-
-            __syncthreads();
-
-            // Iterate over all random points
-            for(unsigned int j = (do_self ? i+1 : 0); j < NUM_ELEMENTS; j += BLOCK_SIZE) {
-                // load current random point values
-                REAL random_x_s;
-                REAL random_y_s;
-                REAL random_z_s;
-
-                if(tid + j < NUM_ELEMENTS) {
-                    random_x_s = random_x[tid + j];
-                    random_y_s = random_y[tid + j];
-                    random_z_s = random_z[tid + j];
-                }
-
-                // Iterate for all elements of current set of data points
-                // (BLOCK_SIZE iterations per thread)
-                // Each thread calcs against 1 random point within cur set of random
-                // (so BLOCK_SIZE threads covers all random points within cur set)
-                for(unsigned int k = 0; (k < BLOCK_SIZE) && (k+i < NUM_ELEMENTS); k += 1) {
-                    // do actual calculations on the values:
-                    REAL distance =
-                        data_s[k].x * random_x_s +
-                        data_s[k].y * random_y_s +
-                        data_s[k].z * random_z_s;
-
-                    unsigned int bin_index;
-
-                    // run binary search to find bin_index
-                    unsigned int min = 0;
-                    unsigned int max = NUM_BINS;
-                    {
-                        unsigned int k2;
-
-                        while (max > min+1) {
-                            k2 = (min + max) / 2;
-                            if (distance >= dev_binb[k2])
-                                max = k2;
-                            else
-                                min = k2;
+        iterateOverAllDataPoints(loop, data, data_x, data_y, data_z, do_self, random_x, random_y, random_z, warp_hists, NUM_ELEMENTS, 0, [=] (gloop::DeviceLoop* loop) {
+            gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
+                // coalesce the histograms in a block
+                unsigned int warp_index = tid & ( (NUM_HISTOGRAMS>>1) - 1);
+                unsigned int bin_index = tid / (NUM_HISTOGRAMS>>1);
+                for(unsigned int offset = NUM_HISTOGRAMS >> 1; offset > 0; offset >>= 1) {
+                    for(unsigned int bin_base = 0; bin_base < NUM_BINS; bin_base += BLOCK_SIZE/ (NUM_HISTOGRAMS>>1)) {
+                        __syncthreads();
+                        if(warp_index < offset && bin_base+bin_index < NUM_BINS ) {
+                            unsigned long sum =
+                                warp_hists[bin_base + bin_index][warp_index] +
+                                warp_hists[bin_base + bin_index][warp_index+offset];
+                            warp_hists[bin_base + bin_index][warp_index] = sum;
                         }
-                        bin_index = max - 1;
-                    }
-
-                    unsigned int warpnum = tid / (WARP_SIZE/HISTS_PER_WARP);
-                    if((distance < dev_binb[min]) && (distance >= dev_binb[max]) &&
-                            (!do_self || (tid + j > i + k)) && (tid + j < NUM_ELEMENTS)) {
-                        atomicAdd(&warp_hists[bin_index][warpnum], 1U);
                     }
                 }
-            }
-        }
 
-        gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
-            // coalesce the histograms in a block
-            unsigned int warp_index = tid & ( (NUM_HISTOGRAMS>>1) - 1);
-            unsigned int bin_index = tid / (NUM_HISTOGRAMS>>1);
-            for(unsigned int offset = NUM_HISTOGRAMS >> 1; offset > 0; offset >>= 1) {
-                for(unsigned int bin_base = 0; bin_base < NUM_BINS; bin_base += BLOCK_SIZE/ (NUM_HISTOGRAMS>>1)) {
-                    __syncthreads();
-                    if(warp_index < offset && bin_base+bin_index < NUM_BINS ) {
-                        unsigned long sum =
-                            warp_hists[bin_base + bin_index][warp_index] +
-                            warp_hists[bin_base + bin_index][warp_index+offset];
-                        warp_hists[bin_base + bin_index][warp_index] = sum;
-                    }
+                __syncthreads();
+
+                // Put the results back in the real histogram
+                // warp_hists[x][0] holds sum of all locations of bin x
+                hist_t* hist_base = histograms + NUM_BINS * bx;
+                if(tid < NUM_BINS) {
+                    hist_base[tid] = warp_hists[tid][0];
                 }
-            }
 
-            __syncthreads();
-
-            // Put the results back in the real histogram
-            // warp_hists[x][0] holds sum of all locations of bin x
-            hist_t* hist_base = histograms + NUM_BINS * bx;
-            if(tid < NUM_BINS) {
-                hist_base[tid] = warp_hists[tid][0];
-            }
-
-            BEGIN_SINGLE_THREAD
-            {
-                delete [] data_s;
-                delete [] warp_hists;
-            }
-            END_SINGLE_THREAD
+                BEGIN_SINGLE_THREAD
+                {
+                    delete [] data;
+                    delete [] warp_hists;
+                }
+                END_SINGLE_THREAD
+            });
         });
     });
 }
