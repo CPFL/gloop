@@ -53,5 +53,24 @@ inline __device__ auto forceExit(DeviceLoop* loop, Lambda callback) -> void
     END_SINGLE_THREAD
 }
 
+template<typename Lambda>
+inline __device__ auto postTaskIfNecessary(DeviceLoop* loop, Lambda callback) -> int
+{
+    __shared__ int posted;
+    BEGIN_SINGLE_THREAD
+    {
+        posted = 0;
+        if (loop->shouldPostTask()) {
+            posted = 1;
+            loop->enqueueLater([callback](DeviceLoop* loop, volatile request::Request* req) {
+                callback(loop);
+            });
+        }
+    }
+    END_SINGLE_THREAD
+    return posted;
+}
+
+
 } }  // namespace gloop::loop
 #endif  // GLOOP_LOOP_CU_H_

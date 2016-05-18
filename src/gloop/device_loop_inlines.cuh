@@ -226,6 +226,12 @@ __device__ void DeviceLoop::deallocate(uint32_t pos)
     m_control.freeSlots |= (1U << pos);
 }
 
+__device__ int DeviceLoop::shouldPostTask()
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    return (clock64() - m_start) > m_deviceContext.killClock;
+}
+
 __device__ int DeviceLoop::drain(int executeAtLeastOne)
 {
     uint64_t start;

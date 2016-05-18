@@ -69,6 +69,8 @@ public:
     GLOOP_ALWAYS_INLINE __device__ unsigned logicalBlocksCount() const { return m_control.logicalBlocksCount; }
 #endif
 
+    GLOOP_ALWAYS_INLINE __device__ int shouldPostTask();
+
 private:
     __device__ void initializeImpl(DeviceContext);
 
