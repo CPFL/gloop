@@ -420,7 +420,7 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                         output_buffer=(char*)malloc(data_to_process/32*(32+GLOOP_FILENAME_SIZE+sizeof(int)));
                         assert(output_buffer);
                         output_count = (int*)malloc(sizeof(int));
-                        assert(output_cout);
+                        assert(output_count);
                         *output_count = 0;
 
                         db_files=(char*) malloc(3*1024*1024);
