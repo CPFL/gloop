@@ -67,15 +67,8 @@ __device__ void matrixMulCUDA(float *C, float *A, float *B, int wA, int wB, int 
         // Load the matrices from device memory
         // to shared memory; each thread loads
         // one element of each matrix
-        // FIXME
-        GPU_ASSERT(A[a + wA * ty + tx] == 1);
-        GPU_ASSERT(B[b + wB * ty + tx] == 1);
         As[ty][tx] = A[a + wA * ty + tx];
         Bs[ty][tx] = B[b + wB * ty + tx];
-        // As[ty][tx] = 1;
-        // Bs[ty][tx] = 1;
-        GPU_ASSERT(As[ty][tx] == 1);
-        GPU_ASSERT(Bs[ty][tx] == 1);
 
         // Synchronize to make sure the matrices are loaded
         __syncthreads();
@@ -86,8 +79,6 @@ __device__ void matrixMulCUDA(float *C, float *A, float *B, int wA, int wB, int 
         //#pragma unroll
 
         for (int k = 0; k < BLOCK_SIZE; ++k) {
-            GPU_ASSERT(As[ty][k] == 1);
-            GPU_ASSERT(Bs[k][tx] == 1);
             Csub += As[ty][k] * Bs[k][tx];
         }
 

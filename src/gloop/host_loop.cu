@@ -524,7 +524,7 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     }
 
     case Code::NetTCPAccept: {
-        // GLOOP_DEBUG("net::tcp::accept:server:(%p)\n", req.u.netTCPAccept.server);
+        // GLOOP_DATA_LOG("net::tcp::accept:server:(%p)\n", req.u.netTCPAccept.server);
         boost::asio::ip::tcp::socket* socket = new boost::asio::ip::tcp::socket(m_ioService);
         reinterpret_cast<boost::asio::ip::tcp::acceptor*>(req.u.netTCPAccept.server)->async_accept(*socket, [ipc, req, socket, this](const boost::system::error_code& error) {
             if (error) {
@@ -541,7 +541,7 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     case Code::NetTCPReceive: {
 //         std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
 //         benchmark->begin();
-        // GLOOP_DEBUG("net::tcp::receive:socket:(%p),count:(%u),buffer:(%p)\n", req.u.netTCPReceive.socket, req.u.netTCPReceive.count, req.u.netTCPReceive.buffer);
+        // GLOOP_DATA_LOG("net::tcp::receive:socket:(%p),count:(%u),buffer:(%p)\n", req.u.netTCPReceive.socket, req.u.netTCPReceive.count, req.u.netTCPReceive.buffer);
         assert(reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPReceive.socket));
         // FIXME: This should be reconsidered.
         size_t count = req.u.netTCPReceive.count;
@@ -574,7 +574,7 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     }
 
     case Code::NetTCPSend: {
-        // GLOOP_DEBUG("net::tcp::send:socket:(%p),count:(%u),buffer:(%p)\n", req.u.netTCPSend.socket, req.u.netTCPSend.count, req.u.netTCPSend.buffer);
+        // GLOOP_DATA_LOG("net::tcp::send:socket:(%p),count:(%u),buffer:(%p)\n", req.u.netTCPSend.socket, req.u.netTCPSend.count, req.u.netTCPSend.buffer);
         assert(reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPSend.socket));
         m_ioService.post([=]() {
             // FIXME: This should be reconsidered.
