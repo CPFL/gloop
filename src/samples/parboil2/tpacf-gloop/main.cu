@@ -94,7 +94,6 @@ int main( int argc, char** argv)
 
         // from on use x, y, and z arrays, free h_all_data
         free(h_all_data);
-        pb_SwitchToTimer( &timers, pb_TimerID_COPY );
 
         // allocate cuda memory to hold all points
         hist_t* new_hists;
@@ -102,6 +101,7 @@ int main( int argc, char** argv)
         REAL* d_x_data;
         REAL * d_y_data;
         REAL * d_z_data;
+        pb_SwitchToTimer( &timers, pb_TimerID_COPY );
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
             cudaMalloc((void**) & d_x_data, 3*f_mem_size);
@@ -126,18 +126,18 @@ int main( int argc, char** argv)
             pb_SwitchToTimer( &timers, pb_TimerID_COPY );
             cudaMemcpy(d_x_data, h_x_data, 3*f_mem_size, cudaMemcpyHostToDevice);
             CUDA_ERRCK
-            pb_SwitchToTimer( &timers, pb_TimerID_KERNEL );
         }
 
+        pb_SwitchToTimer( &timers, pb_TimerID_KERNEL );
         {
             hostLoop->launch(*hostContext, dimBlock, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all_z_data, unsigned int NUM_SETS, unsigned int NUM_ELEMENTS) {
                 gen_hists(loop, histograms, all_x_data, all_y_data, all_z_data, NUM_SETS, NUM_ELEMENTS);
             }, d_hists, d_x_data, d_y_data, d_z_data, NUM_SETS, NUM_ELEMENTS);
         }
 
+        pb_SwitchToTimer( &timers, pb_TimerID_COPY );
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
-            pb_SwitchToTimer( &timers, pb_TimerID_COPY );
             cudaMemcpy(new_hists, d_hists, NUM_BINS*(NUM_SETS*2+1)* sizeof(hist_t), cudaMemcpyDeviceToHost);
             CUDA_ERRCK
             pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
