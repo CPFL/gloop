@@ -16,6 +16,7 @@ add_subdirectory(tpacf)
 
 # GLoop versions.
 add_subdirectory(tpacf-gloop)
+add_subdirectory(tpacf-naive-gloop)
 
 # Split kernels versions.
 add_subdirectory(tpacf-kernel)
