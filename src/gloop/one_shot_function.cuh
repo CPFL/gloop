@@ -100,9 +100,6 @@
 // Changed, gloop.
 namespace gloop
 {
-
-extern void* enabler;
-
 // 20.8.11 Polymorphic function wrappers [func.wrap]
 
 // 20.8.11.1 Class bad_function_call [func.wrap.badcall]
@@ -215,7 +212,7 @@ private:
   template<
       class _F,
       class Function,
-      typename std::enable_if<!std::is_trivially_destructible<_F>::value>::type*& = enabler
+      typename std::enable_if<!std::is_trivially_destructible<_F>::value, std::nullptr_t>::type = nullptr
       >
   __device__ static void oneShotDestroy(Function* function)
   {
@@ -229,7 +226,7 @@ private:
   template<
       class _F,
       class Function,
-      typename std::enable_if<std::is_trivially_destructible<_F>::value>::type*& = enabler
+      typename std::enable_if<std::is_trivially_destructible<_F>::value, std::nullptr_t>::type = nullptr
       >
   __device__ static void oneShotDestroy(Function* function)
   {
