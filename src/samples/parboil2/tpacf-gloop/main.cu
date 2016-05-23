@@ -45,7 +45,7 @@ int main( int argc, char** argv)
         dim3 dimBlock(BLOCK_SIZE);
         dim3 dimGrid(NUM_SETS*2 + 1);
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid, 90);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid, dimGrid);
 
         printf("Min distance: %f arcmin\n", min_arcmin);
         printf("Max distance: %f arcmin\n", max_arcmin);
