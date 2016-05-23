@@ -132,7 +132,9 @@ __device__ void iterateOverAllRandomPoints(gloop::DeviceLoop* loop, Context* ctx
         });
         return;
     }
-    callback(loop);
+    gloop::loop::postTask(loop, [ctx, callback] (gloop::DeviceLoop* loop) {
+        callback(loop);
+    });
 }
 
 template<typename Callback>
@@ -156,17 +158,21 @@ __device__ void iterateOverAllDataPoints(gloop::DeviceLoop* loop, Context* ctx, 
             ctx->j = (ctx->do_self ? i+1 : 0);
         }
         END_SINGLE_THREAD
-        iterateOverAllRandomPoints(loop, ctx, [ctx, callback] (gloop::DeviceLoop* loop) {
-            BEGIN_SINGLE_THREAD
-            {
-                ctx->i += BLOCK_SIZE;
-            }
-            END_SINGLE_THREAD
-            iterateOverAllDataPoints(loop, ctx, callback);
+        gloop::loop::postTask(loop, [ctx, callback] (gloop::DeviceLoop* loop) {
+            iterateOverAllRandomPoints(loop, ctx, [ctx, callback] (gloop::DeviceLoop* loop) {
+                BEGIN_SINGLE_THREAD
+                {
+                    ctx->i += BLOCK_SIZE;
+                }
+                END_SINGLE_THREAD
+                iterateOverAllDataPoints(loop, ctx, callback);
+            });
         });
         return;
     }
-    callback(loop);
+    gloop::loop::postTask(loop, [ctx, callback] (gloop::DeviceLoop* loop) {
+        callback(loop);
+    });
 }
 
 
