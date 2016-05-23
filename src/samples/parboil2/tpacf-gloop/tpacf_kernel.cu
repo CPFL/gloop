@@ -176,13 +176,6 @@ __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all
     unsigned int tid = threadIdx.x;
     bool do_self = (bx < (NUM_SETS + 1));
 
-    REAL* data_x;
-    REAL* data_y;
-    REAL* data_z;
-    REAL* random_x;
-    REAL* random_y;
-    REAL* random_z;
-
     __shared__ Context* ctx;
     __shared__ unsigned int (*warp_hists)[NUM_HISTOGRAMS];
     BEGIN_SINGLE_THREAD
@@ -202,31 +195,20 @@ __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all
     }
 
     // Get stuff into shared memory to kick off the loop.
-    if(!do_self) {
-        data_x = all_x_data;
-        data_y = all_y_data;
-        data_z = all_z_data;
-        random_x = all_x_data + NUM_ELEMENTS * (bx - NUM_SETS);
-        random_y = all_y_data + NUM_ELEMENTS * (bx - NUM_SETS);
-        random_z = all_z_data + NUM_ELEMENTS * (bx - NUM_SETS);
-    } else {
-        random_x = all_x_data + NUM_ELEMENTS * (bx);
-        random_y = all_y_data + NUM_ELEMENTS * (bx);
-        random_z = all_z_data + NUM_ELEMENTS * (bx);
-
-        data_x = random_x;
-        data_y = random_y;
-        data_z = random_z;
-    }
-
     BEGIN_SINGLE_THREAD
     {
-        ctx->data_x = data_x;
-        ctx->data_y = data_y;
-        ctx->data_z = data_z;
-        ctx->random_x = random_x;
-        ctx->random_y = random_y;
-        ctx->random_z = random_z;
+        if(!do_self) {
+            ctx->data_x = all_x_data;
+            ctx->data_y = all_y_data;
+            ctx->data_z = all_z_data;
+            ctx->random_x = all_x_data + NUM_ELEMENTS * (bx - NUM_SETS);
+            ctx->random_y = all_y_data + NUM_ELEMENTS * (bx - NUM_SETS);
+            ctx->random_z = all_z_data + NUM_ELEMENTS * (bx - NUM_SETS);
+        } else {
+            ctx->data_x = ctx->random_x = all_x_data + NUM_ELEMENTS * (bx);
+            ctx->data_y = ctx->random_y = all_y_data + NUM_ELEMENTS * (bx);
+            ctx->data_z = ctx->random_z = all_z_data + NUM_ELEMENTS * (bx);
+        }
         ctx->histograms = histograms;
         ctx->do_self = do_self;
         ctx->NUM_ELEMENTS = NUM_ELEMENTS;
