@@ -185,18 +185,7 @@ __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all
         unsigned int (*wh)[NUM_HISTOGRAMS] = new unsigned int[NUM_BINS][NUM_HISTOGRAMS]; // 640B <1k
         warp_hists = wh;
         ctx->warp_hists = wh;
-    }
-    END_SINGLE_THREAD
 
-    for(unsigned int w = 0; w < NUM_BINS*NUM_HISTOGRAMS; w += BLOCK_SIZE) {
-        if(w+tid < NUM_BINS*NUM_HISTOGRAMS) {
-            warp_hists[(w+tid)/NUM_HISTOGRAMS][(w+tid)%NUM_HISTOGRAMS] = 0;
-        }
-    }
-
-    // Get stuff into shared memory to kick off the loop.
-    BEGIN_SINGLE_THREAD
-    {
         if(!do_self) {
             ctx->data_x = all_x_data;
             ctx->data_y = all_y_data;
@@ -214,6 +203,12 @@ __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all
         ctx->NUM_ELEMENTS = NUM_ELEMENTS;
     }
     END_SINGLE_THREAD
+
+    for(unsigned int w = 0; w < NUM_BINS*NUM_HISTOGRAMS; w += BLOCK_SIZE) {
+        if(w+tid < NUM_BINS*NUM_HISTOGRAMS) {
+            warp_hists[(w+tid)/NUM_HISTOGRAMS][(w+tid)%NUM_HISTOGRAMS] = 0;
+        }
+    }
 
     gloop::loop::postTask(loop, [ctx] (gloop::DeviceLoop* loop) {
         BEGIN_SINGLE_THREAD
