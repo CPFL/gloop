@@ -23,6 +23,7 @@
 */
 #ifndef GLOOP_DEVICE_LOOP_INLINES_CU_H_
 #define GLOOP_DEVICE_LOOP_INLINES_CU_H_
+#include <utility>
 #include "device_loop.cuh"
 namespace gloop {
 
@@ -79,7 +80,7 @@ __device__ auto DeviceLoop::pages() const -> DeviceContext::OnePage*
 }
 
 template<typename Lambda>
-__device__ void DeviceLoop::allocOnePage(Lambda lambda)
+__device__ void DeviceLoop::allocOnePage(Lambda&& lambda)
 {
     __shared__ void* page;
     BEGIN_SINGLE_THREAD
@@ -104,34 +105,34 @@ __device__ void DeviceLoop::allocOnePage(Lambda lambda)
 }
 
 template<typename Lambda>
-__device__ void DeviceLoop::enqueueLater(Lambda lambda)
+__device__ void DeviceLoop::enqueueLater(Lambda&& lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    uint32_t pos = enqueueSleep(lambda);
+    uint32_t pos = enqueueSleep(std::forward<Lambda&&>(lambda));
     m_control.wakeupSlots |= (1U << pos);
 }
 
 template<typename Lambda>
-__device__ uint32_t DeviceLoop::enqueueSleep(Lambda lambda)
+__device__ uint32_t DeviceLoop::enqueueSleep(Lambda&& lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    uint32_t pos = allocate(lambda);
+    uint32_t pos = allocate(std::forward<Lambda&&>(lambda));
     m_control.sleepSlots |= (1U << pos);
     m_control.wakeupSlots &= ~(1U << pos);
     return pos;
 }
 
 template<typename Lambda>
-__device__ IPC DeviceLoop::enqueueIPC(Lambda lambda)
+__device__ IPC DeviceLoop::enqueueIPC(Lambda&& lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    uint32_t pos = allocate(lambda);
+    uint32_t pos = allocate(std::forward<Lambda&&>(lambda));
     GPU_ASSERT(pos < GLOOP_SHARED_SLOT_SIZE);
     return { pos };
 }
 
 template<typename Lambda>
-__device__ uint32_t DeviceLoop::allocate(Lambda lambda)
+__device__ uint32_t DeviceLoop::allocate(Lambda&& lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     int pos = __ffs(m_control.freeSlots) - 1;
@@ -150,7 +151,7 @@ __device__ uint32_t DeviceLoop::allocate(Lambda lambda)
     }
 #endif
 
-    new (target) DeviceCallback(lambda);
+    new (target) DeviceCallback(std::forward<Lambda&&>(lambda));
 
     return pos;
 }

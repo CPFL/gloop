@@ -47,12 +47,12 @@ public:
     __device__ void initialize(volatile uint32_t* signal, DeviceContext);
 
     template<typename Lambda>
-    inline __device__ IPC enqueueIPC(Lambda lambda);
+    inline __device__ IPC enqueueIPC(Lambda&& lambda);
     template<typename Lambda>
-    inline __device__ void enqueueLater(Lambda lambda);
+    inline __device__ void enqueueLater(Lambda&& lambda);
 
     template<typename Lambda>
-    inline __device__ void allocOnePage(Lambda lambda);
+    inline __device__ void allocOnePage(Lambda&& lambda);
     __device__ void freeOnePage(void* page);
 
     inline __device__ int drain(int executeAtLeastOne);
@@ -75,10 +75,10 @@ private:
     __device__ void initializeImpl(DeviceContext);
 
     template<typename Lambda>
-    inline __device__ uint32_t enqueueSleep(Lambda lambda);
+    inline __device__ uint32_t enqueueSleep(Lambda&& lambda);
 
     template<typename Lambda>
-    inline __device__ uint32_t allocate(Lambda lambda);
+    inline __device__ uint32_t allocate(Lambda&& lambda);
 
     inline __device__ void deallocate(uint32_t pos);
 
