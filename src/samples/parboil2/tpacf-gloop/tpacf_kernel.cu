@@ -33,28 +33,28 @@ unsigned int NUM_ELEMENTS;
 
 class Context {
 public:
-    inline __device__ void start(gloop::DeviceLoop* loop);
-    inline __device__ void finalize(gloop::DeviceLoop* loop);
-    inline __device__ void iterateOverAllDataPoints(gloop::DeviceLoop* loop);
-    inline __device__ void iterateOverAllRandomPoints(gloop::DeviceLoop* loop);
+    __device__ void start(gloop::DeviceLoop* loop);
+    __device__ void finalize(gloop::DeviceLoop* loop);
+    __device__ void iterateOverAllDataPoints(gloop::DeviceLoop* loop);
+    __device__ void iterateOverAllRandomPoints(gloop::DeviceLoop* loop);
 
 
-    struct cartesian* data;
-    unsigned int (*warp_hists)[NUM_HISTOGRAMS];
+    struct cartesian* m_data;
+    unsigned int (*m_warp_hists)[NUM_HISTOGRAMS];
 
-    REAL* data_x;
-    REAL* data_y;
-    REAL* data_z;
-    REAL* random_x;
-    REAL* random_y;
-    REAL* random_z;
-    hist_t* histograms;
+    REAL* m_data_x;
+    REAL* m_data_y;
+    REAL* m_data_z;
+    REAL* m_random_x;
+    REAL* m_random_y;
+    REAL* m_random_z;
+    hist_t* m_histograms;
 
-    unsigned int NUM_ELEMENTS;
-    int i;
-    int j;
+    unsigned int m_NUM_ELEMENTS;
+    int m_i;
+    int m_j;
 
-    bool do_self;
+    bool m_do_self;
 };
 
 // create the bin boundaries
@@ -70,16 +70,16 @@ void initBinB( struct pb_TimerSet *timers )
     free(binb);
 }
 
-GLOOP_NEVER_INLINE __device__ void Context::iterateOverAllRandomPoints(gloop::DeviceLoop* loop)
+__device__ void Context::iterateOverAllRandomPoints(gloop::DeviceLoop* loop)
 {
     // Iterate over all random points
-    unsigned int NUM_ELEMENTS = this->NUM_ELEMENTS;
-    if (this->j < NUM_ELEMENTS) {
-        struct cartesian* data = this->data;
-        bool do_self = this->do_self;
-        unsigned int (*warp_hists)[NUM_HISTOGRAMS] = this->warp_hists;
-        int i = this->i;
-        int j = this->j;
+    unsigned int NUM_ELEMENTS = m_NUM_ELEMENTS;
+    if (m_j < NUM_ELEMENTS) {
+        struct cartesian* data = m_data;
+        bool do_self = m_do_self;
+        unsigned int (*warp_hists)[NUM_HISTOGRAMS] = m_warp_hists;
+        int i = m_i;
+        int j = m_j;
 
         // load current random point values
         REAL random_x_s;
@@ -87,9 +87,9 @@ GLOOP_NEVER_INLINE __device__ void Context::iterateOverAllRandomPoints(gloop::De
         REAL random_z_s;
 
         if(threadIdx.x + j < NUM_ELEMENTS) {
-            random_x_s = this->random_x[threadIdx.x + j];
-            random_y_s = this->random_y[threadIdx.x + j];
-            random_z_s = this->random_z[threadIdx.x + j];
+            random_x_s = m_random_x[threadIdx.x + j];
+            random_y_s = m_random_y[threadIdx.x + j];
+            random_z_s = m_random_z[threadIdx.x + j];
         }
 
         // Iterate for all elements of current set of data points
@@ -127,53 +127,52 @@ GLOOP_NEVER_INLINE __device__ void Context::iterateOverAllRandomPoints(gloop::De
                 atomicAdd(&warp_hists[bin_index][warpnum], 1U);
             }
         }
-
+        BEGIN_SINGLE_THREAD
+        {
+            m_j += BLOCK_SIZE;
+        }
+        END_SINGLE_THREAD
         gloop::loop::postTask(loop, [this] (gloop::DeviceLoop* loop) {
-            BEGIN_SINGLE_THREAD
-            {
-                this->j += BLOCK_SIZE;
-            }
-            END_SINGLE_THREAD
-            this->iterateOverAllRandomPoints(loop);
+            iterateOverAllRandomPoints(loop);
         });
         return;
     }
+    BEGIN_SINGLE_THREAD
+    {
+        m_i += BLOCK_SIZE;
+    }
+    END_SINGLE_THREAD
     gloop::loop::postTask(loop, [this] (gloop::DeviceLoop* loop) {
-        BEGIN_SINGLE_THREAD
-        {
-            this->i += BLOCK_SIZE;
-        }
-        END_SINGLE_THREAD
-        this->iterateOverAllDataPoints(loop);
+        iterateOverAllDataPoints(loop);
     });
 }
 
 __device__ void Context::iterateOverAllDataPoints(gloop::DeviceLoop* loop)
 {
     // Iterate over all data points
-    unsigned int NUM_ELEMENTS = this->NUM_ELEMENTS;
-    int i = this->i;
+    unsigned int NUM_ELEMENTS = m_NUM_ELEMENTS;
+    int i = m_i;
     if (i < NUM_ELEMENTS) {
         // load current set of data into shared memory
         // (total of BLOCK_SIZE points loaded)
         if(threadIdx.x + i < NUM_ELEMENTS) {
             // reading outside of bounds is a-okay
-            this->data[threadIdx.x] = (struct cartesian) {this->data_x[threadIdx.x + i], this->data_y[threadIdx.x + i], this->data_z[threadIdx.x + i]};
+            m_data[threadIdx.x] = (struct cartesian) {m_data_x[threadIdx.x + i], m_data_y[threadIdx.x + i], m_data_z[threadIdx.x + i]};
         }
 
         __syncthreads();
 
         BEGIN_SINGLE_THREAD
         {
-            this->j = (this->do_self ? i+1 : 0);
+            m_j = (m_do_self ? i+1 : 0);
         }
         END_SINGLE_THREAD
         gloop::loop::postTask(loop, [this] (gloop::DeviceLoop* loop) {
-            this->iterateOverAllRandomPoints(loop);
+            iterateOverAllRandomPoints(loop);
         });
         return;
     }
-    this->finalize(loop);
+    finalize(loop);
 }
 
 __device__ void Context::finalize(gloop::DeviceLoop* loop)
@@ -182,7 +181,7 @@ __device__ void Context::finalize(gloop::DeviceLoop* loop)
         // coalesce the histograms in a block
         unsigned int warp_index = threadIdx.x & ( (NUM_HISTOGRAMS>>1) - 1);
         unsigned int bin_index = threadIdx.x / (NUM_HISTOGRAMS>>1);
-        unsigned int (*warp_hists)[NUM_HISTOGRAMS] = this->warp_hists;
+        unsigned int (*warp_hists)[NUM_HISTOGRAMS] = m_warp_hists;
         for(unsigned int offset = NUM_HISTOGRAMS >> 1; offset > 0; offset >>= 1) {
             for(unsigned int bin_base = 0; bin_base < NUM_BINS; bin_base += BLOCK_SIZE/ (NUM_HISTOGRAMS>>1)) {
                 __syncthreads();
@@ -199,15 +198,15 @@ __device__ void Context::finalize(gloop::DeviceLoop* loop)
 
         // Put the results back in the real histogram
         // warp_hists[x][0] holds sum of all locations of bin x
-        hist_t* hist_base = this->histograms + NUM_BINS * gloop::logicalBlockIdx.x;
+        hist_t* hist_base = m_histograms + NUM_BINS * gloop::logicalBlockIdx.x;
         if(threadIdx.x < NUM_BINS) {
             hist_base[threadIdx.x] = warp_hists[threadIdx.x][0];
         }
 
         BEGIN_SINGLE_THREAD
         {
-            delete [] this->data;
-            delete [] this->warp_hists;
+            delete [] m_data;
+            delete [] m_warp_hists;
             delete this;
         }
         END_SINGLE_THREAD
@@ -217,12 +216,7 @@ __device__ void Context::finalize(gloop::DeviceLoop* loop)
 __device__ void Context::start(gloop::DeviceLoop* loop)
 {
     gloop::loop::postTask(loop, [this] (gloop::DeviceLoop* loop) {
-        BEGIN_SINGLE_THREAD
-        {
-            this->i = 0;
-        }
-        END_SINGLE_THREAD
-        this->iterateOverAllDataPoints(loop);
+        iterateOverAllDataPoints(loop);
     });
 }
 
@@ -237,26 +231,28 @@ __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all
     BEGIN_SINGLE_THREAD
     {
         ctx = new Context();
-        ctx->data = new struct cartesian[BLOCK_SIZE];
+        ctx->m_data = new struct cartesian[BLOCK_SIZE];
         unsigned int (*wh)[NUM_HISTOGRAMS] = new unsigned int[NUM_BINS][NUM_HISTOGRAMS]; // 640B <1k
         warp_hists = wh;
-        ctx->warp_hists = wh;
+        ctx->m_warp_hists = wh;
 
         if(!do_self) {
-            ctx->data_x = all_x_data;
-            ctx->data_y = all_y_data;
-            ctx->data_z = all_z_data;
-            ctx->random_x = all_x_data + NUM_ELEMENTS * (bx - NUM_SETS);
-            ctx->random_y = all_y_data + NUM_ELEMENTS * (bx - NUM_SETS);
-            ctx->random_z = all_z_data + NUM_ELEMENTS * (bx - NUM_SETS);
+            ctx->m_data_x = all_x_data;
+            ctx->m_data_y = all_y_data;
+            ctx->m_data_z = all_z_data;
+            ctx->m_random_x = all_x_data + NUM_ELEMENTS * (bx - NUM_SETS);
+            ctx->m_random_y = all_y_data + NUM_ELEMENTS * (bx - NUM_SETS);
+            ctx->m_random_z = all_z_data + NUM_ELEMENTS * (bx - NUM_SETS);
         } else {
-            ctx->data_x = ctx->random_x = all_x_data + NUM_ELEMENTS * (bx);
-            ctx->data_y = ctx->random_y = all_y_data + NUM_ELEMENTS * (bx);
-            ctx->data_z = ctx->random_z = all_z_data + NUM_ELEMENTS * (bx);
+            ctx->m_data_x = ctx->m_random_x = all_x_data + NUM_ELEMENTS * (bx);
+            ctx->m_data_y = ctx->m_random_y = all_y_data + NUM_ELEMENTS * (bx);
+            ctx->m_data_z = ctx->m_random_z = all_z_data + NUM_ELEMENTS * (bx);
         }
-        ctx->histograms = histograms;
-        ctx->do_self = do_self;
-        ctx->NUM_ELEMENTS = NUM_ELEMENTS;
+        ctx->m_histograms = histograms;
+        ctx->m_do_self = do_self;
+        ctx->m_NUM_ELEMENTS = NUM_ELEMENTS;
+        ctx->m_i = 0;
+        ctx->m_j = 0;
     }
     END_SINGLE_THREAD
 
