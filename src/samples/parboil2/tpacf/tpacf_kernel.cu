@@ -11,6 +11,7 @@
 #include <assert.h>
 #include "model.h"
 #include <math.h>
+#include <gloop/benchmark.h>
 
 #define WARP_SIZE 32
 #define NUM_BANKS 16
@@ -204,9 +205,15 @@ void TPACF(hist_t * histograms, REAL* d_x_data, REAL* d_y_data,
   dim3 dimBlock(BLOCK_SIZE);
   dim3 dimGrid(NUM_SETS*2 + 1);
 
+  // gloop::Benchmark benchmark;
+  // cudaDeviceSynchronize();
+  // benchmark.begin();
   gen_hists <<< dimGrid, dimBlock >>> ( histograms, d_x_data, 
 					d_y_data, d_z_data, NUM_SETS, 
 					NUM_ELEMENTS);
+  // cudaDeviceSynchronize();
+  // benchmark.end();
+  // benchmark.report();
 }
 // **===-----------------------------------------------------------===**
 
