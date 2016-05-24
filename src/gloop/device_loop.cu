@@ -145,4 +145,71 @@ __device__ void DeviceLoop::freeOnePage(void* aPage)
     }
 }
 
+__device__ int DeviceLoop::drain(int executeAtLeastOne)
+{
+    uint64_t start;
+    __shared__ uint32_t position;
+    __shared__ DeviceCallback* callback;
+
+    BEGIN_SINGLE_THREAD
+    {
+        start = m_start;
+        callback = nullptr;
+        position = invalidPosition();
+
+        if (executeAtLeastOne) {
+            position = dequeue();
+            if (isValidPosition(position)) {
+                callback = slots(position);
+            }
+        }
+    }
+    END_SINGLE_THREAD
+
+    while (position != shouldExitPosition()) {
+        if (callback) {
+            // One shot function always destroys the function and syncs threads.
+            (*callback)(this, &m_payloads[position]);
+        }
+
+        BEGIN_SINGLE_THREAD
+        {
+            // 100 - 130 clock
+            if (callback) {
+                deallocate(position);
+            }
+
+#if 1
+            // 100 clock
+            {
+                uint64_t now = clock64();
+                if (((now - start) > m_deviceContext.killClock)) {
+                    start = ((now / m_deviceContext.killClock) * m_deviceContext.killClock);
+                    if (gloop::readNoCache<uint32_t>(m_control.signal) != 0) {
+                        position = shouldExitPosition();
+                        goto next;
+                    }
+                }
+            }
+#endif
+
+            // 200 clock.
+            callback = nullptr;
+            position = dequeue();
+            if (isValidPosition(position)) {
+                callback = slots(position);
+            }
+next:
+        }
+        END_SINGLE_THREAD
+    }
+    __shared__ int suspended;
+    BEGIN_SINGLE_THREAD
+    {
+        suspended = suspend();
+    }
+    END_SINGLE_THREAD
+    return suspended;
+}
+
 }  // namespace gloop
