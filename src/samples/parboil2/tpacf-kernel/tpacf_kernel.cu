@@ -153,6 +153,7 @@ void phase2(Context* contexts, int NUM_ELEMENTS, int i, int j)
     // (BLOCK_SIZE iterations per thread)
     // Each thread calcs against 1 random point within cur set of random
     // (so BLOCK_SIZE threads covers all random points within cur set)
+    unsigned int warpnum = tid / (WARP_SIZE/HISTS_PER_WARP);
     for(unsigned int k = 0; (k < BLOCK_SIZE) && (k+i < NUM_ELEMENTS); k += 1) {
         // do actual calculations on the values:
         REAL distance =
@@ -178,7 +179,6 @@ void phase2(Context* contexts, int NUM_ELEMENTS, int i, int j)
             bin_index = max - 1;
         }
 
-        unsigned int warpnum = tid / (WARP_SIZE/HISTS_PER_WARP);
         if((distance < dev_binb[min]) && (distance >= dev_binb[max]) && (!do_self || (tid + j > i + k)) && (tid + j < NUM_ELEMENTS)) {
             atomicAdd(&warp_hists[bin_index][warpnum], 1U);
         }

@@ -54,7 +54,7 @@ public:
     int m_i;
     int m_j;
 
-    bool m_do_self;
+    int m_do_self;
 };
 
 // create the bin boundaries
@@ -75,74 +75,78 @@ __device__ void Context::iterateOverAllRandomPoints(gloop::DeviceLoop* loop)
     // Iterate over all random points
     unsigned int NUM_ELEMENTS = m_NUM_ELEMENTS;
     if (m_j < NUM_ELEMENTS) {
-        struct cartesian* data = m_data;
-        bool do_self = m_do_self;
-        unsigned int (*warp_hists)[NUM_HISTOGRAMS] = m_warp_hists;
-        int i = m_i;
-        int j = m_j;
+        {
+            struct cartesian* data = m_data;
+            int do_self = m_do_self;
+            unsigned int (*warp_hists)[NUM_HISTOGRAMS] = m_warp_hists;
+            int i = m_i;
+            int j = m_j;
 
-        // load current random point values
-        REAL random_x_s;
-        REAL random_y_s;
-        REAL random_z_s;
+            // load current random point values
+            REAL random_x_s;
+            REAL random_y_s;
+            REAL random_z_s;
 
-        if(threadIdx.x + j < NUM_ELEMENTS) {
-            random_x_s = m_random_x[threadIdx.x + j];
-            random_y_s = m_random_y[threadIdx.x + j];
-            random_z_s = m_random_z[threadIdx.x + j];
-        }
-
-        // Iterate for all elements of current set of data points
-        // (BLOCK_SIZE iterations per thread)
-        // Each thread calcs against 1 random point within cur set of random
-        // (so BLOCK_SIZE threads covers all random points within cur set)
-        for(unsigned int k = 0; (k < BLOCK_SIZE) && (k+i < NUM_ELEMENTS); k += 1) {
-            // do actual calculations on the values:
-            REAL distance =
-                data[k].x * random_x_s +
-                data[k].y * random_y_s +
-                data[k].z * random_z_s;
-
-            unsigned int bin_index;
-
-            // run binary search to find bin_index
-            unsigned int min = 0;
-            unsigned int max = NUM_BINS;
             {
-                unsigned int k2;
-
-                while (max > min+1) {
-                    k2 = (min + max) / 2;
-                    if (distance >= dev_binb[k2])
-                        max = k2;
-                    else
-                        min = k2;
+                if(threadIdx.x + j < NUM_ELEMENTS) {
+                    random_x_s = m_random_x[threadIdx.x + j];
+                    random_y_s = m_random_y[threadIdx.x + j];
+                    random_z_s = m_random_z[threadIdx.x + j];
                 }
-                bin_index = max - 1;
             }
 
             unsigned int warpnum = threadIdx.x / (WARP_SIZE/HISTS_PER_WARP);
-            if((distance < dev_binb[min]) && (distance >= dev_binb[max]) &&
-                    (!do_self || (threadIdx.x + j > i + k)) && (threadIdx.x + j < NUM_ELEMENTS)) {
-                atomicAdd(&warp_hists[bin_index][warpnum], 1U);
+
+            // Iterate for all elements of current set of data points
+            // (BLOCK_SIZE iterations per thread)
+            // Each thread calcs against 1 random point within cur set of random
+            // (so BLOCK_SIZE threads covers all random points within cur set)
+            for(unsigned int k = 0; (k < BLOCK_SIZE) && (k+i < NUM_ELEMENTS); k += 1) {
+                // do actual calculations on the values:
+                REAL distance =
+                    data[k].x * random_x_s +
+                    data[k].y * random_y_s +
+                    data[k].z * random_z_s;
+
+                unsigned int bin_index;
+
+                // run binary search to find bin_index
+                unsigned int min = 0;
+                unsigned int max = NUM_BINS;
+                {
+                    unsigned int k2;
+
+                    while (max > min+1) {
+                        k2 = (min + max) / 2;
+                        if (distance >= dev_binb[k2])
+                            max = k2;
+                        else
+                            min = k2;
+                    }
+                    bin_index = max - 1;
+                }
+
+                if((distance < dev_binb[min]) && (distance >= dev_binb[max]) && (!do_self || (threadIdx.x + j > i + k)) && (threadIdx.x + j < NUM_ELEMENTS)) {
+                    atomicAdd(&warp_hists[bin_index][warpnum], 1U);
+                }
             }
         }
-        BEGIN_SINGLE_THREAD
-        {
-            m_j += BLOCK_SIZE;
-        }
-        END_SINGLE_THREAD
         gloop::loop::postTask(loop, [this] (gloop::DeviceLoop* loop) {
+            BEGIN_SINGLE_THREAD
+            {
+                m_j += BLOCK_SIZE;
+            }
+            END_SINGLE_THREAD
             iterateOverAllRandomPoints(loop);
         });
         return;
     }
-    BEGIN_SINGLE_THREAD
-    {
-        m_i += BLOCK_SIZE;
-    }
-    END_SINGLE_THREAD
     gloop::loop::postTask(loop, [this] (gloop::DeviceLoop* loop) {
+        BEGIN_SINGLE_THREAD
+        {
+            m_i += BLOCK_SIZE;
+        }
+        END_SINGLE_THREAD
         iterateOverAllDataPoints(loop);
     });
 }
