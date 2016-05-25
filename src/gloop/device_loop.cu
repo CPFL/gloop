@@ -174,13 +174,10 @@ __device__ int DeviceLoop::drain(int executeAtLeastOne)
 
         BEGIN_SINGLE_THREAD
         {
-            // 100 - 130 clock
             if (callback) {
                 deallocate(position);
             }
 
-#if 1
-            // 100 clock
             {
                 uint64_t now = clock64();
                 if (((now - start) > m_deviceContext.killClock)) {
@@ -191,9 +188,7 @@ __device__ int DeviceLoop::drain(int executeAtLeastOne)
                     }
                 }
             }
-#endif
 
-            // 200 clock.
             callback = nullptr;
             position = dequeue();
             if (isValidPosition(position)) {
