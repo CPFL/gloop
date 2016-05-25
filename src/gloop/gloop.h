@@ -27,6 +27,7 @@
 #include "entry.cuh"
 #include "loop.cuh"
 #include "fs.cuh"
+#include "global.cuh"
 #include "host_context.cuh"
 #include "host_loop_inlines.cuh"
 #include "net.cuh"

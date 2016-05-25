@@ -36,16 +36,16 @@
 #define TOTAL_MARGIN (2*PADDED_X*PADDED_Y*N_CELL_ENTRIES)
 
 /******************************************************************************/
-void CUDA_LBM_performStreamCollide(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, LBM_Grid srcGrid, LBM_Grid dstGrid)
+void CUDA_LBM_performStreamCollide(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, LBM_Grid srcGrid, LBM_Grid dstGrid, int timestep)
 {
     dim3 dimBlock, dimGrid;
     dimBlock.x = SIZE_X;
     dimGrid.x = SIZE_Y;
     dimGrid.y = SIZE_Z;
     dimBlock.y = dimBlock.z = dimGrid.z = 1;
-    hostLoop.launch(hostContext, dimBlock, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, LBM_Grid srcGrid, LBM_Grid dstGrid) {
-        performStreamCollide_kernel(srcGrid, dstGrid);
-    }, srcGrid, dstGrid);
+    hostLoop.launch(hostContext, dimBlock, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop) {
+        performStreamCollide_kernel(loop, srcGrid, dstGrid, 0, timestep);
+    });
 }
 
 /*############################################################################*/

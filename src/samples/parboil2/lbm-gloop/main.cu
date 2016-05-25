@@ -51,7 +51,7 @@ int main( int nArgs, char* arg[] ) {
                         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
                         pb_SwitchToTimer(&timers, pb_TimerID_KERNEL);
                     }
-                    CUDA_LBM_performStreamCollide(*hostLoop, *hostContext, CUDA_srcGrid, CUDA_dstGrid );
+                    CUDA_LBM_performStreamCollide(*hostLoop, *hostContext, CUDA_srcGrid, CUDA_dstGrid, param.nTimeSteps);
                     {
                         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
                         pb_SwitchToTimer(&timers, pb_TimerID_COMPUTE);

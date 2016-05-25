@@ -53,7 +53,7 @@ void CUDA_LBM_allocateGrid( float** ptr );
 void CUDA_LBM_freeGrid( float** ptr );
 void CUDA_LBM_initializeGrid( float** d_grid, float** h_grid );
 void CUDA_LBM_getDeviceGrid( float** d_grid, float** h_grid );
-void CUDA_LBM_performStreamCollide(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, LBM_Grid srcGrid, LBM_Grid dstGrid );
+void CUDA_LBM_performStreamCollide(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, LBM_Grid srcGrid, LBM_Grid dstGrid, int timestep);
 #ifdef __cplusplus
 }
 #endif
