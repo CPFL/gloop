@@ -25,6 +25,7 @@
 #define GLOOP_HOST_LOOP_INLINES_CU_H_
 #include "host_context.cuh"
 #include "host_loop.cuh"
+#include "data_log.h"
 #include "entry.cuh"
 namespace gloop {
 
@@ -33,6 +34,14 @@ void HostLoop::launch(HostContext& hostContext, dim3 threads, DeviceLambda callb
 {
     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
     benchmark->begin();
+
+    {
+        // Report occupancy.
+        int minGridSize;
+        int blockSize;
+        cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, gloop::resume<DeviceLambda, Args...>, 0, 0);
+        GLOOP_DATA_LOG("grid:(%d),block:(%d)\n", minGridSize, blockSize);
+    }
     {
         refKernel();
         m_kernelService.post([=, &hostContext] {

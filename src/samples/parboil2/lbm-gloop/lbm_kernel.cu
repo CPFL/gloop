@@ -15,7 +15,6 @@
 
 __device__ void performStreamCollide_kernel(gloop::DeviceLoop* loop, float* srcGrid, float* dstGrid)
 {
-
     //Using some predefined macros here.  Consider this the declaration
     //  and initialization of the variables SWEEP_X, SWEEP_Y and SWEEP_Z
 
