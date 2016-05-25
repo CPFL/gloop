@@ -234,6 +234,7 @@ void HostLoop::initialize()
                     if (!threadReady()) {
                         return;
                     }
+                    m_ioService.reset();
                     m_ioService.run();
                 }
             });
@@ -245,6 +246,7 @@ void HostLoop::initialize()
                 if (!threadReady()) {
                     return;
                 }
+                m_kernelService.reset();
                 m_kernelService.run();
             }
         });
