@@ -79,7 +79,6 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, 
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     } while (!suspended);
 #endif
-    __threadfence_system();  // FIXME
 }
 
 }  // namespace gloop
