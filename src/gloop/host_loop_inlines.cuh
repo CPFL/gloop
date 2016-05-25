@@ -33,75 +33,70 @@ void HostLoop::launch(HostContext& hostContext, dim3 threads, DeviceLambda callb
 {
     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
     benchmark->begin();
-    prologue(hostContext, threads);
     {
         refKernel();
-        m_kernelService.post([=] {
+        m_kernelService.post([=, &hostContext] {
             {
                 std::lock_guard<KernelLock> lock(m_kernelLock);
                 // GLOOP_DATA_LOG("acquire for launch\n");
-                prepareForLaunch();
-                gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(m_deviceSignal, m_currentContext->deviceContext(), callback, args...);
+                prepareForLaunch(hostContext);
+                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(m_deviceSignal, hostContext.deviceContext(), callback, args...);
                 cudaError_t error = cudaGetLastError();
                 GLOOP_CUDA_SAFE(error);
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             }
 
-            if (m_currentContext->pending()) {
-                resume(callback, args...);
+            if (hostContext.pending()) {
+                resume(hostContext, threads, callback, args...);
                 return;
             }
             derefKernel();
         });
         drain();
     }
-    epilogue();
 }
 
 template<typename DeviceLambda, typename... Args>
-void HostLoop::resume(DeviceLambda callback, Args... args)
+void HostLoop::resume(HostContext& hostContext, dim3 threads, DeviceLambda callback, Args... args)
 {
     // GLOOP_DEBUG("resume\n");
-    m_kernelService.post([=] {
+    m_kernelService.post([=, &hostContext] {
         bool acquireLockSoon = false;
         {
             {
-#if 1
-                // FIXME: Provide I/O boosting.
-                std::unique_lock<HostContext::Mutex> lock(m_currentContext->mutex());
-                while (!m_currentContext->isReadyForResume(lock)) {
-                    m_currentContext->condition().wait(lock);
+                std::unique_lock<HostContext::Mutex> lock(hostContext.mutex());
+                while (!hostContext.isReadyForResume(lock)) {
+                    hostContext.condition().wait(lock);
                 }
-#endif
                 m_kernelLock.lock();
             }
             // GLOOP_DATA_LOG("acquire for resume\n");
-            prepareForLaunch();
+            prepareForLaunch(hostContext);
 
             {
-                gloop::resume<<<m_currentContext->physicalBlocks(), m_threads, 0, m_pgraph>>>(nullptr, m_currentContext->deviceContext(), callback, args...);
+                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(nullptr, hostContext.deviceContext(), callback, args...);
                 cudaError_t error = cudaGetLastError();
                 GLOOP_CUDA_SAFE(error);
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             }
 
-            acquireLockSoon = m_currentContext->pending();
+            acquireLockSoon = hostContext.pending();
 
             // m_kernelLock.unlock(acquireLockSoon);
             // m_kernelLock.unlock();
 
             {
                 // FIXME: Fix this.
-                std::unique_lock<HostContext::Mutex> lock(m_currentContext->mutex());
+                std::unique_lock<HostContext::Mutex> lock(hostContext.mutex());
                 Command::ReleaseStatus releaseStatus = Command::ReleaseStatus::IO;
-                if (m_currentContext->isReadyForResume(lock)) {
+                if (hostContext.isReadyForResume(lock)) {
                     releaseStatus = Command::ReleaseStatus::Ready;
                 }
                 m_kernelLock.unlock(releaseStatus);
             }
         }
         if (acquireLockSoon) {
-            resume(callback, args...);
+            resume(hostContext, threads, callback, args...);
             return;
         }
         derefKernel();

@@ -51,7 +51,7 @@ namespace gloop {
 
 GLOOP_ALWAYS_INLINE static void emit(const std::lock_guard<HostContext::Mutex>&, HostContext& context, IPC ipc, Code code)
 {
-    ipc.emit(&context, code);
+    ipc.emit(context, code);
     context.condition().notify_one();
 }
 
@@ -115,8 +115,6 @@ HostLoop::~HostLoop()
         std::lock_guard<KernelLock> lock(m_kernelLock);
         // GLOOP_DATA_LOG("let's cleanup acquire\n");
 
-        stopPoller();
-
         // Before destroying the primary GPU context,
         // we should clear all the GPU resources.
         m_copyWorkPool.reset();
@@ -141,46 +139,6 @@ std::unique_ptr<HostLoop> HostLoop::create(int deviceNumber, uint64_t costPerBit
     std::unique_ptr<HostLoop> hostLoop(new HostLoop(deviceNumber, costPerBit));
     hostLoop->initialize();
     return hostLoop;
-}
-
-// GPU RPC poller.
-void HostLoop::runPoller()
-{
-    assert(!m_poller);
-    m_poller = make_unique<boost::thread>([this]() {
-        initializeInThread();
-        pollerMain();
-    });
-}
-
-void HostLoop::stopPoller()
-{
-    if (m_poller) {
-        m_poller->interrupt();
-        m_poller->join();
-        m_poller.reset();
-    }
-}
-
-void HostLoop::pollerMain()
-{
-    uint32_t count = 0;
-    while (true) {
-        bool found = m_currentContext->tryPeekRequest([&](IPC ipc) {
-            request::Request req { };
-            Code code = ipc.peek(m_currentContext);
-            memcpy(&req, (request::Request*)ipc.request(m_currentContext), sizeof(request::Request));
-            emit(*m_currentContext, ipc, Code::Handling);
-            handleIO(ipc, code, req);
-        });
-        if (found) {
-            count = 0;
-            continue;
-        }
-        // if ((++count % 100000) == 0) {
-            boost::this_thread::interruption_point();
-        // }
-    }
 }
 
 bool HostLoop::threadReady()
@@ -271,24 +229,10 @@ void HostLoop::drain()
     }
 }
 
-void HostLoop::prepareForLaunch()
+void HostLoop::prepareForLaunch(HostContext& hostContext)
 {
-    m_currentContext->prepareForLaunch();
+    hostContext.prepareForLaunch();
     syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 0);
-}
-
-void HostLoop::prologue(HostContext& hostContext, dim3 threads)
-{
-    m_threads = threads;
-    m_currentContext = &hostContext;
-    runPoller();
-}
-
-void HostLoop::epilogue()
-{
-    stopPoller();
-    // logGPUfsDone();
-    m_currentContext = nullptr;
 }
 
 void HostLoop::refKernel()
@@ -320,25 +264,25 @@ void HostLoop::releaseCopyWork(CopyWork* copyWork)
     m_copyWorkPool->release(copyWork);
 }
 
-bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
+bool HostLoop::handleIO(HostContext& context, IPC ipc, Code code, request::Request req)
 {
     switch (static_cast<Code>(code)) {
     case Code::Open: {
         int fd = 0;
         {
-            std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-            fd = m_currentContext->table().open(req.u.open.filename.data, req.u.open.mode);
+            std::lock_guard<HostContext::Mutex> guard(context.mutex());
+            fd = context.table().open(req.u.open.filename.data, req.u.open.mode);
         }
         // GLOOP_DATA_LOG("open:(%s),fd:(%d)\n", req.u.open.filename.data, fd);
-        ipc.request(m_currentContext)->u.openResult.fd = fd;
-        emit(*m_currentContext, ipc, Code::Complete);
+        ipc.request(context)->u.openResult.fd = fd;
+        emit(context, ipc, Code::Complete);
         break;
     }
 
     case Code::Write: {
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
-        m_ioService.post([ipc, req, this]() {
+        m_ioService.post([ipc, req, this, &context] {
             // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
             CopyWork* copyWork = acquireCopyWork();
             assert(req.u.write.count <= copyWork->hostMemory().size());
@@ -351,8 +295,8 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
 
             releaseCopyWork(copyWork);
 
-            ipc.request(m_currentContext)->u.writeResult.writtenCount = writtenCount;
-            emit(*m_currentContext, ipc, Code::Complete);
+            ipc.request(context)->u.writeResult.writtenCount = writtenCount;
+            emit(context, ipc, Code::Complete);
         });
         break;
     }
@@ -360,7 +304,7 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     case Code::Read: {
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
-        m_ioService.post([ipc, req, this]() {
+        m_ioService.post([ipc, req, this, &context] {
             // GLOOP_DATA_LOG("Read ipc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)ipc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
 
             CopyWork* copyWork = acquireCopyWork();
@@ -374,8 +318,8 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
 
             releaseCopyWork(copyWork);
 
-            ipc.request(m_currentContext)->u.readResult.readCount = readCount;
-            emit(*m_currentContext, ipc, Code::Complete);
+            ipc.request(context)->u.readResult.readCount = readCount;
+            emit(context, ipc, Code::Complete);
         });
         break;
     }
@@ -384,27 +328,27 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
         struct stat buf { };
         ::fstat(req.u.fstat.fd, &buf);
         // GLOOP_DEBUG("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
-        ipc.request(m_currentContext)->u.fstatResult.size = buf.st_size;
-        emit(*m_currentContext, ipc, Code::Complete);
+        ipc.request(context)->u.fstatResult.size = buf.st_size;
+        emit(context, ipc, Code::Complete);
         break;
     }
 
     case Code::Close: {
         {
-            std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-            m_currentContext->table().close(req.u.close.fd);
+            std::lock_guard<HostContext::Mutex> guard(context.mutex());
+            context.table().close(req.u.close.fd);
         }
         // GLOOP_DATA_LOG("Close %d\n", req.u.close.fd);
-        ipc.request(m_currentContext)->u.closeResult.error = 0;
-        emit(*m_currentContext, ipc, Code::Complete);
+        ipc.request(context)->u.closeResult.error = 0;
+        emit(context, ipc, Code::Complete);
         break;
     }
 
     case Code::Ftruncate: {
-        m_ioService.post([ipc, req, this]() {
+        m_ioService.post([ipc, req, this, &context] {
             int result = ::ftruncate(req.u.ftruncate.fd, req.u.ftruncate.offset);
-            ipc.request(m_currentContext)->u.ftruncateResult.error = result;
-            emit(*m_currentContext, ipc, Code::Complete);
+            ipc.request(context)->u.ftruncateResult.error = result;
+            emit(context, ipc, Code::Complete);
         });
         break;
     }
@@ -412,12 +356,12 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     case Code::Mmap: {
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
-        m_ioService.post([ipc, req, this]() {
+        m_ioService.post([ipc, req, this, &context] {
             void* device = nullptr;
             {
-                std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
+                std::lock_guard<HostContext::Mutex> guard(context.mutex());
                 std::shared_ptr<MmapResult> result;
-                if (m_currentContext->table().requestMmap(req.u.mmap.fd, req.u.mmap.offset, req.u.mmap.size, result)) {
+                if (context.table().requestMmap(req.u.mmap.fd, req.u.mmap.offset, req.u.mmap.size, result)) {
                     // New!
                     size_t size = req.u.mmap.size;
                     void* host = ::mmap(req.u.mmap.address, req.u.mmap.size, req.u.mmap.prot, req.u.mmap.flags, req.u.mmap.fd, req.u.mmap.offset);
@@ -429,11 +373,11 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
                     result->host = host;
                     result->device = device;
                     result->size = size;
-                    m_currentContext->table().registerMapping(device, result);
+                    context.table().registerMapping(device, result);
                 }
                 device = result->device;
-                ipc.request(m_currentContext)->u.mmapResult.address = device;
-                emit(guard, *m_currentContext, ipc, Code::Complete);
+                ipc.request(context)->u.mmapResult.address = device;
+                emit(guard, context, ipc, Code::Complete);
             }
             // GLOOP_DATA_LOG("mmap:device(%p)\n", device);
         });
@@ -443,26 +387,26 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     case Code::Munmap: {
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
-        m_ioService.post([ipc, req, this]() {
+        m_ioService.post([ipc, req, this, &context] {
             // GLOOP_DATA_LOG("munmap:address:(%p),size:(%u)\n", req.u.munmap.address, req.u.munmap.size);
             // FIXME: We should schedule this inside this process.
             {
-                std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-                std::shared_ptr<MmapResult> result = m_currentContext->table().unregisterMapping((void*)req.u.munmap.address);
+                std::lock_guard<HostContext::Mutex> guard(context.mutex());
+                std::shared_ptr<MmapResult> result = context.table().unregisterMapping((void*)req.u.munmap.address);
                 Code code = Code::Complete;
                 int error = 0;
                 if (result) {
                     if (!result->refCount) {
                         // error = ::munmap(result.host, req.u.munmap.size);
-                        m_currentContext->addUnmapRequest(guard, result);
+                        context.addUnmapRequest(guard, result);
                         code = Code::ExitRequired;
-                        m_currentContext->addExitRequired(guard, ipc);
+                        context.addExitRequired(guard, ipc);
                     }
                 } else {
                     error = -EINVAL;
                 }
-                ipc.request(m_currentContext)->u.munmapResult.error = error;
-                emit(guard, *m_currentContext, ipc, code);
+                ipc.request(context)->u.munmapResult.error = error;
+                emit(guard, context, ipc, code);
                 if (code == Code::ExitRequired) {
                     syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 1);
                 }
@@ -474,16 +418,16 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     case Code::Msync: {
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
-        m_ioService.post([ipc, req, this]() {
+        m_ioService.post([ipc, req, this, &context] {
             // GLOOP_DEBUG("msync:address:(%p),size:(%u),flags:(%u)\n", req.u.msync.address, req.u.msync.size, req.u.msync.flags);
             void* host = nullptr;
             {
-                std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-                host = m_currentContext->table().lookupHostByDevice((void*)req.u.msync.address);
+                std::lock_guard<HostContext::Mutex> guard(context.mutex());
+                host = context.table().lookupHostByDevice((void*)req.u.msync.address);
             }
             int error = ::msync(host, req.u.msync.size, req.u.msync.flags);
-            ipc.request(m_currentContext)->u.msyncResult.error = error;
-            emit(*m_currentContext, ipc, Code::Complete);
+            ipc.request(context)->u.msyncResult.error = error;
+            emit(context, ipc, Code::Complete);
         });
         break;
     }
@@ -493,15 +437,15 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
         boost::asio::ip::tcp::socket* socket = new boost::asio::ip::tcp::socket(m_ioService);
         // socket->set_option(boost::asio::socket_base::receive_buffer_size(1 << 20));
         // socket->set_option(boost::asio::socket_base::send_buffer_size(1 << 20));
-        socket->async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4(req.u.netTCPConnect.address.sin_addr.s_addr), req.u.netTCPConnect.address.sin_port), [ipc, req, socket, this](const boost::system::error_code& error) {
+        socket->async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4(req.u.netTCPConnect.address.sin_addr.s_addr), req.u.netTCPConnect.address.sin_port), [ipc, req, socket, this, &context](const boost::system::error_code& error) {
             if (error) {
                 GLOOP_DEBUG("%s\n", error.message().c_str());
                 delete socket;
-                ipc.request(m_currentContext)->u.netTCPConnectResult.socket = nullptr;
+                ipc.request(context)->u.netTCPConnectResult.socket = nullptr;
             } else {
-                ipc.request(m_currentContext)->u.netTCPConnectResult.socket = reinterpret_cast<net::Socket*>(socket);
+                ipc.request(context)->u.netTCPConnectResult.socket = reinterpret_cast<net::Socket*>(socket);
             }
-            emit(*m_currentContext, ipc, Code::Complete);
+            emit(context, ipc, Code::Complete);
         });
         break;
     }
@@ -509,18 +453,18 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     case Code::NetTCPBind: {
         // GLOOP_DEBUG("net::tcp::bind:address:(%08x),port:(%u)\n", req.u.netTCPBind.address.sin_addr.s_addr, req.u.netTCPBind.address.sin_port);
         boost::asio::ip::tcp::acceptor* acceptor = new boost::asio::ip::tcp::acceptor(m_ioService, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4(req.u.netTCPBind.address.sin_addr.s_addr), req.u.netTCPBind.address.sin_port));
-        ipc.request(m_currentContext)->u.netTCPBindResult.server = reinterpret_cast<net::Server*>(acceptor);
-        emit(*m_currentContext, ipc, Code::Complete);
+        ipc.request(context)->u.netTCPBindResult.server = reinterpret_cast<net::Server*>(acceptor);
+        emit(context, ipc, Code::Complete);
         break;
     }
 
     case Code::NetTCPUnbind: {
         // GLOOP_DEBUG("net::tcp::unbind:server:(%p)\n", req.u.netTCPUnbind.server);
         assert(reinterpret_cast<boost::asio::ip::tcp::acceptor*>(req.u.netTCPUnbind.server));
-        m_ioService.post([ipc, req, this]() {
+        m_ioService.post([ipc, req, this, &context] {
             delete reinterpret_cast<boost::asio::ip::tcp::acceptor*>(req.u.netTCPUnbind.server);
-            ipc.request(m_currentContext)->u.netTCPUnbindResult.error = 0;
-            emit(*m_currentContext, ipc, Code::Complete);
+            ipc.request(context)->u.netTCPUnbindResult.error = 0;
+            emit(context, ipc, Code::Complete);
         });
         break;
     }
@@ -528,14 +472,14 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     case Code::NetTCPAccept: {
         // GLOOP_DATA_LOG("net::tcp::accept:server:(%p)\n", req.u.netTCPAccept.server);
         boost::asio::ip::tcp::socket* socket = new boost::asio::ip::tcp::socket(m_ioService);
-        reinterpret_cast<boost::asio::ip::tcp::acceptor*>(req.u.netTCPAccept.server)->async_accept(*socket, [ipc, req, socket, this](const boost::system::error_code& error) {
+        reinterpret_cast<boost::asio::ip::tcp::acceptor*>(req.u.netTCPAccept.server)->async_accept(*socket, [ipc, req, socket, this, &context](const boost::system::error_code& error) {
             if (error) {
                 delete socket;
-                ipc.request(m_currentContext)->u.netTCPAcceptResult.socket = nullptr;
+                ipc.request(context)->u.netTCPAcceptResult.socket = nullptr;
             } else {
-                ipc.request(m_currentContext)->u.netTCPAcceptResult.socket = reinterpret_cast<net::Socket*>(socket);
+                ipc.request(context)->u.netTCPAcceptResult.socket = reinterpret_cast<net::Socket*>(socket);
             }
-            emit(*m_currentContext, ipc, Code::Complete);
+            emit(context, ipc, Code::Complete);
         });
         break;
     }
@@ -550,20 +494,20 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
         assert(count <= GLOOP_SHARED_PAGE_SIZE);
         boost::asio::ip::tcp::socket* socket = reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPReceive.socket);
         CopyWork* copyWork = acquireCopyWork();
-        auto callback = [=](const boost::system::error_code& error, size_t receiveCount) {
+        auto callback = [=, &context](const boost::system::error_code& error, size_t receiveCount) {
             if (error) {
                 if ((boost::asio::error::eof == error) || (boost::asio::error::connection_reset == error)) {
-                    ipc.request(m_currentContext)->u.netTCPReceiveResult.receiveCount = 0;
+                    ipc.request(context)->u.netTCPReceiveResult.receiveCount = 0;
                 } else {
-                    ipc.request(m_currentContext)->u.netTCPReceiveResult.receiveCount = -1;
+                    ipc.request(context)->u.netTCPReceiveResult.receiveCount = -1;
                 }
             } else {
                 GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.netTCPReceive.buffer, copyWork->hostMemory().hostPointer(), receiveCount, cudaMemcpyHostToDevice, copyWork->stream()));
-                ipc.request(m_currentContext)->u.netTCPReceiveResult.receiveCount = receiveCount;
+                ipc.request(context)->u.netTCPReceiveResult.receiveCount = receiveCount;
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
             }
             releaseCopyWork(copyWork);
-            emit(*m_currentContext, ipc, Code::Complete);
+            emit(context, ipc, Code::Complete);
 //             benchmark->end();
 //             std::printf("receive: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
         };
@@ -578,7 +522,7 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     case Code::NetTCPSend: {
         // GLOOP_DATA_LOG("net::tcp::send:socket:(%p),count:(%u),buffer:(%p)\n", req.u.netTCPSend.socket, req.u.netTCPSend.count, req.u.netTCPSend.buffer);
         assert(reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPSend.socket));
-        m_ioService.post([=]() {
+        m_ioService.post([=, &context] {
             // FIXME: This should be reconsidered.
             size_t count = req.u.netTCPSend.count;
 
@@ -590,18 +534,18 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(copyWork->hostMemory().hostPointer(), req.u.netTCPSend.buffer, count, cudaMemcpyDeviceToHost, copyWork->stream()));
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
             boost::asio::ip::tcp::socket* socket = reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPSend.socket);
-            boost::asio::async_write(*socket, boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), [=](const boost::system::error_code& error, size_t sentCount) {
+            boost::asio::async_write(*socket, boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), [=, &context](const boost::system::error_code& error, size_t sentCount) {
                 releaseCopyWork(copyWork);
                 if (error) {
                     if ((boost::asio::error::eof == error) || (boost::asio::error::connection_reset == error)) {
-                        ipc.request(m_currentContext)->u.netTCPReceiveResult.receiveCount = 0;
+                        ipc.request(context)->u.netTCPReceiveResult.receiveCount = 0;
                     } else {
-                        ipc.request(m_currentContext)->u.netTCPReceiveResult.receiveCount = -1;
+                        ipc.request(context)->u.netTCPReceiveResult.receiveCount = -1;
                     }
                 } else {
-                    ipc.request(m_currentContext)->u.netTCPSendResult.sentCount = sentCount;
+                    ipc.request(context)->u.netTCPSendResult.sentCount = sentCount;
                 }
-                emit(*m_currentContext, ipc, Code::Complete);
+                emit(context, ipc, Code::Complete);
 //                 benchmark->end();
 //                 std::printf("send: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
             });
@@ -612,18 +556,18 @@ bool HostLoop::handleIO(IPC ipc, Code code, request::Request req)
     case Code::NetTCPClose: {
         // GLOOP_DEBUG("net::tcp::close:socket:(%p)\n", req.u.netTCPClose.socket);
         assert(reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPClose.socket));
-        m_ioService.post([ipc, req, this]() {
+        m_ioService.post([ipc, req, this, &context] {
             delete reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPClose.socket);
-            ipc.request(m_currentContext)->u.netTCPCloseResult.error = 0;
-            emit(*m_currentContext, ipc, Code::Complete);
+            ipc.request(context)->u.netTCPCloseResult.error = 0;
+            emit(context, ipc, Code::Complete);
         });
         break;
     }
 
     case Code::Exit: {
-        std::lock_guard<HostContext::Mutex> guard(m_currentContext->mutex());
-        emit(guard, *m_currentContext, ipc, Code::ExitRequired);
-        m_currentContext->addExitRequired(guard, ipc);
+        std::lock_guard<HostContext::Mutex> guard(context.mutex());
+        emit(guard, context, ipc, Code::ExitRequired);
+        context.addExitRequired(guard, ipc);
         break;
     }
 

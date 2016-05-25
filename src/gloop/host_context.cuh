@@ -92,6 +92,8 @@ private:
     template<typename Callback>
     void forEachIPC(Callback callback);
 
+    void pollerMain();
+
     HostLoop& m_hostLoop;
     Mutex m_mutex { };
     Condition m_condition { };
@@ -110,21 +112,22 @@ private:
     std::vector<IPC> m_exitRequired;
     std::unordered_set<std::shared_ptr<MmapResult>> m_unmapRequests;
     bool m_exitHandlerScheduled { false };
+    std::unique_ptr<boost::thread> m_poller;
 };
 
-GLOOP_ALWAYS_INLINE __host__ void IPC::emit(HostContext* hostContext, Code code)
+GLOOP_ALWAYS_INLINE __host__ void IPC::emit(HostContext& hostContext, Code code)
 {
-    syncWrite(&hostContext->m_codes[position], static_cast<int32_t>(code));
+    syncWrite(&hostContext.m_codes[position], static_cast<int32_t>(code));
 }
 
-GLOOP_ALWAYS_INLINE __host__ Code IPC::peek(HostContext* hostContext)
+GLOOP_ALWAYS_INLINE __host__ Code IPC::peek(HostContext& hostContext)
 {
-    return readNoCache<Code>(&hostContext->m_codes[position]);
+    return readNoCache<Code>(&hostContext.m_codes[position]);
 }
 
-GLOOP_ALWAYS_INLINE __host__ request::Payload* IPC::request(HostContext* hostContext) const
+GLOOP_ALWAYS_INLINE __host__ request::Payload* IPC::request(HostContext& hostContext) const
 {
-    return &hostContext->m_payloads[position];
+    return &hostContext.m_payloads[position];
 }
 
 template<typename Callback>
@@ -144,7 +147,7 @@ inline bool HostContext::tryPeekRequest(Callback callback)
 {
     bool found = false;
     forEachIPC([&](IPC ipc) {
-        Code code = ipc.peek(this);
+        Code code = ipc.peek(*this);
         if (IsOperationCode(code)) {
             found = true;
             callback(ipc);

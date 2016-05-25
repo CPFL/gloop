@@ -88,11 +88,13 @@ public:
 
     KernelLock& kernelLock() { return m_kernelLock; }
 
+    bool handleIO(HostContext& context, IPC, Code code, request::Request);
+
+    // Per thread initialization.
+    void initializeInThread();
+
 private:
     HostLoop(int deviceNumber, uint64_t costPerBit);
-
-    void prologue(HostContext&, dim3 threads);
-    void epilogue();
 
     void refKernel();
     void derefKernel();
@@ -100,23 +102,16 @@ private:
     // System initialization.
     void initialize();
 
-    // Per thread initialization.
-    void initializeInThread();
 
-    void runPoller();
-    void stopPoller();
-    void pollerMain();
-
-    bool handleIO(IPC, Code code, request::Request);
     void send(Command);
 
     template<typename DeviceLambda, typename... Args>
-    inline void resume(DeviceLambda callback, Args... args);
+    inline void resume(HostContext&, dim3 threads, DeviceLambda callback, Args... args);
 
     inline void lockLaunch();
     inline void unlockLaunch(Command::ReleaseStatus = Command::ReleaseStatus::IO);
 
-    void prepareForLaunch();
+    void prepareForLaunch(HostContext&);
 
     void drain();
 
@@ -126,10 +121,6 @@ private:
     bool threadReady();
 
     int m_deviceNumber { 0 };
-    std::unique_ptr<boost::thread> m_poller;
-
-    dim3 m_threads { };
-    HostContext* m_currentContext { nullptr };
 
     uint32_t m_id { 0 };
     boost::asio::io_service m_ioService;

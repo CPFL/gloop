@@ -61,6 +61,11 @@ HostContext::HostContext(HostLoop& hostLoop, dim3 logicalBlocks, dim3 physicalBl
 HostContext::~HostContext()
 {
     // GLOOP_DATA_LOG("let's cleanup context\n");
+    if (m_poller) {
+        m_poller->interrupt();
+        m_poller->join();
+        m_poller.reset();
+    }
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(m_hostLoop.kernelLock());
         // GLOOP_DATA_LOG("let's cleanup context lock acquire\n");
@@ -105,6 +110,12 @@ bool HostContext::initialize(HostLoop& hostLoop)
         if (m_pageCount) {
             GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceContext::OnePage) * m_pageCount * blocksSize));
         }
+
+        assert(!m_poller);
+        m_poller = make_unique<boost::thread>([this]() {
+            m_hostLoop.initializeInThread();
+            pollerMain();
+        });
     }
     return true;
 }
@@ -147,7 +158,7 @@ bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
                 }
 
                 IPC ipc { i * GLOOP_SHARED_SLOT_SIZE + j };
-                Code code = ipc.peek(this);
+                Code code = ipc.peek(*this);
                 if (code == Code::Complete) {
                     return true;
                 }
@@ -168,7 +179,7 @@ void HostContext::prepareForLaunch()
     {
         std::unique_lock<Mutex> guard(m_mutex);
         for (IPC ipc : m_exitRequired) {
-            ipc.emit(this, Code::Complete);
+            ipc.emit(*this, Code::Complete);
         }
         m_exitRequired.clear();
         for (std::shared_ptr<MmapResult> result : m_unmapRequests) {
@@ -182,6 +193,31 @@ void HostContext::prepareForLaunch()
         m_unmapRequests.clear();
     }
     __sync_synchronize();
+}
+
+void HostContext::pollerMain()
+{
+    uint32_t count = 0;
+    while (true) {
+        bool found = tryPeekRequest([&](IPC ipc) {
+            request::Request req { };
+            Code code = ipc.peek(*this);
+            memcpy(&req, (request::Request*)ipc.request(*this), sizeof(request::Request));
+            {
+                std::lock_guard<HostContext::Mutex> lock(mutex());
+                ipc.emit(*this, Code::Handling);
+                condition().notify_one();
+            }
+            m_hostLoop.handleIO(*this, ipc, code, req);
+        });
+        if (found) {
+            count = 0;
+            continue;
+        }
+        // if ((++count % 100000) == 0) {
+            boost::this_thread::interruption_point();
+        // }
+    }
 }
 
 }  // namespace gloop

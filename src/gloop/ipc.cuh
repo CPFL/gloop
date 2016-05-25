@@ -43,9 +43,9 @@ struct IPC {
     __device__ void emit(DeviceLoop*, Code code);
     __device__ request::Payload* request(DeviceLoop*);
 
-    __host__ Code peek(HostContext*);
-    __host__ void emit(HostContext*, Code code);
-    __host__ request::Payload* request(HostContext*) const;
+    __host__ Code peek(HostContext&);
+    __host__ void emit(HostContext&, Code code);
+    __host__ request::Payload* request(HostContext&) const;
 };
 
 }  // namespace gloop
