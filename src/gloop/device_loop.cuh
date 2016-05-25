@@ -118,6 +118,7 @@ static_assert(std::is_trivially_destructible<DeviceLoop>::value, "DeviceLoop is 
 extern __device__ __shared__ DeviceLoop sharedDeviceLoop;
 extern __device__ __shared__ uint2 logicalGridDim;
 extern __device__ __shared__ uint2 logicalBlockIdx;
+extern __device__ UninitializedDeviceCallbackStorage nextKernel;
 
 }  // namespace gloop
 #endif  // GLOOP_DEVICE_LOOP_H_

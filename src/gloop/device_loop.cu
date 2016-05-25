@@ -33,6 +33,7 @@ namespace gloop {
 __device__ __shared__ DeviceLoop sharedDeviceLoop;
 __device__ __shared__ uint2 logicalGridDim;
 __device__ __shared__ uint2 logicalBlockIdx;
+__device__ UninitializedDeviceCallbackStorage nextKernel;
 
 __device__ void DeviceLoop::initializeImpl(DeviceContext deviceContext)
 {
