@@ -15,7 +15,10 @@ add_subdirectory(stencil)
 add_subdirectory(tpacf)
 
 # GLoop versions.
+add_subdirectory(lbm-gloop)
 add_subdirectory(tpacf-gloop)
+
+# GLoop naive version.
 add_subdirectory(tpacf-naive-gloop)
 
 # Split kernels versions.
