@@ -43,10 +43,10 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, 
             sharedDeviceLoop.initialize(signal, context);
         } else {
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-            callbackKicked = sharedDeviceLoop.initialize(signal, context, DeviceLoop::Resume);
+            callbackKicked = sharedDeviceLoop.initialize(signal, context);
 #else
             callbackKicked = 1;
-            sharedDeviceLoop.initialize(signal, context, DeviceLoop::Resume);
+            sharedDeviceLoop.initialize(signal, context);
 #endif
         }
     }
