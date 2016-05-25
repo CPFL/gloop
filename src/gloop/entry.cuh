@@ -57,27 +57,20 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, 
         return;
 #endif
 
-    // __threadfence_system();
     int suspended = 0;
+    if (!callbackKicked) {
+        suspended = sharedDeviceLoop.drain(0);
+    }
 
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    do {
+    while (!suspended) {
 #endif
         {
-            int old = callbackKicked;
-            if (!callbackKicked) {
-                callback(&sharedDeviceLoop, args...);
-            } else {
-                BEGIN_SINGLE_THREAD
-                {
-                    callbackKicked = 0;
-                }
-                END_SINGLE_THREAD
-            }
-            suspended = sharedDeviceLoop.drain(old);
+            callback(&sharedDeviceLoop, args...);
+            suspended = sharedDeviceLoop.drain(0);
         }
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    } while (!suspended);
+    }
 #endif
 }
 

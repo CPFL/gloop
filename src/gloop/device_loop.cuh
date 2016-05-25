@@ -85,7 +85,7 @@ private:
     inline __device__ uint32_t dequeue();
 
     __device__ void resume();
-    __device__ int suspend();
+    inline __device__ int suspend();
 
     GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots(uint32_t position);
     GLOOP_ALWAYS_INLINE __device__ DeviceContext::PerBlockContext* context() const;

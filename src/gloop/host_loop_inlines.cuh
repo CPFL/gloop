@@ -40,7 +40,7 @@ void HostLoop::launch(HostContext& hostContext, dim3 threads, DeviceLambda callb
         int minGridSize;
         int blockSize;
         cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, gloop::resume<DeviceLambda, Args...>, 0, 0);
-        GLOOP_DATA_LOG("grid:(%d),block:(%d)\n", minGridSize, blockSize);
+        // GLOOP_DATA_LOG("grid:(%d),block:(%d)\n", minGridSize, blockSize);
     }
     {
         refKernel();

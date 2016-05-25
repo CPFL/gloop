@@ -78,53 +78,6 @@ __device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext d
     return m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
 }
 
-__device__ int DeviceLoop::suspend()
-{
-    // FIXME: always save.
-    GLOOP_ASSERT_SINGLE_THREAD();
-    // __threadfence_system();  // FIXME
-    int suspended = m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
-    if (suspended) {
-        atomicAdd(&m_deviceContext.kernel->pending, 1);
-    } else {
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-        // This logical thread block is done.
-        if (--m_control.logicalBlocksCount != 0) {
-            // There is some remaining logical thread blocks.
-            // Let's increment the logical block index.
-            m_control.logicalBlockIdx.x += 1;
-            if (m_control.logicalBlockIdx.x == m_control.logicalGridDim.x) {
-                m_control.logicalBlockIdx.x = 0;
-                m_control.logicalBlockIdx.y += 1;
-            }
-            logicalBlockIdx = m_control.logicalBlockIdx;
-        } else {
-            suspended = 1;
-        }
-#endif
-    }
-
-    // Save the control state.
-    DeviceContext::PerBlockContext* blockContext = context();
-    DeviceContext::PerBlockHostContext* hostContext = m_deviceContext.hostContext + GLOOP_BID();
-    blockContext->control = m_control;
-    hostContext->freeSlots = m_control.freeSlots;
-    hostContext->sleepSlots = m_control.sleepSlots;
-    hostContext->wakeupSlots = m_control.wakeupSlots;
-
-#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
-    if (m_scratchIndex1 != invalidPosition()) {
-        new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_scratchIndex1) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_scratch1));
-        reinterpret_cast<DeviceCallback*>(&m_scratch1)->~DeviceCallback();
-    }
-    if (m_scratchIndex2 != invalidPosition()) {
-        new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_scratchIndex2) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_scratch2));
-        reinterpret_cast<DeviceCallback*>(&m_scratch2)->~DeviceCallback();
-    }
-#endif
-    return suspended;
-}
-
 __device__ void DeviceLoop::resume()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
