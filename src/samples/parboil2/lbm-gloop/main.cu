@@ -27,8 +27,12 @@ int main( int nArgs, char* arg[] ) {
 	MAIN_Param param;
         {
             std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-            dim3 dimGrid(/* x */ SIZE_Y, /* y */ SIZE_Z, 1);
-            std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid, dim3(30));
+            dim3 dimBlock, dimGrid;
+            dimBlock.x = SIZE_X;
+            dimGrid.x = SIZE_Y;
+            dimGrid.y = SIZE_Z;
+            dimBlock.y = dimBlock.z = dimGrid.z = 1;
+            std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid, dim3(240));
             {
                 struct pb_Parameters* params;
                 static LBM_GridPtr TEMP_srcGrid;

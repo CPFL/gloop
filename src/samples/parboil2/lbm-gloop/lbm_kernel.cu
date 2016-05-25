@@ -13,7 +13,7 @@
 
 /******************************************************************************/
 
-__device__ void performStreamCollide_kernel(gloop::DeviceLoop* loop, float* srcGrid, float* dstGrid, int count, int timestep)
+__device__ void performStreamCollide_kernel(gloop::DeviceLoop* loop, float* srcGrid, float* dstGrid)
 {
 
     //Using some predefined macros here.  Consider this the declaration
@@ -161,11 +161,13 @@ __device__ void performStreamCollide_kernel(gloop::DeviceLoop* loop, float* srcG
     DST_WB( dstGrid ) = tempWB;
 
     // Next!
+#if 0
     if (count != timestep) {
         gloop::global::synchronize(loop, [=] (gloop::DeviceLoop* loop) {
             performStreamCollide_kernel(loop, dstGrid, srcGrid, count, timestep);
         });
     }
+#endif
 }
 
 #endif // LBM_KERNEL_CU
