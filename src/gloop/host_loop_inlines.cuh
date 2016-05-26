@@ -35,6 +35,7 @@ void HostLoop::launch(HostContext& hostContext, dim3 threads, DeviceLambda callb
     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
     benchmark->begin();
 
+#if 0
     {
         // Report occupancy.
         int minGridSize;
@@ -42,6 +43,8 @@ void HostLoop::launch(HostContext& hostContext, dim3 threads, DeviceLambda callb
         cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, gloop::resume<DeviceLambda, Args...>, 0, 0);
         // GLOOP_DATA_LOG("grid:(%d),block:(%d)\n", minGridSize, blockSize);
     }
+#endif
+
     {
         refKernel();
         m_kernelService.post([=, &hostContext] {
