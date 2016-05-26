@@ -55,7 +55,18 @@ __device__ void DeviceLoop::initializeImpl(DeviceContext deviceContext)
 #endif
 }
 
-__device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext)
+__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    initializeImpl(deviceContext);
+    m_control.initialize(deviceContext.logicalBlocks, signal);
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
+    logicalGridDim = m_control.logicalGridDim;
+    logicalBlockIdx = m_control.logicalBlockIdx;
+#endif
+}
+
+__device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, ResumeTag)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);

@@ -42,7 +42,9 @@ struct IPC;
 class DeviceLoop {
 public:
     friend struct IPC;
-    __device__ int initialize(volatile uint32_t* signal, DeviceContext);
+    enum ResumeTag { Resume };
+    __device__ int initialize(volatile uint32_t* signal, DeviceContext, ResumeTag);
+    __device__ void initialize(volatile uint32_t* signal, DeviceContext);
 
     template<typename Lambda>
     inline __device__ IPC enqueueIPC(Lambda&& lambda);
