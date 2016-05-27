@@ -294,7 +294,6 @@ __device__ int DeviceLoop::suspend()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     if (m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
-        atomicAdd(&m_deviceContext.kernel->pending, 1);
         // Save the control state.
         DeviceContext::PerBlockContext* blockContext = context();
         DeviceContext::PerBlockHostContext* hostContext = m_deviceContext.hostContext + GLOOP_BID();
@@ -313,6 +312,9 @@ __device__ int DeviceLoop::suspend()
             reinterpret_cast<DeviceCallback*>(&m_scratch2)->~DeviceCallback();
         }
 #endif
+
+        // Request the resume.
+        atomicAdd(&m_deviceContext.kernel->pending, 1);
         return /* stop the loop */ 1;
     }
 
@@ -326,21 +328,42 @@ __device__ int DeviceLoop::suspend()
             m_control.logicalBlockIdx.x = 0;
             m_control.logicalBlockIdx.y += 1;
         }
-        logicalBlockIdx = m_control.logicalBlockIdx;
 
         uint64_t now = clock64();
         if (((now - m_start) > m_deviceContext.killClock)) {
             m_start = ((now / m_deviceContext.killClock) * m_deviceContext.killClock);
             if (gloop::readNoCache<uint32_t>(m_control.signal) != 0) {
+
+                // Save the control state.
+                DeviceContext::PerBlockContext* blockContext = context();
+                DeviceContext::PerBlockHostContext* hostContext = m_deviceContext.hostContext + GLOOP_BID();
+                blockContext->control = m_control;
+                hostContext->freeSlots = DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+                hostContext->sleepSlots = 0;
+                hostContext->wakeupSlots = 0;
+
+                // Request the resume.
+                atomicAdd(&m_deviceContext.kernel->pending, 1);
                 return /* stop the loop */ 1;
             }
         }
 
-
+        logicalBlockIdx = m_control.logicalBlockIdx;
         return /* continue the next loop */ 0;
     }
 #endif
 
+    // Save the control state. We need to save the control state since
+    // the other thread block may not stop yet. In that case, this
+    // this block may be re-launched.
+    DeviceContext::PerBlockContext* blockContext = context();
+    DeviceContext::PerBlockHostContext* hostContext = m_deviceContext.hostContext + GLOOP_BID();
+    blockContext->control = m_control;
+    hostContext->freeSlots = DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+    hostContext->sleepSlots = 0;
+    hostContext->wakeupSlots = 0;
+
+    // Finish the whole kernel.
     return /* stop the loop */ 1;
 }
 
