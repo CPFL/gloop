@@ -60,7 +60,10 @@ public:
     static std::unique_ptr<HostLoop> create(int deviceNumber, uint64_t costPerBit = 1);
 
     template<typename DeviceLambda, class... Args>
-    inline __host__ void launch(HostContext& context, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args);
+    inline __host__ void launch(HostContext& context, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args);
+
+    template<typename DeviceLambda, class... Args>
+    inline __host__ void launch(HostContext& context, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args);
 
     class KernelLock {
     GLOOP_NONCOPYABLE(KernelLock);

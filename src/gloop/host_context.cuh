@@ -49,10 +49,11 @@ public:
 
     __host__ ~HostContext();
 
-    __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 physicalBlocks, uint32_t pageCount = GLOOP_SHARED_PAGE_COUNT);
+    __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 maxPhysicalBlocks, uint32_t pageCount = GLOOP_SHARED_PAGE_COUNT);
 
     __host__ DeviceContext deviceContext() { return m_context; }
 
+    dim3 maxPhysicalBlocks() const { return m_maxPhysicalBlocks; }
     dim3 physicalBlocks() const { return m_physicalBlocks; }
 
     template<typename Callback>
@@ -84,11 +85,11 @@ public:
 
     bool isReadyForResume(const std::unique_lock<Mutex>&);
 
-    void prologue(dim3 logicalBlocks);
+    void prologue(dim3 logicalBlocks, dim3 physicalBlocks);
     void epilogue();
 
 private:
-    HostContext(HostLoop& hostLoop, dim3 physicalBlocks, uint32_t pageCount);
+    HostContext(HostLoop& hostLoop, dim3 maxPhysicalBlocks, uint32_t pageCount);
     bool initialize(HostLoop&);
 
     template<typename Callback>
@@ -109,6 +110,7 @@ private:
     DeviceContext::PerBlockHostContext* m_hostContext { nullptr };
     request::Payload* m_payloads;
     dim3 m_logicalBlocks { };
+    dim3 m_maxPhysicalBlocks { };
     dim3 m_physicalBlocks { };
     uint32_t m_pageCount { };
     std::vector<IPC> m_exitRequired;

@@ -21,6 +21,7 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include <cassert>
 #include <mutex>
 #include "data_log.h"
 #include "device_context.cuh"
@@ -43,11 +44,8 @@ std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 physic
 
 HostContext::HostContext(HostLoop& hostLoop, dim3 physicalBlocks, uint32_t pageCount)
     : m_hostLoop(hostLoop)
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
+    , m_maxPhysicalBlocks(physicalBlocks)
     , m_physicalBlocks(physicalBlocks)
-#else
-    , m_physicalBlocks(logicalBlocks)
-#endif
     , m_pageCount(pageCount)
 {
 }
@@ -78,7 +76,7 @@ bool HostContext::initialize(HostLoop& hostLoop)
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
 
-        size_t blocksSize = m_physicalBlocks.x * m_physicalBlocks.y;
+        size_t blocksSize = m_maxPhysicalBlocks.x * m_maxPhysicalBlocks.y;
         size_t allSlotsSize = blocksSize * GLOOP_SHARED_SLOT_SIZE;
 
         m_codesMemory = MappedMemory::create(sizeof(int32_t) * allSlotsSize);
@@ -213,14 +211,18 @@ void HostContext::pollerMain()
     }
 }
 
-void HostContext::prologue(dim3 logicalBlocks)
+void HostContext::prologue(dim3 logicalBlocks, dim3 physicalBlocks)
 {
+    assert((physicalBlocks.x * physicalBlocks.y) <= (m_maxPhysicalBlocks.x * m_maxPhysicalBlocks.y));
+    m_physicalBlocks = physicalBlocks;
     m_logicalBlocks = logicalBlocks;
     m_context.logicalBlocks = m_logicalBlocks;
 }
 
 void HostContext::epilogue()
 {
+    m_physicalBlocks = dim3();
+    m_logicalBlocks = dim3();
 }
 
 }  // namespace gloop

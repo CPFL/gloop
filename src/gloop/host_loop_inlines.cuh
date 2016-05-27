@@ -30,12 +30,27 @@
 namespace gloop {
 
 template<typename DeviceLambda, class... Args>
-void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
+void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+{
+    dim3 physicalBlocks = hostContext.maxPhysicalBlocks();
+    uint64_t physicalBlocksNumber = physicalBlocks.x * physicalBlocks.y;
+    uint64_t logicalBlocksNumber = logicalBlocks.x * logicalBlocks.y;
+    if (logicalBlocksNumber <= physicalBlocksNumber) {
+        // FIXME: Should fix it, but it's easy.
+        assert(logicalBlocksNumber <= UINT32_MAX);
+        // Validate the number.
+        physicalBlocks = dim3(logicalBlocksNumber);
+    }
+    launch(hostContext, physicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+}
+
+template<typename DeviceLambda, class... Args>
+void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
 {
     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
     benchmark->begin();
 
-    hostContext.prologue(logicalBlocks);
+    hostContext.prologue(logicalBlocks, physicalBlocks);
 
 #if 0
     {
