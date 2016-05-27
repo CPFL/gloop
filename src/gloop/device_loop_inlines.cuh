@@ -235,13 +235,11 @@ __device__ int DeviceLoop::shouldPostTask()
 
 __device__ int DeviceLoop::drain()
 {
-    uint64_t start;
     __shared__ uint32_t position;
     __shared__ DeviceCallback* callback;
 
     BEGIN_SINGLE_THREAD
     {
-        start = m_start;
         callback = nullptr;
         if (m_control.freeSlots == DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
             position = shouldExitPosition();
@@ -265,8 +263,8 @@ __device__ int DeviceLoop::drain()
 
             {
                 uint64_t now = clock64();
-                if (((now - start) > m_deviceContext.killClock)) {
-                    start = ((now / m_deviceContext.killClock) * m_deviceContext.killClock);
+                if (((now - m_start) > m_deviceContext.killClock)) {
+                    m_start = ((now / m_deviceContext.killClock) * m_deviceContext.killClock);
                     if (gloop::readNoCache<uint32_t>(m_control.signal) != 0) {
                         position = shouldExitPosition();
                         goto next;
@@ -294,7 +292,6 @@ next:
 
 __device__ int DeviceLoop::suspend()
 {
-    // FIXME: always save.
     GLOOP_ASSERT_SINGLE_THREAD();
     if (m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
         atomicAdd(&m_deviceContext.kernel->pending, 1);
@@ -330,6 +327,16 @@ __device__ int DeviceLoop::suspend()
             m_control.logicalBlockIdx.y += 1;
         }
         logicalBlockIdx = m_control.logicalBlockIdx;
+
+        uint64_t now = clock64();
+        if (((now - m_start) > m_deviceContext.killClock)) {
+            m_start = ((now / m_deviceContext.killClock) * m_deviceContext.killClock);
+            if (gloop::readNoCache<uint32_t>(m_control.signal) != 0) {
+                return /* stop the loop */ 1;
+            }
+        }
+
+
         return /* continue the next loop */ 0;
     }
 #endif
