@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <gloop/gloop.h>
 
 #include "UDTypes.h"
 
@@ -103,7 +104,7 @@ __device__ float kernel_value(float v)
     return rValue;
 }
 
-__device__ void gridding_GPU(sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta)
+__device__ void gridding_GPU(gloop::DeviceLoop* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta)
 {
     __shared__ float real_s[TILE];
     __shared__ float imag_s[TILE];

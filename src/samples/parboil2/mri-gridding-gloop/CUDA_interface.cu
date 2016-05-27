@@ -294,7 +294,7 @@ void CUDA_interface(
     // gridding_GPU<<<grid2, block2>>>(sortedSampleSoA_d, binStartAddr_d, gridData_d, sampleDensity_d, beta);
     printf("grid:(%d)\n", (size_x / dims.x) * ((size_y * size_z) / (4 * dims.y * dims.z)));
     hostLoop.launch(hostContext, grid2, block2, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta) {
-        gridding_GPU(sortedSampleSoA_g, binStartAddr_g, gridData_g, sampleDensity_g, beta);
+        gridding_GPU(loop, sortedSampleSoA_g, binStartAddr_g, gridData_g, sampleDensity_g, beta);
     }, sortedSampleSoA_d, binStartAddr_d, gridData_d, sampleDensity_d, beta);
 
     pb_SwitchToTimer(timers, pb_TimerID_COMPUTE);

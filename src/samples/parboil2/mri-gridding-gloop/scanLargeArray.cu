@@ -243,7 +243,10 @@ void scanLargeArray(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, 
         dim3 block(dim_block / 2);
         dim3 grid(d / dim_block);
 
-        scan_inter1_kernel<<<grid, block, EXPANDED_SIZE(dim_block) * sizeof(unsigned int)>>>(inter_d, stride);
+        {
+            std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+            scan_inter1_kernel<<<grid, block, EXPANDED_SIZE(dim_block) * sizeof(unsigned int)>>>(inter_d, stride);
+        }
 
         stride *= dim_block;
     }
@@ -268,7 +271,10 @@ void scanLargeArray(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, 
         dim3 block(BLOCK_SIZE / 2);
         dim3 grid(gridSize);
 
-        uniformAdd<<<grid, block>>>(numElems, data_d + (i * GRID_SIZE * BLOCK_SIZE), inter_d + (i * GRID_SIZE));
+        {
+            std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+            uniformAdd<<<grid, block>>>(numElems, data_d + (i * GRID_SIZE * BLOCK_SIZE), inter_d + (i * GRID_SIZE));
+        }
     }
 
     {
