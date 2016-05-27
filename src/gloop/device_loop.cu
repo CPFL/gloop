@@ -75,7 +75,12 @@ __device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext d
     logicalGridDim = m_control.logicalGridDim;
     logicalBlockIdx = m_control.logicalBlockIdx;
 #endif
+
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     return m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+#else
+    return 1;
+#endif
 }
 
 __device__ void DeviceLoop::resume()
