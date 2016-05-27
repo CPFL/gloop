@@ -53,7 +53,7 @@ inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, 
 #endif
 
     int suspended = 0;
-    if (!callbackKicked) {
+    if (callbackKicked) {
         suspended = sharedDeviceLoop.drain();
     }
 
