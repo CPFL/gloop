@@ -113,19 +113,10 @@ __device__ void gridding_GPU(gloop::DeviceLoop* loop, sampleArrayStruct sortedSa
     __shared__ float kz_s[TILE];
     __shared__ float sdc_s[TILE];
 
-    const int flatIdx = threadIdx.z * blockDim.y * blockDim.x + threadIdx.y * blockDim.x + threadIdx.x;
-
     // figure out starting point of the tile
     const int z0 = (4 * blockDim.z) * (gloop::logicalBlockIdx.y / (gridSize_c[1] / blockDim.y));
     const int y0 = blockDim.y * (gloop::logicalBlockIdx.y % (gridSize_c[1] / blockDim.y));
     const int x0 = gloop::logicalBlockIdx.x * blockDim.x;
-
-    const int X = x0 + threadIdx.x;
-    const int Y = y0 + threadIdx.y;
-    const int Z = z0 + threadIdx.z;
-    const int Z1 = Z + blockDim.z;
-    const int Z2 = Z1 + blockDim.z;
-    const int Z3 = Z2 + blockDim.z;
 
     const int xl = x0 - ceil(cutoff_c);
     const int xL = (xl < 0) ? 0 : xl;
@@ -141,11 +132,6 @@ __device__ void gridding_GPU(gloop::DeviceLoop* loop, sampleArrayStruct sortedSa
     const int zL = (zl < 0) ? 0 : zl;
     const int zh = z0 + (4 * blockDim.z) + cutoff_c;
     const int zH = (zh >= gridSize_c[2]) ? gridSize_c[2] - 1 : zh;
-
-    const int idx = Z * size_xy_c + Y * gridSize_c[0] + X;
-    const int idx1 = idx + blockDim.z * size_xy_c;
-    const int idx2 = idx1 + blockDim.z * size_xy_c;
-    const int idx3 = idx2 + blockDim.z * size_xy_c;
 
     float2 pt;
     pt.x = 0.0;
@@ -166,6 +152,21 @@ __device__ void gridding_GPU(gloop::DeviceLoop* loop, sampleArrayStruct sortedSa
     pt3.x = 0.0;
     pt3.y = 0.0;
     float density3 = 0.0;
+
+    // These values are threadIdx related.
+    const int flatIdx = threadIdx.z * blockDim.y * blockDim.x + threadIdx.y * blockDim.x + threadIdx.x;
+
+    const int X = x0 + threadIdx.x;
+    const int Y = y0 + threadIdx.y;
+    const int Z = z0 + threadIdx.z;
+    const int Z1 = Z + blockDim.z;
+    const int Z2 = Z1 + blockDim.z;
+    const int Z3 = Z2 + blockDim.z;
+
+    const int idx = Z * size_xy_c + Y * gridSize_c[0] + X;
+    const int idx1 = idx + blockDim.z * size_xy_c;
+    const int idx2 = idx1 + blockDim.z * size_xy_c;
+    const int idx3 = idx2 + blockDim.z * size_xy_c;
 
     for (int z = zL; z <= zH; z++) {
         for (int y = yL; y <= yH; y++) {
