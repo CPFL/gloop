@@ -9,6 +9,7 @@
 #include <parboil.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <gloop/gloop.h>
 
 #include "common.h"
 #include "cuerr.h"
@@ -34,13 +35,17 @@ int main(int argc, char** argv)
     struct pb_TimerSet timers;
     struct pb_Parameters* parameters;
 
+    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+
     printf("CUDA accelerated 7 points stencil codes****\n");
     printf("Original version by Li-Wen Chang <lchang20@illinois.edu> and I-Jui Sung<sung10@illinois.edu>\n");
     printf("This version maintained by Chris Rodrigues  ***********\n");
-    parameters = pb_ReadParameters(&argc, argv);
-
-    pb_InitializeTimerSet(&timers);
-    pb_SwitchToTimer(&timers, pb_TimerID_COMPUTE);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        parameters = pb_ReadParameters(&argc, argv);
+        pb_InitializeTimerSet(&timers);
+        pb_SwitchToTimer(&timers, pb_TimerID_COMPUTE);
+    }
 
     //declaration
     int nx, ny, nz;
@@ -77,27 +82,32 @@ int main(int argc, char** argv)
     //device
     float* d_A0;
     float* d_Anext;
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        size = nx * ny * nz;
 
-    size = nx * ny * nz;
+        h_A0 = (float*)malloc(sizeof(float) * size);
+        h_Anext = (float*)malloc(sizeof(float) * size);
+        pb_SwitchToTimer(&timers, pb_TimerID_IO);
+        FILE* fp = fopen(parameters->inpFiles[0], "rb");
+        read_data(h_A0, nx, ny, nz, fp);
+        fclose(fp);
 
-    h_A0 = (float*)malloc(sizeof(float) * size);
-    h_Anext = (float*)malloc(sizeof(float) * size);
-    pb_SwitchToTimer(&timers, pb_TimerID_IO);
-    FILE* fp = fopen(parameters->inpFiles[0], "rb");
-    read_data(h_A0, nx, ny, nz, fp);
-    fclose(fp);
+        pb_SwitchToTimer(&timers, pb_TimerID_COPY);
+        //memory allocation
+        cudaMalloc((void**)&d_A0, size * sizeof(float));
+        cudaMalloc((void**)&d_Anext, size * sizeof(float));
+        cudaMemset(d_Anext, 0, size * sizeof(float));
 
-    pb_SwitchToTimer(&timers, pb_TimerID_COPY);
-    //memory allocation
-    cudaMalloc((void**)&d_A0, size * sizeof(float));
-    cudaMalloc((void**)&d_Anext, size * sizeof(float));
-    cudaMemset(d_Anext, 0, size * sizeof(float));
+        //memory copy
+        cudaMemcpy(d_A0, h_A0, size * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_Anext, d_A0, size * sizeof(float), cudaMemcpyDeviceToDevice);
 
-    //memory copy
-    cudaMemcpy(d_A0, h_A0, size * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_Anext, d_A0, size * sizeof(float), cudaMemcpyDeviceToDevice);
+        pb_SwitchToTimer(&timers, pb_TimerID_COMPUTE);
 
-    pb_SwitchToTimer(&timers, pb_TimerID_COMPUTE);
+        //main execution
+        pb_SwitchToTimer(&timers, pb_TimerID_KERNEL);
+    }
 
     //only use tx-by-ty threads
     int tx = 32;
@@ -108,37 +118,47 @@ int main(int argc, char** argv)
     dim3 grid((nx + tx * 2 - 1) / (tx * 2), (ny + ty - 1) / ty, 1);
     int sh_size = tx * 2 * ty * sizeof(float);
 
-    //main execution
-    pb_SwitchToTimer(&timers, pb_TimerID_KERNEL);
+    printf("%d / %d\n", grid.x, grid.y);
+    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, grid, dim3(240));
+
     for (int t = 0; t < iteration; t++) {
-        block2D_hybrid_coarsen_x<<<grid, block, sh_size>>>(c0, c1, d_A0, d_Anext, nx, ny, nz);
+        hostLoop->launch(*hostContext, block, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, float c0, float c1, float* A0, float* Anext, int nx, int ny, int nz) {
+            block2D_hybrid_coarsen_x(c0, c1, A0, Anext, nx, ny, nz);
+        }, c0, c1, d_A0, d_Anext, nx, ny, nz);
         float* d_temp = d_A0;
         d_A0 = d_Anext;
         d_Anext = d_temp;
     }
-    CUERR // check and clear any existing errors
+    {
+        // NECESSARY?
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        CUERR // check and clear any existing errors
+    }
 
     float* d_temp = d_A0;
     d_A0 = d_Anext;
     d_Anext = d_temp;
 
-    pb_SwitchToTimer(&timers, pb_TimerID_COPY);
-    cudaMemcpy(h_Anext, d_Anext, size * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaFree(d_A0);
-    cudaFree(d_Anext);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        pb_SwitchToTimer(&timers, pb_TimerID_COPY);
+        cudaMemcpy(h_Anext, d_Anext, size * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaFree(d_A0);
+        cudaFree(d_Anext);
 
-    if (parameters->outFile) {
-        pb_SwitchToTimer(&timers, pb_TimerID_IO);
-        outputData(parameters->outFile, h_Anext, nx, ny, nz);
+        if (parameters->outFile) {
+            pb_SwitchToTimer(&timers, pb_TimerID_IO);
+            outputData(parameters->outFile, h_Anext, nx, ny, nz);
+        }
+        pb_SwitchToTimer(&timers, pb_TimerID_COMPUTE);
+
+        free(h_A0);
+        free(h_Anext);
+        pb_SwitchToTimer(&timers, pb_TimerID_NONE);
+
+        pb_PrintTimerSet(&timers);
+        pb_FreeParameters(parameters);
     }
-    pb_SwitchToTimer(&timers, pb_TimerID_COMPUTE);
-
-    free(h_A0);
-    free(h_Anext);
-    pb_SwitchToTimer(&timers, pb_TimerID_NONE);
-
-    pb_PrintTimerSet(&timers);
-    pb_FreeParameters(parameters);
 
     return 0;
 }

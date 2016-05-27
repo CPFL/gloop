@@ -17,6 +17,7 @@ add_subdirectory(tpacf)
 # GLoop versions.
 add_subdirectory(lbm-gloop)
 add_subdirectory(tpacf-gloop)
+add_subdirectory(stencil-gloop)
 
 # GLoop naive version.
 add_subdirectory(tpacf-naive-gloop)

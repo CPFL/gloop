@@ -8,7 +8,7 @@
 
 #include "common.h"
 
-__global__ void block2D_hybrid_coarsen_x(float c0, float c1, float* A0, float* Anext, int nx, int ny, int nz)
+__device__ void block2D_hybrid_coarsen_x(float c0, float c1, float* A0, float* Anext, int nx, int ny, int nz)
 {
 
     //thread coarsening along x direction
@@ -19,7 +19,10 @@ __global__ void block2D_hybrid_coarsen_x(float c0, float c1, float* A0, float* A
     const int sh_id2 = threadIdx.x + blockDim.x + threadIdx.y * blockDim.x * 2;
 
     //shared memeory
-    extern __shared__ float sh_A0[];
+    // extern __shared__ float sh_A0[];
+    // FIXME: Dynamic shared memory.
+    __shared__ float sh_A0[32 * 2 * 4];
+
     sh_A0[sh_id] = 0.0f;
     sh_A0[sh_id2] = 0.0f;
     __syncthreads();
