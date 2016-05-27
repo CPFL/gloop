@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <gloop/gloop.h>
 
 #include "CPU_kernels.h"
 #include "GPU_kernels.cu"
@@ -58,6 +59,8 @@ int compare(const void* a, const void* b)
  * gridding.
  ***********************************************************************/
 void CUDA_interface(
+    gloop::HostLoop& hostLoop,
+    gloop::HostContext& hostContext,
     struct pb_TimerSet* timers,
     unsigned int n, // Number of input elements
     parameters params, // Parameter struct which defines output gridSize, cutoff distance, etc.
@@ -123,13 +126,15 @@ void CUDA_interface(
     unsigned int* binStartAddr_d = NULL; // Array of start offset of each of the compact bins
 
     /* Allocating device memory */
-    pb_SwitchToTimer(timers, pb_TimerID_COPY);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        pb_SwitchToTimer(timers, pb_TimerID_COPY);
 
-    cudaMalloc((void**)&sortedSample_d, (n + npad) * sizeof(ReconstructionSample));
-    cudaMalloc((void**)&binStartAddr_d, (gridNumElems + 1) * sizeof(unsigned int));
-    cudaMalloc((void**)&sample_d, n * sizeof(ReconstructionSample));
-    cudaMalloc((void**)&idxKey_d, (((n + 3) / 4) * 4) * sizeof(unsigned int)); //Pad to nearest multiple of 4 to
-    cudaMalloc((void**)&idxValue_d, (((n + 3) / 4) * 4) * sizeof(unsigned int)); //satisfy a property of the sorting kernel.
+        cudaMalloc((void**)&sortedSample_d, (n + npad) * sizeof(ReconstructionSample));
+        cudaMalloc((void**)&binStartAddr_d, (gridNumElems + 1) * sizeof(unsigned int));
+        cudaMalloc((void**)&sample_d, n * sizeof(ReconstructionSample));
+        cudaMalloc((void**)&idxKey_d, (((n + 3) / 4) * 4) * sizeof(unsigned int)); //Pad to nearest multiple of 4 to
+        cudaMalloc((void**)&idxValue_d, (((n + 3) / 4) * 4) * sizeof(unsigned int)); //satisfy a property of the sorting kernel.
 
 /*The CUDPP library features highly optimizes implementations for radix sort
   and prefix sum. However for portability reasons, we implemented our own,
@@ -140,29 +145,32 @@ void CUDA_interface(
   therefore we reuse the binCount_d array to get the starting offset of each
   bin. */
 #if USE_CUDPP
-    cudaMalloc((void**)&binCount_d, (gridNumElems + 1) * sizeof(unsigned int));
+        cudaMalloc((void**)&binCount_d, (gridNumElems + 1) * sizeof(unsigned int));
 #else
-    binCount_d = binStartAddr_d;
+        binCount_d = binStartAddr_d;
 #endif
-    CUERR;
+        CUERR;
+    }
 
-    /* Transfering data from Host to Device */
-    cudaMemcpyToSymbol(cutoff2_c, &cutoff2, sizeof(float), 0);
-    cudaMemcpyToSymbol(cutoff_c, &cutoff, sizeof(float), 0);
-    cudaMemcpyToSymbol(gridSize_c, params.gridSize, 3 * sizeof(int), 0);
-    cudaMemcpyToSymbol(size_xy_c, &size_xy, sizeof(int), 0);
-    cudaMemcpyToSymbol(_1overCutoff2_c, &_1overCutoff2, sizeof(float), 0);
-    cudaMemcpy(sample_d, sample, n * sizeof(ReconstructionSample), cudaMemcpyHostToDevice);
-    cudaMemset(binCount_d, 0, (gridNumElems + 1) * sizeof(unsigned int));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        /* Transfering data from Host to Device */
+        cudaMemcpyToSymbol(cutoff2_c, &cutoff2, sizeof(float), 0);
+        cudaMemcpyToSymbol(cutoff_c, &cutoff, sizeof(float), 0);
+        cudaMemcpyToSymbol(gridSize_c, params.gridSize, 3 * sizeof(int), 0);
+        cudaMemcpyToSymbol(size_xy_c, &size_xy, sizeof(int), 0);
+        cudaMemcpyToSymbol(_1overCutoff2_c, &_1overCutoff2, sizeof(float), 0);
+        cudaMemcpy(sample_d, sample, n * sizeof(ReconstructionSample), cudaMemcpyHostToDevice);
+        cudaMemset(binCount_d, 0, (gridNumElems + 1) * sizeof(unsigned int));
 
-    // Initialize padding to max integer value, so that when sorted,
-    // these elements get pushed to the end of the array.
-    cudaMemset(idxKey_d + n, 0xFF, (((n + 3) & ~(3)) - n) * sizeof(unsigned int));
+        // Initialize padding to max integer value, so that when sorted,
+        // these elements get pushed to the end of the array.
+        cudaMemset(idxKey_d + n, 0xFF, (((n + 3) & ~(3)) - n) * sizeof(unsigned int));
+        pb_SwitchToTimer(timers, pb_TimerID_KERNEL);
+    }
 
     sortedSampleSoA_d.data = (float2*)(sortedSample_d);
     sortedSampleSoA_d.loc = (float4*)(sortedSample_d + 2 * (n + npad));
-
-    pb_SwitchToTimer(timers, pb_TimerID_KERNEL);
 
     /* STEP 1: Perform binning. This kernel determines which output bin each input element
    * goes into. Any excess (beyond binsize) is put in the CPU bin
@@ -170,29 +178,35 @@ void CUDA_interface(
     dim3 block1(BLOCKSIZE);
     dim3 grid1((n + BLOCKSIZE - 1) / BLOCKSIZE);
 
-    binning_kernel<<<grid1, block1>>>(n, sample_d, idxKey_d, idxValue_d, binCount_d, params.binsize, gridNumElems);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        binning_kernel<<<grid1, block1>>>(n, sample_d, idxKey_d, idxValue_d, binCount_d, params.binsize, gridNumElems);
+    }
 
 /* STEP 2: Sort the index-value pair generate in the binning kernel */
 #if USE_CUDPP
-    CUDPPConfiguration config;
-    config.datatype = CUDPP_UINT;
-    config.algorithm = CUDPP_SORT_RADIX;
-    config.options = CUDPP_OPTION_KEY_VALUE_PAIRS;
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        CUDPPConfiguration config;
+        config.datatype = CUDPP_UINT;
+        config.algorithm = CUDPP_SORT_RADIX;
+        config.options = CUDPP_OPTION_KEY_VALUE_PAIRS;
 
-    CUDPPHandle sortplan = 0;
-    CUDPPResult result = cudppPlan(&sortplan, config, n, 1, 0);
+        CUDPPHandle sortplan = 0;
+        CUDPPResult result = cudppPlan(&sortplan, config, n, 1, 0);
 
-    int precision = 0;
-    int numElems = gridNumElems;
-    while (numElems > 0) {
-        numElems >>= 1;
-        precision++;
+        int precision = 0;
+        int numElems = gridNumElems;
+        while (numElems > 0) {
+            numElems >>= 1;
+            precision++;
+        }
+
+        cudppSort(sortplan, idxKey_d, idxValue_d, int(precision), n);
+        result = cudppDestroyPlan(sortplan);
     }
-
-    cudppSort(sortplan, idxKey_d, idxValue_d, int(precision), n);
-    result = cudppDestroyPlan(sortplan);
 #else
-    sort(n, gridNumElems + 1, idxKey_d, idxValue_d);
+    sort(hostLoop, hostContext, n, gridNumElems + 1, idxKey_d, idxValue_d);
 #endif
 
     /* STEP 3: Reorder the input data, based on the sorted values from Step 2.
@@ -203,68 +217,85 @@ void CUDA_interface(
    * At the end of this step, we copy the start address and list of input elements
    * that will be computed on the CPU.
    */
-    reorder_kernel<<<grid1, block1>>>(n, idxValue_d, sample_d, sortedSampleSoA_d);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        reorder_kernel<<<grid1, block1>>>(n, idxValue_d, sample_d, sortedSampleSoA_d);
+    }
 
-    pb_SwitchToTimer(timers, pb_TimerID_COPY);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        pb_SwitchToTimer(timers, pb_TimerID_COPY);
 
-    cudaFree(idxKey_d);
-    cudaFree(sample_d);
+        cudaFree(idxKey_d);
+        cudaFree(sample_d);
 
-    pb_SwitchToTimer(timers, pb_TimerID_KERNEL);
+        pb_SwitchToTimer(timers, pb_TimerID_KERNEL);
+    }
 
 /* STEP 4: In this step we generate the ADD scan of the array of starting indices
    * of the output bins. The result is an array that contains the starting address of
    * every output bin.
    */
 #if USE_CUDPP
-    config.datatype = CUDPP_UINT;
-    config.algorithm = CUDPP_SCAN;
-    config.options = CUDPP_OPTION_EXCLUSIVE;
-    config.op = CUDPP_ADD;
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        config.datatype = CUDPP_UINT;
+        config.algorithm = CUDPP_SCAN;
+        config.options = CUDPP_OPTION_EXCLUSIVE;
+        config.op = CUDPP_ADD;
 
-    CUDPPHandle scanplan = 0;
-    result = cudppPlan(&scanplan, config, gridNumElems + 1, 1, 0);
+        CUDPPHandle scanplan = 0;
+        result = cudppPlan(&scanplan, config, gridNumElems + 1, 1, 0);
 
-    cudppScan(scanplan, binCount_d, binStartAddr_d, gridNumElems + 1);
-    result = cudppDestroyPlan(scanplan);
+        cudppScan(scanplan, binCount_d, binStartAddr_d, gridNumElems + 1);
+        result = cudppDestroyPlan(scanplan);
+    }
 #else
-    scanLargeArray(gridNumElems + 1, binCount_d);
+    scanLargeArray(hostLoop, hostContext, gridNumElems + 1, binCount_d);
 #endif
-
-    pb_SwitchToTimer(timers, pb_TimerID_COPY);
-
-    // Copy back to the CPU the indices of the input elements that will be processed on the CPU
-    int cpuStart;
-    cudaMemcpy(&cpuStart, binCount_d + gridNumElems, sizeof(unsigned int), cudaMemcpyDeviceToHost);
-
-    int CPUbin_size = int(n) - int(cpuStart);
 
     int* CPUbin;
-    cudaMallocHost((void**)&CPUbin, CPUbin_size * sizeof(unsigned int));
-    cudaMemcpy(CPUbin, idxValue_d + cpuStart, CPUbin_size * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    int CPUbin_size;
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        pb_SwitchToTimer(timers, pb_TimerID_COPY);
 
-    cudaFree(idxValue_d);
+        // Copy back to the CPU the indices of the input elements that will be processed on the CPU
+        int cpuStart;
+        cudaMemcpy(&cpuStart, binCount_d + gridNumElems, sizeof(unsigned int), cudaMemcpyDeviceToHost);
+
+        CPUbin_size = int(n) - int(cpuStart);
+
+        cudaMallocHost((void**)&CPUbin, CPUbin_size * sizeof(unsigned int));
+        cudaMemcpy(CPUbin, idxValue_d + cpuStart, CPUbin_size * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+
+        cudaFree(idxValue_d);
 #if USE_CUDPP
-    cudaFree(binCount_d);
+        cudaFree(binCount_d);
 #endif
 
-    /* STEP 5: Perform the binning on the GPU. The results are computed in a gather fashion
-   * where each thread computes the value of one output element by reading the relevant
-   * bins.
-   */
-    cudaMalloc((void**)&gridData_d, gridNumElems * sizeof(float2));
-    cudaMalloc((void**)&sampleDensity_d, gridNumElems * sizeof(float));
-    CUERR;
+        /* STEP 5: Perform the binning on the GPU. The results are computed in a gather fashion
+       * where each thread computes the value of one output element by reading the relevant
+       * bins.
+       */
+        cudaMalloc((void**)&gridData_d, gridNumElems * sizeof(float2));
+        cudaMalloc((void**)&sampleDensity_d, gridNumElems * sizeof(float));
+        CUERR;
 
-    cudaMemset(gridData_d, 0, gridNumElems * sizeof(float2));
-    cudaMemset(sampleDensity_d, 0, gridNumElems * sizeof(float));
+        cudaMemset(gridData_d, 0, gridNumElems * sizeof(float2));
+        cudaMemset(sampleDensity_d, 0, gridNumElems * sizeof(float));
 
-    pb_SwitchToTimer(timers, pb_TimerID_KERNEL);
+        pb_SwitchToTimer(timers, pb_TimerID_KERNEL);
+    }
 
     dim3 block2(dims.x, dims.y, dims.z);
     dim3 grid2(size_x / dims.x, (size_y * size_z) / (4 * dims.y * dims.z));
 
-    gridding_GPU<<<grid2, block2>>>(sortedSampleSoA_d, binStartAddr_d, gridData_d, sampleDensity_d, beta);
+    // gridding_GPU<<<grid2, block2>>>(sortedSampleSoA_d, binStartAddr_d, gridData_d, sampleDensity_d, beta);
+    printf("grid:(%d)\n", (size_x / dims.x) * ((size_y * size_z) / (4 * dims.y * dims.z)));
+    hostLoop.launch(hostContext, grid2, block2, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta) {
+        gridding_GPU(sortedSampleSoA_g, binStartAddr_g, gridData_g, sampleDensity_g, beta);
+    }, sortedSampleSoA_d, binStartAddr_d, gridData_d, sampleDensity_d, beta);
 
     pb_SwitchToTimer(timers, pb_TimerID_COMPUTE);
 

@@ -5,5 +5,6 @@
  *                         All Rights Reserved
  *
  ***************************************************************************/
+#include <gloop/gloop.h>
 
-void scanLargeArray(unsigned int gridNumElements, unsigned int* data_d);
+void scanLargeArray(gloop::HostLoop&, gloop::HostContext&, unsigned int gridNumElements, unsigned int* data_d);

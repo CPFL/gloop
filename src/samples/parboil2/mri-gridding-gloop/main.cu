@@ -109,10 +109,16 @@ int main(int argc, char* argv[])
     struct pb_Parameters* prms;
     struct pb_TimerSet timers;
 
-    prms = pb_ReadParameters(&argc, argv);
-    pb_InitializeTimerSet(&timers);
+    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
 
-    pb_SwitchToTimer(&timers, pb_TimerID_NONE);
+
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        prms = pb_ReadParameters(&argc, argv);
+        pb_InitializeTimerSet(&timers);
+
+        pb_SwitchToTimer(&timers, pb_TimerID_NONE);
+    }
 
     char uksdata[250];
     parameters params;
@@ -140,8 +146,6 @@ int main(int argc, char* argv[])
 
     setParameters(uksfile_f, &params);
 
-    pb_SwitchToTimer(&timers, pb_TimerID_IO);
-
     ReconstructionSample* samples; //Input Data
     float* LUT; //use look-up table for faster execution on CPU (intermediate data)
     unsigned int sizeLUT; //set in the function calculateLUT (intermediate data)
@@ -151,12 +155,16 @@ int main(int argc, char* argv[])
 
     cmplx* gridData_gold; //Gold Output Data
     float* sampleDensity_gold; //Gold Output Data
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        pb_SwitchToTimer(&timers, pb_TimerID_IO);
 
-    cudaMallocHost((void**)&samples, params.numSamples * sizeof(ReconstructionSample));
-    CUERR;
-    if (samples == NULL) {
-        printf("ERROR: Unable to allocate memory for input data\n");
-        exit(1);
+        cudaMallocHost((void**)&samples, params.numSamples * sizeof(ReconstructionSample));
+        CUERR;
+        if (samples == NULL) {
+            printf("ERROR: Unable to allocate memory for input data\n");
+            exit(1);
+        }
     }
 
     uksdata_f = fopen(uksdata, "rb");
@@ -179,7 +187,10 @@ int main(int argc, char* argv[])
 
     int gridNumElems = params.gridSize[0] * params.gridSize[1] * params.gridSize[2];
 
-    pb_SwitchToTimer(&timers, pb_TimerID_NONE);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        pb_SwitchToTimer(&timers, pb_TimerID_NONE);
+    }
 
     gridData_gold = (cmplx*)calloc(gridNumElems, sizeof(cmplx));
     sampleDensity_gold = (float*)calloc(gridNumElems, sizeof(float));
@@ -192,22 +203,32 @@ int main(int argc, char* argv[])
 
     gridding_Gold(n, params, samples, LUT, sizeLUT, gridData_gold, sampleDensity_gold);
 
-    cudaMallocHost((void**)&gridData, gridNumElems * sizeof(cmplx));
-    cudaMallocHost((void**)&sampleDensity, gridNumElems * sizeof(float));
-    CUERR;
-    if (sampleDensity == NULL || gridData == NULL) {
-        printf("ERROR: Unable to allocate memory for output data\n");
-        exit(1);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        cudaMallocHost((void**)&gridData, gridNumElems * sizeof(cmplx));
+        cudaMallocHost((void**)&sampleDensity, gridNumElems * sizeof(float));
+        CUERR;
+        if (sampleDensity == NULL || gridData == NULL) {
+            printf("ERROR: Unable to allocate memory for output data\n");
+            exit(1);
+        }
     }
 
     printf("Running CUDA version\n");
 
-    pb_SwitchToTimer(&timers, pb_TimerID_COMPUTE);
+    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(1200));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        pb_SwitchToTimer(&timers, pb_TimerID_COMPUTE);
+    }
 
     //Interface function to GPU implementation of gridding
-    CUDA_interface(&timers, n, params, samples, LUT, sizeLUT, gridData, sampleDensity);
+    CUDA_interface(*hostLoop, *hostContext, &timers, n, params, samples, LUT, sizeLUT, gridData, sampleDensity);
 
-    pb_SwitchToTimer(&timers, pb_TimerID_NONE);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        pb_SwitchToTimer(&timers, pb_TimerID_NONE);
+    }
 
     int passed = 1;
     for (int i = 0; i < gridNumElems; i++) {
@@ -218,7 +239,10 @@ int main(int argc, char* argv[])
     }
     //(passed) ? printf("Comparing GPU and Gold results... PASSED\n"):printf("Comparing GPU and Gold results... FAILED\n");
 
-    pb_SwitchToTimer(&timers, pb_TimerID_IO);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        pb_SwitchToTimer(&timers, pb_TimerID_IO);
+    }
 
     FILE* outfile;
     if (!(outfile = fopen(prms->outFile, "w"))) {
@@ -229,20 +253,29 @@ int main(int argc, char* argv[])
         fclose(outfile);
     }
 
-    pb_SwitchToTimer(&timers, pb_TimerID_NONE);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        pb_SwitchToTimer(&timers, pb_TimerID_NONE);
+    }
 
     if (params.useLUT) {
         free(LUT);
     }
-    cudaFreeHost(samples);
-    cudaFreeHost(gridData);
-    cudaFreeHost(sampleDensity);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        cudaFreeHost(samples);
+        cudaFreeHost(gridData);
+        cudaFreeHost(sampleDensity);
+    }
     free(gridData_gold);
     free(sampleDensity_gold);
 
     printf("\n");
-    pb_PrintTimerSet(&timers);
-    pb_FreeParameters(prms);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+        pb_PrintTimerSet(&timers);
+        pb_FreeParameters(prms);
+    }
 
     return 0;
 }

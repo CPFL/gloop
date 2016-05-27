@@ -7,6 +7,7 @@
  ***************************************************************************/
 
 #include <cuda.h>
+#include <gloop/gloop.h>
 #include <stdio.h>
 
 #include "scanLargeArray.h"
@@ -215,7 +216,7 @@ __global__ void splitRearrange(int numElems, int iter, unsigned int* keys_i, uns
     }
 }
 
-void sort(int numElems, unsigned int max_value, unsigned int*& dkeys, unsigned int*& dvalues)
+void sort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, int numElems, unsigned int max_value, unsigned int*& dkeys, unsigned int*& dvalues)
 {
     dim3 grid((numElems + 4 * SORT_BS - 1) / (4 * SORT_BS));
     dim3 block(SORT_BS);
@@ -229,16 +230,25 @@ void sort(int numElems, unsigned int max_value, unsigned int*& dkeys, unsigned i
     unsigned int* dhisto;
     unsigned int *dkeys_o, *dvalues_o;
 
-    cudaMalloc((void**)&dhisto, (1 << BITS) * grid.x * sizeof(unsigned int));
-    cudaMalloc((void**)&dkeys_o, numElems * sizeof(unsigned int));
-    cudaMalloc((void**)&dvalues_o, numElems * sizeof(unsigned int));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        cudaMalloc((void**)&dhisto, (1 << BITS) * grid.x * sizeof(unsigned int));
+        cudaMalloc((void**)&dkeys_o, numElems * sizeof(unsigned int));
+        cudaMalloc((void**)&dvalues_o, numElems * sizeof(unsigned int));
+    }
 
     for (int i = 0; i < iterations; i++) {
-        splitSort<<<grid, block>>>(numElems, i, dkeys, dvalues, dhisto);
+        {
+            std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+            splitSort<<<grid, block>>>(numElems, i, dkeys, dvalues, dhisto);
+        }
 
-        scanLargeArray(grid.x * (1 << BITS), dhisto);
+        scanLargeArray(hostLoop, hostContext, grid.x * (1 << BITS), dhisto);
 
-        splitRearrange<<<grid, block>>>(numElems, i, dkeys, dkeys_o, dvalues, dvalues_o, dhisto);
+        {
+            std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+            splitRearrange<<<grid, block>>>(numElems, i, dkeys, dkeys_o, dvalues, dvalues_o, dhisto);
+        }
 
         unsigned int* temp = dkeys;
         dkeys = dkeys_o;
@@ -249,7 +259,10 @@ void sort(int numElems, unsigned int max_value, unsigned int*& dkeys, unsigned i
         dvalues_o = temp;
     }
 
-    cudaFree(dkeys_o);
-    cudaFree(dvalues_o);
-    cudaFree(dhisto);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        cudaFree(dkeys_o);
+        cudaFree(dvalues_o);
+        cudaFree(dhisto);
+    }
 }

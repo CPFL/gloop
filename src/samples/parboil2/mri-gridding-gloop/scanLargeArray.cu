@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <gloop/gloop.h>
 
 #define BLOCK_SIZE 1024
 #define GRID_SIZE 65535
@@ -199,7 +200,7 @@ __global__ void uniformAdd(unsigned int n, unsigned int* data, unsigned int* int
     }
 }
 
-void scanLargeArray(unsigned int gridNumElements, unsigned int* data_d)
+void scanLargeArray(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, unsigned int gridNumElements, unsigned int* data_d)
 {
     unsigned int gridNumElems = gridNumElements;
 
@@ -222,8 +223,11 @@ void scanLargeArray(unsigned int gridNumElements, unsigned int* data_d)
         }
     }
 
-    cudaMalloc((void**)&inter_d, current_max * sizeof(unsigned int));
-    cudaMemset(inter_d, 0, current_max * sizeof(unsigned int));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        cudaMalloc((void**)&inter_d, current_max * sizeof(unsigned int));
+        cudaMemset(inter_d, 0, current_max * sizeof(unsigned int));
+    }
 
     for (unsigned int i = 0; i < (size + GRID_SIZE - 1) / GRID_SIZE; i++) {
         unsigned int gridSize = ((size - (i * GRID_SIZE)) > GRID_SIZE) ? GRID_SIZE : (size - i * GRID_SIZE);
@@ -244,7 +248,10 @@ void scanLargeArray(unsigned int gridNumElements, unsigned int* data_d)
         stride *= dim_block;
     }
 
-    cudaMemset(&(inter_d[current_max - 1]), 0, sizeof(unsigned int));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        cudaMemset(&(inter_d[current_max - 1]), 0, sizeof(unsigned int));
+    }
 
     for (unsigned int d = dim_block; d <= current_max; d *= dim_block) {
         stride /= dim_block;
@@ -264,5 +271,8 @@ void scanLargeArray(unsigned int gridNumElements, unsigned int* data_d)
         uniformAdd<<<grid, block>>>(numElems, data_d + (i * GRID_SIZE * BLOCK_SIZE), inter_d + (i * GRID_SIZE));
     }
 
-    cudaFree(inter_d);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        cudaFree(inter_d);
+    }
 }

@@ -103,7 +103,7 @@ __device__ float kernel_value(float v)
     return rValue;
 }
 
-__global__ void gridding_GPU(sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta)
+__device__ void gridding_GPU(sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta)
 {
     __shared__ float real_s[TILE];
     __shared__ float imag_s[TILE];
@@ -115,9 +115,9 @@ __global__ void gridding_GPU(sampleArrayStruct sortedSampleSoA_g, unsigned int* 
     const int flatIdx = threadIdx.z * blockDim.y * blockDim.x + threadIdx.y * blockDim.x + threadIdx.x;
 
     // figure out starting point of the tile
-    const int z0 = (4 * blockDim.z) * (blockIdx.y / (gridSize_c[1] / blockDim.y));
-    const int y0 = blockDim.y * (blockIdx.y % (gridSize_c[1] / blockDim.y));
-    const int x0 = blockIdx.x * blockDim.x;
+    const int z0 = (4 * blockDim.z) * (gloop::logicalBlockIdx.y / (gridSize_c[1] / blockDim.y));
+    const int y0 = blockDim.y * (gloop::logicalBlockIdx.y % (gridSize_c[1] / blockDim.y));
+    const int x0 = gloop::logicalBlockIdx.x * blockDim.x;
 
     const int X = x0 + threadIdx.x;
     const int Y = y0 + threadIdx.y;

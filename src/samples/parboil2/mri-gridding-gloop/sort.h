@@ -5,5 +5,6 @@
  *                         All Rights Reserved
  *
  ***************************************************************************/
+#include <gloop/gloop.h>
 
-void sort (int numElems, unsigned int maxValue, unsigned int* &dkeys, unsigned int* &dvalues);
+void sort(gloop::HostLoop&, gloop::HostContext&, int numElems, unsigned int maxValue, unsigned int* &dkeys, unsigned int* &dvalues);

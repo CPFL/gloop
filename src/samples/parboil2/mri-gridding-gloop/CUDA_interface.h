@@ -6,7 +6,11 @@
  *
  ***************************************************************************/
 
+#include <gloop/gloop.h>
+
 void CUDA_interface (
+  gloop::HostLoop& hostLoop,
+  gloop::HostContext& hostContext,
   struct pb_TimerSet* timers,
   unsigned int n,       // Number of input elements
   parameters params,    // Parameter struct which defines output gridSize, cutoff distance, etc.
