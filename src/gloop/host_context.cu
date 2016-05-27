@@ -25,7 +25,7 @@
 #include <mutex>
 #include "data_log.h"
 #include "device_context.cuh"
-#include "ipc.cuh"
+#include "rpc.cuh"
 #include "host_context.cuh"
 #include "host_loop_inlines.cuh"
 #include "make_unique.h"
@@ -148,8 +148,8 @@ bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
                     continue;
                 }
 
-                IPC ipc { i * GLOOP_SHARED_SLOT_SIZE + j };
-                Code code = ipc.peek(*this);
+                RPC rpc { i * GLOOP_SHARED_SLOT_SIZE + j };
+                Code code = rpc.peek(*this);
                 if (code == Code::Complete) {
                     return true;
                 }
@@ -169,8 +169,8 @@ void HostContext::prepareForLaunch()
     // Clean up ExitRequired flags.
     {
         std::unique_lock<Mutex> guard(m_mutex);
-        for (IPC ipc : m_exitRequired) {
-            ipc.emit(*this, Code::Complete);
+        for (RPC rpc : m_exitRequired) {
+            rpc.emit(*this, Code::Complete);
         }
         m_exitRequired.clear();
         for (std::shared_ptr<MmapResult> result : m_unmapRequests) {
@@ -190,16 +190,16 @@ void HostContext::pollerMain()
 {
     uint32_t count = 0;
     while (true) {
-        bool found = tryPeekRequest([&](IPC ipc) {
+        bool found = tryPeekRequest([&](RPC rpc) {
             request::Request req { };
-            Code code = ipc.peek(*this);
-            memcpy(&req, (request::Request*)ipc.request(*this), sizeof(request::Request));
+            Code code = rpc.peek(*this);
+            memcpy(&req, (request::Request*)rpc.request(*this), sizeof(request::Request));
             {
                 std::lock_guard<HostContext::Mutex> lock(mutex());
-                ipc.emit(*this, Code::Handling);
+                rpc.emit(*this, Code::Handling);
                 condition().notify_one();
             }
-            m_hostLoop.handleIO(*this, ipc, code, req);
+            m_hostLoop.handleIO(*this, rpc, code, req);
         });
         if (found) {
             count = 0;

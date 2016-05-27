@@ -32,7 +32,7 @@
 #include <vector>
 #include "config.h"
 #include "device_context.cuh"
-#include "ipc.cuh"
+#include "rpc.cuh"
 #include "io.cuh"
 #include "mapped_memory.cuh"
 #include "noncopyable.h"
@@ -40,12 +40,12 @@
 namespace gloop {
 
 class HostLoop;
-struct IPC;
+struct RPC;
 
 class HostContext {
 GLOOP_NONCOPYABLE(HostContext);
 public:
-    friend struct IPC;
+    friend struct RPC;
 
     __host__ ~HostContext();
 
@@ -71,10 +71,10 @@ public:
 
     uint32_t pending() const;
 
-    void addExitRequired(const std::lock_guard<Mutex>&, IPC ipc)
+    void addExitRequired(const std::lock_guard<Mutex>&, RPC rpc)
     {
         // Mutex should be held.
-        m_exitRequired.push_back(ipc);
+        m_exitRequired.push_back(rpc);
     }
 
     bool addUnmapRequest(const std::lock_guard<Mutex>&, std::shared_ptr<MmapResult> result)
@@ -93,7 +93,7 @@ private:
     bool initialize(HostLoop&);
 
     template<typename Callback>
-    void forEachIPC(Callback callback);
+    void forEachRPC(Callback callback);
 
     void pollerMain();
 
@@ -113,35 +113,35 @@ private:
     dim3 m_maxPhysicalBlocks { };
     dim3 m_physicalBlocks { };
     uint32_t m_pageCount { };
-    std::vector<IPC> m_exitRequired;
+    std::vector<RPC> m_exitRequired;
     std::unordered_set<std::shared_ptr<MmapResult>> m_unmapRequests;
     bool m_exitHandlerScheduled { false };
     std::unique_ptr<boost::thread> m_poller;
 };
 
-GLOOP_ALWAYS_INLINE __host__ void IPC::emit(HostContext& hostContext, Code code)
+GLOOP_ALWAYS_INLINE __host__ void RPC::emit(HostContext& hostContext, Code code)
 {
     syncWrite(&hostContext.m_codes[position], static_cast<int32_t>(code));
 }
 
-GLOOP_ALWAYS_INLINE __host__ Code IPC::peek(HostContext& hostContext)
+GLOOP_ALWAYS_INLINE __host__ Code RPC::peek(HostContext& hostContext)
 {
     return readNoCache<Code>(&hostContext.m_codes[position]);
 }
 
-GLOOP_ALWAYS_INLINE __host__ request::Payload* IPC::request(HostContext& hostContext) const
+GLOOP_ALWAYS_INLINE __host__ request::Payload* RPC::request(HostContext& hostContext) const
 {
     return &hostContext.m_payloads[position];
 }
 
 template<typename Callback>
-inline void HostContext::forEachIPC(Callback callback)
+inline void HostContext::forEachRPC(Callback callback)
 {
     int blocks = m_physicalBlocks.x * m_physicalBlocks.y;
     for (int i = 0; i < blocks; ++i) {
         for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
-            IPC ipc { i * GLOOP_SHARED_SLOT_SIZE + j };
-            callback(ipc);
+            RPC rpc { i * GLOOP_SHARED_SLOT_SIZE + j };
+            callback(rpc);
         }
     }
 }
@@ -150,11 +150,11 @@ template<typename Callback>
 inline bool HostContext::tryPeekRequest(Callback callback)
 {
     bool found = false;
-    forEachIPC([&](IPC ipc) {
-        Code code = ipc.peek(*this);
+    forEachRPC([&](RPC rpc) {
+        Code code = rpc.peek(*this);
         if (IsOperationCode(code)) {
             found = true;
-            callback(ipc);
+            callback(rpc);
         }
     });
     return found;

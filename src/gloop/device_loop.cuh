@@ -30,24 +30,24 @@
 #include "device_callback.cuh"
 #include "device_context.cuh"
 #include "one_shot_function.cuh"
-#include "ipc.cuh"
+#include "rpc.cuh"
 #include "request.h"
 #include "utility.h"
 #include "utility.cuh"
 #include "utility/util.cu.h"
 namespace gloop {
 
-struct IPC;
+struct RPC;
 
 class DeviceLoop {
 public:
-    friend struct IPC;
+    friend struct RPC;
     enum ResumeTag { Resume };
     __device__ int initialize(volatile uint32_t* signal, DeviceContext, ResumeTag);
     __device__ void initialize(volatile uint32_t* signal, DeviceContext);
 
     template<typename Lambda>
-    inline __device__ IPC enqueueIPC(Lambda&& lambda);
+    inline __device__ RPC enqueueRPC(Lambda&& lambda);
     template<typename Lambda>
     inline __device__ void enqueueLater(Lambda&& lambda);
 

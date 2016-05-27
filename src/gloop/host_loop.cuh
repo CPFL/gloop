@@ -36,7 +36,7 @@
 #include <unordered_map>
 #include "benchmark.h"
 #include "command.h"
-#include "ipc.cuh"
+#include "rpc.cuh"
 #include "noncopyable.h"
 
 namespace boost {
@@ -91,7 +91,7 @@ public:
 
     KernelLock& kernelLock() { return m_kernelLock; }
 
-    bool handleIO(HostContext& context, IPC, Code code, request::Request);
+    bool handleIO(HostContext& context, RPC, Code code, request::Request);
 
     // Per thread initialization.
     void initializeInThread();

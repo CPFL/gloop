@@ -43,12 +43,12 @@ inline __device__ auto connect(DeviceLoop* loop, struct sockaddr_in* addr, Lambd
 {
     BEGIN_SINGLE_THREAD
     {
-        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto rpc = loop->enqueueRPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, const_cast<Socket*>(req->u.netTCPConnectResult.socket));
         });
-        volatile request::NetTCPConnect& req = ipc.request(loop)->u.netTCPConnect;
+        volatile request::NetTCPConnect& req = rpc.request(loop)->u.netTCPConnect;
         *const_cast<struct sockaddr_in*>(&req.address) = *reinterpret_cast<struct sockaddr_in*>(addr);
-        ipc.emit(loop, Code::NetTCPConnect);
+        rpc.emit(loop, Code::NetTCPConnect);
     }
     END_SINGLE_THREAD
 }
@@ -58,12 +58,12 @@ inline __device__ auto bind(DeviceLoop* loop, struct sockaddr_in* addr, Lambda c
 {
     BEGIN_SINGLE_THREAD
     {
-        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto rpc = loop->enqueueRPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, const_cast<Server*>(req->u.netTCPBindResult.server));
         });
-        volatile request::NetTCPBind& req = ipc.request(loop)->u.netTCPBind;
+        volatile request::NetTCPBind& req = rpc.request(loop)->u.netTCPBind;
         *const_cast<struct sockaddr_in*>(&req.address) = *reinterpret_cast<struct sockaddr_in*>(addr);
-        ipc.emit(loop, Code::NetTCPBind);
+        rpc.emit(loop, Code::NetTCPBind);
     }
     END_SINGLE_THREAD
 }
@@ -73,12 +73,12 @@ inline __device__ auto unbind(DeviceLoop* loop, Server* server, Lambda callback)
 {
     BEGIN_SINGLE_THREAD
     {
-        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto rpc = loop->enqueueRPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.netTCPUnbindResult.error);
         });
-        volatile request::NetTCPUnbind& req = ipc.request(loop)->u.netTCPUnbind;
+        volatile request::NetTCPUnbind& req = rpc.request(loop)->u.netTCPUnbind;
         req.server = server;
-        ipc.emit(loop, Code::NetTCPUnbind);
+        rpc.emit(loop, Code::NetTCPUnbind);
     }
     END_SINGLE_THREAD
 }
@@ -88,12 +88,12 @@ inline __device__ auto accept(DeviceLoop* loop, net::Server* server, Lambda call
 {
     BEGIN_SINGLE_THREAD
     {
-        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto rpc = loop->enqueueRPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, const_cast<Socket*>(req->u.netTCPAcceptResult.socket));
         });
-        volatile request::NetTCPAccept& req = ipc.request(loop)->u.netTCPAccept;
+        volatile request::NetTCPAccept& req = rpc.request(loop)->u.netTCPAccept;
         req.server = server;
-        ipc.emit(loop, Code::NetTCPAccept);
+        rpc.emit(loop, Code::NetTCPAccept);
     }
     END_SINGLE_THREAD
 }
@@ -105,16 +105,16 @@ inline __device__ auto receiveOnePage(DeviceLoop* loop, net::Socket* socket, siz
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
         BEGIN_SINGLE_THREAD
         {
-            auto ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+            auto rpc = loop->enqueueRPC([=](DeviceLoop* loop, volatile request::Request* req) {
                 __threadfence_system();
                 callback(loop, req->u.netTCPReceiveResult.receiveCount, page);
             });
-            volatile request::NetTCPReceive& req = ipc.request(loop)->u.netTCPReceive;
+            volatile request::NetTCPReceive& req = rpc.request(loop)->u.netTCPReceive;
             req.socket = socket;
             req.count = count;
             req.buffer = static_cast<unsigned char*>(page);
             req.flags = flags;
-            ipc.emit(loop, Code::NetTCPReceive);
+            rpc.emit(loop, Code::NetTCPReceive);
         }
         END_SINGLE_THREAD
     });
@@ -170,7 +170,7 @@ inline __device__ auto sendOnePage(DeviceLoop* loop, net::Socket* socket, size_t
         gpunet::copy_block_dst_volatile(reinterpret_cast<volatile uchar*>(page), buffer, transferringSize);
         BEGIN_SINGLE_THREAD
         {
-            auto ipc = loop->enqueueIPC([=](DeviceLoop* loop, volatile request::Request* req) {
+            auto rpc = loop->enqueueRPC([=](DeviceLoop* loop, volatile request::Request* req) {
                 BEGIN_SINGLE_THREAD
                 {
                     loop->freeOnePage(page);
@@ -178,11 +178,11 @@ inline __device__ auto sendOnePage(DeviceLoop* loop, net::Socket* socket, size_t
                 END_SINGLE_THREAD
                 callback(loop, req->u.netTCPSendResult.sentCount);
             });
-            volatile request::NetTCPSend& req = ipc.request(loop)->u.netTCPSend;
+            volatile request::NetTCPSend& req = rpc.request(loop)->u.netTCPSend;
             req.socket = socket;
             req.count = transferringSize;
             req.buffer = static_cast<unsigned char*>(page);
-            ipc.emit(loop, Code::NetTCPSend);
+            rpc.emit(loop, Code::NetTCPSend);
         }
         END_SINGLE_THREAD
     });
@@ -226,12 +226,12 @@ inline __device__ auto close(DeviceLoop* loop, Socket* socket, Lambda callback) 
 {
     BEGIN_SINGLE_THREAD
     {
-        auto ipc = loop->enqueueIPC([callback](DeviceLoop* loop, volatile request::Request* req) {
+        auto rpc = loop->enqueueRPC([callback](DeviceLoop* loop, volatile request::Request* req) {
             callback(loop, req->u.netTCPCloseResult.error);
         });
-        volatile request::NetTCPClose& req = ipc.request(loop)->u.netTCPClose;
+        volatile request::NetTCPClose& req = rpc.request(loop)->u.netTCPClose;
         req.socket = socket;
-        ipc.emit(loop, Code::NetTCPClose);
+        rpc.emit(loop, Code::NetTCPClose);
     }
     END_SINGLE_THREAD
 }

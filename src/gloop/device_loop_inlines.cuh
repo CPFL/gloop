@@ -27,17 +27,17 @@
 #include "device_loop.cuh"
 namespace gloop {
 
-GLOOP_ALWAYS_INLINE __device__ void IPC::emit(DeviceLoop* loop, Code code)
+GLOOP_ALWAYS_INLINE __device__ void RPC::emit(DeviceLoop* loop, Code code)
 {
     syncWrite(&loop->m_codes[position], static_cast<int32_t>(code));
 }
 
-GLOOP_ALWAYS_INLINE __device__ Code IPC::peek(DeviceLoop* loop)
+GLOOP_ALWAYS_INLINE __device__ Code RPC::peek(DeviceLoop* loop)
 {
     return readNoCache<Code>(&loop->m_codes[position]);
 }
 
-GLOOP_ALWAYS_INLINE __device__ request::Payload* IPC::request(DeviceLoop* loop)
+GLOOP_ALWAYS_INLINE __device__ request::Payload* RPC::request(DeviceLoop* loop)
 {
     return &loop->m_payloads[position];
 }
@@ -123,7 +123,7 @@ __device__ uint32_t DeviceLoop::enqueueSleep(Lambda&& lambda)
 }
 
 template<typename Lambda>
-__device__ IPC DeviceLoop::enqueueIPC(Lambda&& lambda)
+__device__ RPC DeviceLoop::enqueueRPC(Lambda&& lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = allocate(std::forward<Lambda&&>(lambda));
@@ -184,12 +184,12 @@ __device__ auto DeviceLoop::dequeue() -> uint32_t
         // Look into ICP status to run callbacks.
         uint32_t bit = 1U << i;
         if (allocatedSlots & bit) {
-            IPC ipc { i };
-            Code code = ipc.peek(this);
+            RPC rpc { i };
+            Code code = rpc.peek(this);
             if (code == Code::Complete) {
-                ipc.emit(this, Code::None);
-                GPU_ASSERT(ipc.peek(this) != Code::Complete);
-                GPU_ASSERT(ipc.peek(this) == Code::None);
+                rpc.emit(this, Code::None);
+                GPU_ASSERT(rpc.peek(this) != Code::Complete);
+                GPU_ASSERT(rpc.peek(this) == Code::None);
                 return i;
             }
 

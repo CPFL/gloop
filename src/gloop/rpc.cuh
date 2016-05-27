@@ -21,8 +21,8 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_IPC_CU_H_
-#define GLOOP_IPC_CU_H_
+#ifndef GLOOP_RPC_CU_H_
+#define GLOOP_RPC_CU_H_
 #include <cstdint>
 #include "code.cuh"
 #include "mapped.cuh"
@@ -36,7 +36,7 @@ namespace gloop {
 class DeviceLoop;
 class HostContext;
 
-struct IPC {
+struct RPC {
     uint32_t position;
 
     __device__ Code peek(DeviceLoop*);
@@ -49,4 +49,4 @@ struct IPC {
 };
 
 }  // namespace gloop
-#endif  // GLOOP_IPC_CU_H_
+#endif  // GLOOP_RPC_CU_H_
