@@ -216,7 +216,7 @@ int main(int argc, char* argv[])
 
     printf("Running CUDA version\n");
 
-    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(2400));
+    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(1200));
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
         pb_SwitchToTimer(&timers, pb_TimerID_COMPUTE);

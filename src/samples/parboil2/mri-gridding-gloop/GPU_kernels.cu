@@ -104,56 +104,9 @@ __device__ float kernel_value(float v)
     return rValue;
 }
 
-__device__ void gridding_GPU(gloop::DeviceLoop* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta)
+template<typename Callback>
+__device__ void perform(gloop::DeviceLoop* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float beta, int x0, int y0, int z0, int z, int zH, int xL, int xH, int yL, int yH, float2 pt, float2 pt1, float2 pt2, float2 pt3, float density, float density1, float density2, float density3, Callback callback)
 {
-    __shared__ float real_s[TILE];
-    __shared__ float imag_s[TILE];
-    __shared__ float kx_s[TILE];
-    __shared__ float ky_s[TILE];
-    __shared__ float kz_s[TILE];
-    __shared__ float sdc_s[TILE];
-
-    // figure out starting point of the tile
-    const int z0 = (4 * blockDim.z) * (gloop::logicalBlockIdx.y / (gridSize_c[1] / blockDim.y));
-    const int y0 = blockDim.y * (gloop::logicalBlockIdx.y % (gridSize_c[1] / blockDim.y));
-    const int x0 = gloop::logicalBlockIdx.x * blockDim.x;
-
-    const int xl = x0 - ceil(cutoff_c);
-    const int xL = (xl < 0) ? 0 : xl;
-    const int xh = x0 + blockDim.x + cutoff_c;
-    const int xH = (xh >= gridSize_c[0]) ? gridSize_c[0] - 1 : xh;
-
-    const int yl = y0 - ceil(cutoff_c);
-    const int yL = (yl < 0) ? 0 : yl;
-    const int yh = y0 + blockDim.y + cutoff_c;
-    const int yH = (yh >= gridSize_c[1]) ? gridSize_c[1] - 1 : yh;
-
-    const int zl = z0 - ceil(cutoff_c);
-    const int zL = (zl < 0) ? 0 : zl;
-    const int zh = z0 + (4 * blockDim.z) + cutoff_c;
-    const int zH = (zh >= gridSize_c[2]) ? gridSize_c[2] - 1 : zh;
-
-    float2 pt;
-    pt.x = 0.0;
-    pt.y = 0.0;
-    float density = 0.0;
-
-    float2 pt1;
-    pt1.x = 0.0;
-    pt1.y = 0.0;
-    float density1 = 0.0;
-
-    float2 pt2;
-    pt2.x = 0.0;
-    pt2.y = 0.0;
-    float density2 = 0.0;
-
-    float2 pt3;
-    pt3.x = 0.0;
-    pt3.y = 0.0;
-    float density3 = 0.0;
-
-    // These values are threadIdx related.
     const int flatIdx = threadIdx.z * blockDim.y * blockDim.x + threadIdx.y * blockDim.x + threadIdx.x;
 
     const int X = x0 + threadIdx.x;
@@ -163,17 +116,20 @@ __device__ void gridding_GPU(gloop::DeviceLoop* loop, sampleArrayStruct sortedSa
     const int Z2 = Z1 + blockDim.z;
     const int Z3 = Z2 + blockDim.z;
 
-    const int idx = Z * size_xy_c + Y * gridSize_c[0] + X;
-    const int idx1 = idx + blockDim.z * size_xy_c;
-    const int idx2 = idx1 + blockDim.z * size_xy_c;
-    const int idx3 = idx2 + blockDim.z * size_xy_c;
-
-    for (int z = zL; z <= zH; z++) {
+    for (;z <= zH; z++) {
         for (int y = yL; y <= yH; y++) {
             const unsigned int* addr = binStartAddr_g + z * size_xy_c + y * gridSize_c[0];
             const unsigned int start = *(addr + xL);
             const unsigned int end = *(addr + xH + 1);
             const unsigned int delta = end - start;
+
+            __shared__ float real_s[TILE];
+            __shared__ float imag_s[TILE];
+            __shared__ float kx_s[TILE];
+            __shared__ float ky_s[TILE];
+            __shared__ float kz_s[TILE];
+            __shared__ float sdc_s[TILE];
+
             for (int x = 0; x < ((delta + TILE - 1) >> LOG_TILE); x++) {
                 int tileSize = ((delta - (x << LOG_TILE)) > TILE) ? TILE : (delta - (x << LOG_TILE));
                 int globalIdx = flatIdx + (x << LOG_TILE);
@@ -235,17 +191,79 @@ __device__ void gridding_GPU(gloop::DeviceLoop* loop, sampleArrayStruct sortedSa
                 }
             }
         }
+
+        if (gloop::loop::postTaskIfNecessary(loop, [=] (gloop::DeviceLoop* loop) {
+                perform(loop, sortedSampleSoA_g, binStartAddr_g, beta, x0, y0, z0, z + 1, zH, xL, xH, yL, yH, pt, pt1, pt2, pt3, density, density1, density2, density3, callback);
+            })) {
+            return;
+        }
     }
 
-    gridData_g[idx] = pt;
-    sampleDensity_g[idx] = density;
+    callback(loop, x0, y0, z0, pt, pt1, pt2, pt3, density, density1, density2, density3);
+}
 
-    gridData_g[idx1] = pt1;
-    sampleDensity_g[idx1] = density1;
+__device__ void gridding_GPU(gloop::DeviceLoop* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta)
+{
+    // figure out starting point of the tile
+    const int z0 = (4 * blockDim.z) * (gloop::logicalBlockIdx.y / (gridSize_c[1] / blockDim.y));
+    const int y0 = blockDim.y * (gloop::logicalBlockIdx.y % (gridSize_c[1] / blockDim.y));
+    const int x0 = gloop::logicalBlockIdx.x * blockDim.x;
 
-    gridData_g[idx2] = pt2;
-    sampleDensity_g[idx2] = density2;
+    const int xl = x0 - ceil(cutoff_c);
+    const int xL = (xl < 0) ? 0 : xl;
+    const int xh = x0 + blockDim.x + cutoff_c;
+    const int xH = (xh >= gridSize_c[0]) ? gridSize_c[0] - 1 : xh;
 
-    gridData_g[idx3] = pt3;
-    sampleDensity_g[idx3] = density3;
+    const int yl = y0 - ceil(cutoff_c);
+    const int yL = (yl < 0) ? 0 : yl;
+    const int yh = y0 + blockDim.y + cutoff_c;
+    const int yH = (yh >= gridSize_c[1]) ? gridSize_c[1] - 1 : yh;
+
+    const int zl = z0 - ceil(cutoff_c);
+    const int zL = (zl < 0) ? 0 : zl;
+    const int zh = z0 + (4 * blockDim.z) + cutoff_c;
+    const int zH = (zh >= gridSize_c[2]) ? gridSize_c[2] - 1 : zh;
+
+    float2 pt;
+    pt.x = 0.0;
+    pt.y = 0.0;
+    float density = 0.0;
+
+    float2 pt1;
+    pt1.x = 0.0;
+    pt1.y = 0.0;
+    float density1 = 0.0;
+
+    float2 pt2;
+    pt2.x = 0.0;
+    pt2.y = 0.0;
+    float density2 = 0.0;
+
+    float2 pt3;
+    pt3.x = 0.0;
+    pt3.y = 0.0;
+    float density3 = 0.0;
+
+    perform(loop, sortedSampleSoA_g, binStartAddr_g, beta, x0, y0, z0, zL, zH, xL, xH, yL, yH, pt, pt1, pt2, pt3, density, density1, density2, density3, [=] (gloop::DeviceLoop* loop, int x0, int y0, int z0, float2 pt, float2 pt1, float2 pt2, float2 pt3, float density, float density1, float density2, float density3) {
+        const int X = x0 + threadIdx.x;
+        const int Y = y0 + threadIdx.y;
+        const int Z = z0 + threadIdx.z;
+
+        const int idx = Z * size_xy_c + Y * gridSize_c[0] + X;
+        const int idx1 = idx + blockDim.z * size_xy_c;
+        const int idx2 = idx1 + blockDim.z * size_xy_c;
+        const int idx3 = idx2 + blockDim.z * size_xy_c;
+
+        gridData_g[idx] = pt;
+        sampleDensity_g[idx] = density;
+
+        gridData_g[idx1] = pt1;
+        sampleDensity_g[idx1] = density1;
+
+        gridData_g[idx2] = pt2;
+        sampleDensity_g[idx2] = density2;
+
+        gridData_g[idx3] = pt3;
+        sampleDensity_g[idx3] = density3;
+    });
 }
