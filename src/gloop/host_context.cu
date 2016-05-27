@@ -32,25 +32,19 @@
 
 namespace gloop {
 
-static bool isZeroBlocks(dim3 blocks)
+std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 physicalBlocks, uint32_t pageCount)
 {
-    return (blocks.x * blocks.y) == 0;
-}
-
-std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 logicalBlocks, dim3 physicalBlocks, uint32_t pageCount)
-{
-    std::unique_ptr<HostContext> hostContext(new HostContext(hostLoop, logicalBlocks, physicalBlocks, pageCount));
+    std::unique_ptr<HostContext> hostContext(new HostContext(hostLoop, physicalBlocks, pageCount));
     if (!hostContext->initialize(hostLoop)) {
         return nullptr;
     }
     return hostContext;
 }
 
-HostContext::HostContext(HostLoop& hostLoop, dim3 logicalBlocks, dim3 physicalBlocks, uint32_t pageCount)
+HostContext::HostContext(HostLoop& hostLoop, dim3 physicalBlocks, uint32_t pageCount)
     : m_hostLoop(hostLoop)
-    , m_logicalBlocks(logicalBlocks)
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    , m_physicalBlocks(isZeroBlocks(physicalBlocks) ? logicalBlocks : physicalBlocks)
+    , m_physicalBlocks(physicalBlocks)
 #else
     , m_physicalBlocks(logicalBlocks)
 #endif
@@ -99,7 +93,6 @@ bool HostContext::initialize(HostLoop& hostLoop)
         m_kernel = MappedMemory::create(sizeof(DeviceContext::KernelContext));
 
         m_context.killClock = hostLoop.killClock();
-        m_context.logicalBlocks = m_logicalBlocks;
 
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.codes, m_codesMemory->mappedPointer(), 0));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.payloads, m_payloadsMemory->mappedPointer(), 0));
@@ -218,6 +211,16 @@ void HostContext::pollerMain()
             boost::this_thread::interruption_point();
         // }
     }
+}
+
+void HostContext::prologue(dim3 logicalBlocks)
+{
+    m_logicalBlocks = logicalBlocks;
+    m_context.logicalBlocks = m_logicalBlocks;
+}
+
+void HostContext::epilogue()
+{
 }
 
 }  // namespace gloop

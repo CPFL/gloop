@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
         dim3 blocks(nblocks);
         dim3 psblocks(physblocks);
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks, psblocks, pipelinePageCount);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, psblocks, pipelinePageCount);
 
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 
         gloop::Benchmark benchmark;
         benchmark.begin();
-        hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int trials) {
+        hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int trials) {
             throttle(loop, 0, trials);
         }, trials);
         benchmark.end();

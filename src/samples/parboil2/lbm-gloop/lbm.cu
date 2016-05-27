@@ -43,7 +43,7 @@ void CUDA_LBM_performStreamCollide(gloop::HostLoop& hostLoop, gloop::HostContext
     dimGrid.x = SIZE_Y;
     dimGrid.y = SIZE_Z;
     dimBlock.y = dimBlock.z = dimGrid.z = 1;
-    hostLoop.launch(hostContext, dimBlock, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, float* srcGrid, float* dstGrid) {
+    hostLoop.launch(hostContext, dimGrid, dimBlock, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, float* srcGrid, float* dstGrid) {
         performStreamCollide_kernel(loop, srcGrid, dstGrid);
     }, srcGrid, dstGrid);
 }

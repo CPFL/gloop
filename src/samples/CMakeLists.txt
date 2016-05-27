@@ -1,4 +1,3 @@
-#add_subdirectory(hello)
 #add_subdirectory(matmul_gpufs)
 add_subdirectory(matmul)
 #add_subdirectory(memcopy)

@@ -45,7 +45,7 @@ int main( int argc, char** argv)
         dim3 dimBlock(BLOCK_SIZE);
         dim3 dimGrid(NUM_SETS*2 + 1);
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid, dimGrid);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid);
 
         printf("Min distance: %f arcmin\n", min_arcmin);
         printf("Max distance: %f arcmin\n", max_arcmin);
@@ -136,7 +136,7 @@ int main( int argc, char** argv)
             // gloop::Benchmark benchmark;
             // cudaDeviceSynchronize();
             // benchmark.begin();
-            hostLoop->launch(*hostContext, dimBlock, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all_z_data, unsigned int NUM_SETS, unsigned int NUM_ELEMENTS) {
+            hostLoop->launch(*hostContext, dimGrid, dimBlock, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all_z_data, unsigned int NUM_SETS, unsigned int NUM_ELEMENTS) {
                 gen_hists(loop, histograms, all_x_data, all_y_data, all_z_data, NUM_SETS, NUM_ELEMENTS);
             }, d_hists, d_x_data, d_y_data, d_z_data, NUM_SETS, NUM_ELEMENTS);
             // FIXME.

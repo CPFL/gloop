@@ -32,7 +32,7 @@ int main( int nArgs, char* arg[] ) {
             dimGrid.x = SIZE_Y;
             dimGrid.y = SIZE_Z;
             dimBlock.y = dimBlock.z = dimGrid.z = 1;
-            std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid, dim3(90));
+            std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(90));
             {
                 struct pb_Parameters* params;
                 static LBM_GridPtr TEMP_srcGrid;

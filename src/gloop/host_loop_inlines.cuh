@@ -30,10 +30,12 @@
 namespace gloop {
 
 template<typename DeviceLambda, class... Args>
-void HostLoop::launch(HostContext& hostContext, dim3 threads, DeviceLambda callback, Args... args)
+void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
 {
     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
     benchmark->begin();
+
+    hostContext.prologue(logicalBlocks);
 
 #if 0
     {
@@ -66,6 +68,8 @@ void HostLoop::launch(HostContext& hostContext, dim3 threads, DeviceLambda callb
         });
         drain();
     }
+
+    hostContext.epilogue();
 }
 
 template<typename DeviceLambda, typename... Args>

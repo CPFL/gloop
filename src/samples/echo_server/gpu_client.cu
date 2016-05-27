@@ -99,7 +99,7 @@ int main(int argc, char** argv)
     gloop::Benchmark benchmark;
     benchmark.begin();
     {
-        hostLoop->launch(*hostContext, THREADS_PER_TB, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, struct sockaddr* address) {
+        hostLoop->launch(*hostContext, blocks, THREADS_PER_TB, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, struct sockaddr* address) {
             gpuMain(loop, (struct sockaddr_in*)address);
         }, dev_addr);
     }

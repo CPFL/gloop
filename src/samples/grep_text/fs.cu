@@ -75,7 +75,7 @@ int main( int argc, char** argv)
         dim3 physblocks(physnblocks);
 
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks, physblocks);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, physblocks);
 
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
@@ -92,7 +92,7 @@ int main( int argc, char** argv)
         }
         gloop::Benchmark benchmark;
         benchmark.begin();
-        hostLoop->launch(*hostContext, nthreads, [] __device__ (gloop::DeviceLoop* loop, char* src, char* out, char* dbs) {
+        hostLoop->launch(*hostContext, blocks, nthreads, [] __device__ (gloop::DeviceLoop* loop, char* src, char* out, char* dbs) {
             grep_text(loop, src, out, dbs);
         }, d_filenames[0], d_filenames[1], d_filenames[2]);
         benchmark.end();

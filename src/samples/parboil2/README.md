@@ -9,6 +9,6 @@
 - [ ] sad
 - [ ] sgemm
 - [ ] spmv
-- [ ] stencil
+- [x] stencil
 - [x] tpacf
 

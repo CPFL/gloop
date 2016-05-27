@@ -129,7 +129,7 @@ int main( int argc, char** argv)
         gloop::Benchmark benchmark;
         benchmark.begin();
         {
-            hostLoop->launch(*hostContext, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
+            hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
                 gpuMain(loop, src, dst);
             }, d_filenames[0], d_filenames[1]);
         }
