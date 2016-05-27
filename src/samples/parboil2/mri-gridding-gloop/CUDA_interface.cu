@@ -297,18 +297,27 @@ void CUDA_interface(
         gridding_GPU(loop, sortedSampleSoA_g, binStartAddr_g, gridData_g, sampleDensity_g, beta);
     }, sortedSampleSoA_d, binStartAddr_d, gridData_d, sampleDensity_d, beta);
 
-    pb_SwitchToTimer(timers, pb_TimerID_COMPUTE);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        pb_SwitchToTimer(timers, pb_TimerID_COMPUTE);
+    }
 
     qsort(CPUbin, CPUbin_size, sizeof(int), compare); //Sorting helps cache locality of input element array
     int num = gridding_CPU(n, params, sample, CPUbin, CPUbin_size, LUT, sizeLUT, &gridData_CPU, &sampleDensity_CPU, &indices_CPU);
 
-    pb_SwitchToTimer(timers, pb_TimerID_COPY);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        pb_SwitchToTimer(timers, pb_TimerID_COPY);
+    }
 
-    /* Copying the results from the Device to the Host */
-    cudaMemcpy(sampleDensity, sampleDensity_d, gridNumElems * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(gridData, gridData_d, gridNumElems * sizeof(float2), cudaMemcpyDeviceToHost);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        /* Copying the results from the Device to the Host */
+        cudaMemcpy(sampleDensity, sampleDensity_d, gridNumElems * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(gridData, gridData_d, gridNumElems * sizeof(float2), cudaMemcpyDeviceToHost);
 
-    pb_SwitchToTimer(timers, pb_TimerID_COMPUTE);
+        pb_SwitchToTimer(timers, pb_TimerID_COMPUTE);
+    }
 
     /* STEP 6: Computing the contributions of the sample points handled by the Host
    * and adding those to the GPU results.
@@ -325,15 +334,18 @@ void CUDA_interface(
         free(sampleDensity_CPU);
     }
 
-    pb_SwitchToTimer(timers, pb_TimerID_COPY);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        pb_SwitchToTimer(timers, pb_TimerID_COPY);
 
-    cudaFreeHost(CPUbin);
-    cudaFree(gridData_d);
-    cudaFree(sampleDensity_d);
-    cudaFree(binCount_d);
-    cudaFree(sortedSample_d);
+        cudaFreeHost(CPUbin);
+        cudaFree(gridData_d);
+        cudaFree(sampleDensity_d);
+        cudaFree(binCount_d);
+        cudaFree(sortedSample_d);
 
-    pb_SwitchToTimer(timers, pb_TimerID_NONE);
+        pb_SwitchToTimer(timers, pb_TimerID_NONE);
+    }
 
     return;
 }
