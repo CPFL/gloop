@@ -19,6 +19,7 @@ add_subdirectory(lbm-gloop)
 add_subdirectory(tpacf-gloop)
 add_subdirectory(stencil-gloop)
 add_subdirectory(mri-gridding-gloop)
+add_subdirectory(mri-q-gloop)
 
 # GLoop naive version.
 add_subdirectory(tpacf-naive-gloop)

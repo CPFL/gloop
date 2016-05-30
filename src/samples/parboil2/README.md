@@ -4,7 +4,7 @@
 - [ ] cutcp
 - [ ] histo
 - [x] lbm
-- [ ] mri-gridding
+- [x] mri-gridding
 - [ ] mri-q
 - [ ] sad
 - [ ] sgemm
