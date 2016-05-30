@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
   
   pb_SwitchToTimer(&timers, pb_TimerID_IO);
 
-  int numIterations;
+  int numIterations = 0;
   if (argc >= 2){
     numIterations = atoi(argv[1]);
   } else {
@@ -150,6 +150,7 @@ int main(int argc, char* argv[]) {
 
   pb_SwitchToTimer(&timers, pb_TimerID_KERNEL);
 
+  printf("iteration:(%d)\n", numIterations);
   for (int iter = 0; iter < numIterations; iter++) {
     unsigned int ranges_h[2] = {UINT32_MAX, 0};
 
