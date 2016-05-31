@@ -1,0 +1,68 @@
+yusukesuzuki@urara:~/dev/rodinia/cuda/b+tree$ nvprof ./b+tree.out file ../../data/b+tree/mil.txt command ../../data/b+tree/command.txt
+WG size of kernel 1 & 2  = 256
+==73673== NVPROF is profiling process 73673, command: ./b+tree.out file ../../data/b+tree/mil.txt command ../../data/b+tree/command.txt
+Selecting device 0
+Input File: ../../data/b+tree/mil.txt
+Command File: ../../data/b+tree/command.txt
+Command Buffer:
+j 6000 3000
+k 10000
+
+
+Getting input from file ../../data/b+tree/mil.txt...
+Transforming data to a GPU suitable structure...
+Tree transformation took 0.614887
+Waiting for command
+>
+******command: j count=6000, rSize=6000
+knodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432
+# of blocks = 6000, # of threads/block = 256 (ensure that device can handle)
+Time spent in different stages of GPU_CUDA KERNEL:
+ 0.278023004532 s, 98.275718688965 % : GPU: SET DEVICE / DRIVER INIT
+ 0.000507000019 s,  0.179214641452 % : GPU MEM: ALO
+ 0.003291999921 s,  1.163657903671 % : GPU MEM: COPY IN
+ 0.000641999999 s,  0.226934507489 % : GPU: KERNEL
+ 0.000059999998 s,  0.021208832040 % : GPU MEM: COPY OUT
+ 0.000376999989 s,  0.133262172341 % : GPU MEM: FRE
+Total time:
+0.282900989056 s
+> > > > > > > > > > > >
+ ******command: k count=10000
+records_elem=1000000, records_unit_mem=4, records_mem=4000000
+knodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432
+# of blocks = 10000, # of threads/block = 256 (ensure that device can handle)
+Time spent in different stages of GPU_CUDA KERNEL:
+ 0.000016000000 s,  0.276816606522 % : GPU: SET DEVICE / DRIVER INIT
+ 0.000708999985 s, 12.266436576843 % : GPU MEM: ALO
+ 0.003762000008 s, 65.086509704590 % : GPU MEM: COPY IN
+ 0.000698000018 s, 12.076124191284 % : GPU: KERNEL
+ 0.000037999998 s,  0.657439470291 % : GPU MEM: COPY OUT
+ 0.000556999992 s,  9.636678695679 % : GPU MEM: FRE
+Total time:
+0.005779999774 s
+> > > > > > > > > >
+==73673== Profiling application: ./b+tree.out file ../../data/b+tree/mil.txt command ../../data/b+tree/command.txt
+==73673== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 83.34%  6.2366ms        15  415.77us  5.3440us  2.8684ms  [CUDA memcpy HtoD]
+  8.65%  647.55us         1  647.55us  647.55us  647.55us  findK
+  7.76%  580.32us         1  580.32us  580.32us  580.32us  findRangeK
+  0.25%  18.624us         3  6.2080us  5.6320us  7.2960us  [CUDA memcpy DtoH]
+
+==73673== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 96.33%  279.24ms         4  69.809ms  8.8960us  278.00ms  cudaThreadSynchronize
+  2.46%  7.1281ms        18  396.01us  18.797us  3.0310ms  cudaMemcpy
+  0.40%  1.1706ms        15  78.037us  10.143us  220.53us  cudaMalloc
+  0.37%  1.0606ms       166  6.3890us     243ns  232.78us  cuDeviceGetAttribute
+  0.32%  925.96us        15  61.730us  9.1060us  175.90us  cudaFree
+  0.05%  131.63us         2  65.813us  65.236us  66.391us  cuDeviceTotalMem
+  0.03%  101.10us         2  50.550us  48.203us  52.897us  cuDeviceGetName
+  0.03%  78.918us         2  39.459us  38.414us  40.504us  cudaLaunch
+  0.01%  14.837us        35     423ns     301ns  1.2780us  cudaGetLastError
+  0.00%  10.424us         1  10.424us  10.424us  10.424us  cudaSetDevice
+  0.00%  9.9710us        19     524ns     293ns  3.3880us  cudaSetupArgument
+  0.00%  2.1220us         2  1.0610us     857ns  1.2650us  cudaConfigureCall
+  0.00%  2.0540us         2  1.0270us     613ns  1.4410us  cuDeviceGetCount
+  0.00%  1.7820us         4     445ns     255ns     638ns  cuDeviceGet
+

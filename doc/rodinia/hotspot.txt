@@ -1,0 +1,30 @@
+WG size of kernel = 16 X 16
+pyramidHeight: 2
+gridSize: [512, 512]
+border:[2, 2]
+blockGrid:[43, 43]
+targetBlock:[12, 12]
+==74643== NVPROF is profiling process 74643, command: ./hotspot 512 2 2 ../../data/hotspot/temp_512 ../../data/hotspot/power_512 output.out
+Start computing the transient temperature
+Ending simulation
+==74643== Profiling application: ./hotspot 512 2 2 ../../data/hotspot/temp_512 ../../data/hotspot/power_512 output.out
+==74643== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 40.78%  217.47us         2  108.74us  108.64us  108.83us  [CUDA memcpy HtoD]
+ 38.61%  205.92us         1  205.92us  205.92us  205.92us  calculate_temp(int, float*, float*, float*, int, int, int, int, float, float, float, float, float, float)
+ 20.62%  109.95us         1  109.95us  109.95us  109.95us  [CUDA memcpy DtoH]
+
+==74643== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 98.60%  218.02ms         3  72.672ms  136.33us  217.73ms  cudaMalloc
+  0.65%  1.4363ms         3  478.78us  191.71us  1.0474ms  cudaMemcpy
+  0.48%  1.0597ms       166  6.3830us     247ns  232.86us  cuDeviceGetAttribute
+  0.15%  325.59us         3  108.53us  90.002us  143.82us  cudaFree
+  0.06%  131.32us         2  65.661us  65.033us  66.290us  cuDeviceTotalMem
+  0.05%  100.63us         2  50.313us  48.128us  52.498us  cuDeviceGetName
+  0.02%  33.625us         1  33.625us  33.625us  33.625us  cudaLaunch
+  0.00%  6.7800us        14     484ns     243ns  2.6590us  cudaSetupArgument
+  0.00%  1.9610us         2     980ns     578ns  1.3830us  cuDeviceGetCount
+  0.00%  1.6860us         4     421ns     264ns     642ns  cuDeviceGet
+  0.00%  1.6540us         1  1.6540us  1.6540us  1.6540us  cudaConfigureCall
+

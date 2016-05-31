@@ -14,26 +14,28 @@
 | spmv           | parboil2 |   |   |
 | stencil        | parboil2 |   | x |
 | tpacf          | parboil2 | x |   |
+
 | backprop       | rodinia  |   |   |
 | bfs            | rodinia  |   |   |
 | b+tree         | rodinia  |   |   |
-| cfd            | rodinia  |   |   |
+| cfd            | rodinia  |   | x |
 | dwt2d          | rodinia  |   |   |
 | gaussian       | rodinia  |   |   |
 | heartwall      | rodinia  |   |   |
-| hotspot        | rodinia  |   |   |
+| hotspot        | rodinia  |   | x |
 | hotspot3D      | rodinia  |   |   |
 | huffman        | rodinia  |   |   |
-| hybridsort     | rodinia  |   |   |
+| hybridsort     | rodinia  | x |   |
 | kmeans         | rodinia  |   |   |
-| lavaMD         | rodinia  |   |   |
+| lavaMD         | rodinia  | x |   |
 | leukocyte      | rodinia  |   |   |
 | lud            | rodinia  |   |   |
 | mummergpu      | rodinia  | x |   |
-| myocyte        | rodinia  |   |   |
+| myocyte        | rodinia  |   | x |
 | nn             | rodinia  |   |   |
-| nw             | rodinia  |   |   |
+| nw             | rodinia  |   | x |
 | particlefilter | rodinia  |   |   |
 | pathfinder     | rodinia  |   |   |
-| srad           | rodinia  |   |   |
+| srad\_v1       | rodinia  |   | x |
+| srad\_v2       | rodinia  |   |   |
 | streamcluster  | rodinia  |   |   |

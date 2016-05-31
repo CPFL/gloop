@@ -1,0 +1,43 @@
+yusukesuzuki@urara:~/dev/rodinia/cuda/cfd$ nvprof ./euler3d ../../data/cfd/missile.domn.0.2M
+WG size of kernel:initialize = 192, WG size of kernel:compute_step_factor = 192, WG size of kernel:compute_flux = 192, WG size of kernel:time_step = 192
+==73937== NVPROF is profiling process 73937, command: ./euler3d ../../data/cfd/missile.domn.0.2M
+Name:                     GeForce GTX TITAN Z
+Starting...
+0.00177319 seconds per iteration
+Saving solution...
+Saved solution...
+Cleaning up...
+Done...
+==73937== Profiling application: ./euler3d ../../data/cfd/missile.domn.0.2M
+==73937== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 85.65%  2.93116s      6000  488.53us  467.07us  701.63us  cuda_compute_flux(int, int*, float*, float*, float*)
+ 11.39%  389.86ms      6000  64.977us  63.680us  77.472us  cuda_time_step(int, int, float*, float*, float*, float*)
+  2.64%  90.303ms      2000  45.151us  43.008us  65.792us  cuda_compute_step_factor(int, float*, float*, float*)
+  0.22%  7.5176ms      2000  3.7580us  3.5840us  4.9920us  [CUDA memcpy DtoD]
+  0.06%  2.1604ms         8  270.05us  1.0880us  1.5565ms  [CUDA memcpy HtoD]
+  0.03%  1.1779ms         1  1.1779ms  1.1779ms  1.1779ms  [CUDA memcpy DtoH]
+  0.00%  60.736us         3  20.245us  19.904us  20.480us  cuda_initialize_variables(int, float*)
+  0.00%  16.736us         1  16.736us  16.736us  16.736us  [CUDA memset]
+
+==73937== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 59.59%  2.26068s     14003  161.44us  3.6350us  1.4913ms  cudaLaunch
+ 27.88%  1.05781s      2004  527.85us  7.6240us  1.6988ms  cudaMemcpy
+  6.77%  256.98ms         5  51.396ms  5.5710us  256.95ms  cudaMemcpyToSymbol
+  5.13%  194.51ms         2  97.256ms  51.466us  194.46ms  cudaThreadSynchronize
+  0.33%  12.677ms     74006     171ns     125ns  388.27us  cudaSetupArgument
+  0.13%  4.7585ms     28003     169ns     119ns  350.59us  cudaGetLastError
+  0.07%  2.8266ms     14003     201ns     129ns  398.74us  cudaConfigureCall
+  0.03%  1.0824ms       166  6.5200us     249ns  249.77us  cuDeviceGetAttribute
+  0.02%  900.76us         7  128.68us  102.55us  181.54us  cudaMalloc
+  0.02%  719.04us         7  102.72us  79.436us  172.11us  cudaFree
+  0.01%  515.32us         1  515.32us  515.32us  515.32us  cudaGetDeviceProperties
+  0.00%  132.11us         2  66.055us  65.099us  67.012us  cuDeviceTotalMem
+  0.00%  101.24us         2  50.621us  48.300us  52.943us  cuDeviceGetName
+  0.00%  10.895us         1  10.895us  10.895us  10.895us  cudaMemset
+  0.00%  9.6060us         1  9.6060us  9.6060us  9.6060us  cudaSetDevice
+  0.00%  1.9670us         2     983ns     687ns  1.2800us  cuDeviceGetCount
+  0.00%  1.8700us         4     467ns     321ns     656ns  cuDeviceGet
+  0.00%  1.7210us         1  1.7210us  1.7210us  1.7210us  cudaGetDevice
+

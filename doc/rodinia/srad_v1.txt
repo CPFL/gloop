@@ -1,0 +1,42 @@
+==77062== NVPROF is profiling process 77062, command: ./srad 100 0.5 502 458
+Time spent in different stages of the application:
+ 0.000000000000 s,  0.000000000000 % : SETUP VARIABLES
+ 0.000012000000 s,  0.002558499109 % : READ COMMAND LINE PARAMETERS
+ 0.062056999654 s, 13.231064796448 % : READ IMAGE FROM FILE
+ 0.001018999959 s,  0.217259213328 % : RESIZE IMAGE
+ 0.346578985453 s, 73.893508911133 % : GPU DRIVER INIT, CPU/GPU SETUP, MEMORY ALLOCATION
+ 0.000144999998 s,  0.030915196985 % : COPY DATA TO CPU->GPU
+ 0.000039999999 s,  0.008528330363 % : EXTRACT IMAGE
+ 0.031810998917 s,  6.782367706299 % : COMPUTE
+ 0.000010000000 s,  0.002132082591 % : COMPRESS IMAGE
+ 0.000350999995 s,  0.074836090207 % : COPY DATA TO GPU->CPU
+ 0.025979999453 s,  5.539150714874 % : SAVE IMAGE INTO FILE
+ 0.001020999975 s,  0.217685610056 % : FREE MEMORY
+Total time:
+0.469024986029 s
+==77062== Profiling application: ./srad 100 0.5 502 458
+==77062== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 39.39%  10.519ms       200  52.594us  46.751us  58.848us  reduce(long, int, int, float*, float*)
+ 32.61%  8.7086ms       100  87.085us  86.239us  88.576us  srad(float, int, int, long, int*, int*, int*, int*, float*, float*, float*, float*, float, float*, float*)
+ 18.99%  5.0718ms       100  50.717us  50.144us  51.808us  srad2(float, int, int, long, int*, int*, int*, int*, float*, float*, float*, float*, float*, float*)
+  6.28%  1.6770ms       100  16.769us  15.680us  17.312us  prepare(long, float*, float*, float*)
+  2.23%  595.74us       201  2.9630us  2.4630us  95.040us  [CUDA memcpy DtoH]
+  0.38%  101.86us         5  20.371us  1.4400us  95.807us  [CUDA memcpy HtoD]
+  0.06%  16.000us         1  16.000us  16.000us  16.000us  extract(long, float*)
+  0.06%  15.551us         1  15.551us  15.551us  15.551us  compress(long, float*)
+
+==77062== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 86.80%  219.61ms        12  18.301ms  8.3970us  218.51ms  cudaMalloc
+ 10.44%  26.410ms       206  128.21us  5.8200us  349.54us  cudaMemcpy
+  1.36%  3.4472ms       502  6.8660us  5.8020us  29.856us  cudaLaunch
+  0.41%  1.0467ms       166  6.3050us     228ns  242.35us  cuDeviceGetAttribute
+  0.37%  939.32us      4304     218ns     190ns  6.5430us  cudaSetupArgument
+  0.37%  926.56us        12  77.213us  6.3860us  184.09us  cudaFree
+  0.11%  284.29us      1104     257ns     190ns  16.423us  cudaGetLastError
+  0.05%  127.58us         2  63.789us  63.275us  64.303us  cuDeviceTotalMem
+  0.05%  122.88us       502     244ns     215ns  1.0000us  cudaConfigureCall
+  0.04%  99.641us         2  49.820us  47.003us  52.638us  cuDeviceGetName
+  0.00%  2.0450us         2  1.0220us     657ns  1.3880us  cuDeviceGetCount
+  0.00%  1.6440us         4     411ns     228ns     569ns  cuDeviceGet

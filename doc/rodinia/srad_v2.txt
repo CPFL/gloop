@@ -1,0 +1,27 @@
+WG size of kernel = 16 X 16
+==77147== NVPROF is profiling process 77147, command: ./srad 2048 2048 0 127 0 127 0.5 2
+Randomizing the input matrix
+Start the SRAD main loop
+Computation Done
+==77147== Profiling application: ./srad 2048 2048 0 127 0 127 0.5 2
+==77147== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 36.92%  4.8332ms         2  2.4166ms  2.2836ms  2.5496ms  [CUDA memcpy HtoD]
+ 27.44%  3.5916ms         2  1.7958ms  1.7690ms  1.8226ms  [CUDA memcpy DtoH]
+ 21.60%  2.8280ms         2  1.4140ms  1.4128ms  1.4153ms  srad_cuda_1(float*, float*, float*, float*, float*, float*, int, int, float)
+ 14.03%  1.8368ms         2  918.39us  916.98us  919.80us  srad_cuda_2(float*, float*, float*, float*, float*, float*, int, int, float, float)
+
+==77147== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 93.96%  241.58ms         6  40.263ms  124.68us  240.70ms  cudaMalloc
+  5.28%  13.574ms         4  3.3936ms  2.2954ms  4.3342ms  cudaMemcpy
+  0.39%  993.52us       166  5.9850us     210ns  218.75us  cuDeviceGetAttribute
+  0.25%  636.11us         6  106.02us  87.098us  154.92us  cudaFree
+  0.05%  135.39us         2  67.695us  61.477us  73.913us  cuDeviceTotalMem
+  0.04%  93.879us         2  46.939us  45.227us  48.652us  cuDeviceGetName
+  0.03%  76.445us         4  19.111us  6.7610us  38.605us  cudaLaunch
+  0.01%  14.199us        38     373ns     170ns  6.4190us  cudaSetupArgument
+  0.00%  5.3910us         1  5.3910us  5.3910us  5.3910us  cudaThreadSynchronize
+  0.00%  3.4380us         4     859ns     258ns  1.8460us  cudaConfigureCall
+  0.00%  1.9070us         2     953ns     509ns  1.3980us  cuDeviceGetCount
+  0.00%  1.5790us         4     394ns     251ns     596ns  cuDeviceGet

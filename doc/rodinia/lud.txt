@@ -1,0 +1,31 @@
+WG size of kernel = 16 X 16
+Generate input matrix internally, size =256
+Creating matrix internally size=256
+Before LUD
+==76358== NVPROF is profiling process 76358, command: cuda/lud_cuda -s 256 -v
+Time consumed(ms): 2.001000
+After LUD
+>>>Verify<<<<
+==76358== Profiling application: cuda/lud_cuda -s 256 -v
+==76358== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 53.78%  924.73us        15  61.648us  61.376us  62.687us  lud_perimeter(float*, int, int)
+ 37.93%  652.06us        16  40.753us  40.448us  41.248us  lud_diagonal(float*, int, int)
+  4.84%  83.199us        15  5.5460us  2.6880us  11.072us  lud_internal(float*, int, int)
+  1.75%  30.144us         1  30.144us  30.144us  30.144us  [CUDA memcpy HtoD]
+  1.70%  29.184us         1  29.184us  29.184us  29.184us  [CUDA memcpy DtoH]
+
+==76358== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 98.50%  216.57ms         1  216.57ms  216.57ms  216.57ms  cudaMalloc
+  0.72%  1.5791ms         2  789.55us  61.588us  1.5175ms  cudaMemcpy
+  0.44%  966.29us       166  5.8210us     172ns  230.01us  cuDeviceGetAttribute
+  0.15%  327.72us        46  7.1240us  6.2440us  24.898us  cudaLaunch
+  0.08%  167.67us         1  167.67us  167.67us  167.67us  cudaFree
+  0.05%  118.95us         2  59.473us  57.570us  61.376us  cuDeviceTotalMem
+  0.04%  92.694us         2  46.347us  42.835us  49.859us  cuDeviceGetName
+  0.01%  32.456us       138     235ns     214ns     732ns  cudaSetupArgument
+  0.01%  13.648us        46     296ns     253ns  1.2720us  cudaConfigureCall
+  0.00%  1.4680us         2     734ns     506ns     962ns  cuDeviceGetCount
+  0.00%  1.3690us         4     342ns     201ns     469ns  cuDeviceGet
+

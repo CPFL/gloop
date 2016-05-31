@@ -1,0 +1,35 @@
+thread block size of kernel = 128
+Configuration used: boxes1d = 10
+==75393== NVPROF is profiling process 75393, command: ./lavaMD -boxes1d 10
+Time spent in different stages of GPU_CUDA KERNEL:
+ 0.372444003820 s, 76.023254394531 % : GPU: SET DEVICE / DRIVER INIT
+ 0.000928000023 s,  0.189423322678 % : GPU MEM: ALO
+ 0.001665999996 s,  0.340063840151 % : GPU MEM: COPY IN
+ 0.113963000476 s, 23.262123107910 % : GPU: KERNEL
+ 0.000486000004 s,  0.099202305079 % : GPU MEM: COPY OUT
+ 0.000421000004 s,  0.085934504867 % : GPU MEM: FRE
+Total time:
+0.489908009768 s
+==75393== Profiling application: ./lavaMD -boxes1d 10
+==75393== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 98.68%  113.84ms         1  113.84ms  113.84ms  113.84ms  kernel_gpu_cuda(par_str, dim_str, box_str*, FOUR_VECTOR*, double*, FOUR_VECTOR*)
+  1.00%  1.1510ms         4  287.76us  69.471us  517.79us  [CUDA memcpy HtoD]
+  0.32%  370.72us         1  370.72us  370.72us  370.72us  [CUDA memcpy DtoH]
+
+==75393== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 98.67%  357.57ms         2  178.78ms  113.91ms  243.66ms  cudaThreadSynchronize
+  0.59%  2.1469ms         5  429.38us  136.68us  666.16us  cudaMemcpy
+  0.29%  1.0593ms       166  6.3810us     241ns  233.23us  cuDeviceGetAttribute
+  0.25%  910.61us         4  227.65us  150.33us  348.04us  cudaMalloc
+  0.12%  417.02us         4  104.26us  88.696us  143.40us  cudaFree
+  0.04%  131.90us         2  65.951us  65.387us  66.516us  cuDeviceTotalMem
+  0.03%  114.51us         2  57.254us  48.259us  66.250us  cuDeviceGetName
+  0.01%  40.097us         1  40.097us  40.097us  40.097us  cudaLaunch
+  0.00%  5.2050us         6     867ns     243ns  3.4520us  cudaSetupArgument
+  0.00%  2.4320us         2  1.2160us     885ns  1.5470us  cuDeviceGetCount
+  0.00%  1.7080us         4     427ns     274ns     601ns  cuDeviceGet
+  0.00%  1.6370us         1  1.6370us  1.6370us  1.6370us  cudaConfigureCall
+  0.00%     762ns         1     762ns     762ns     762ns  cudaGetLastError
+
