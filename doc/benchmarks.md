@@ -14,7 +14,6 @@
 | spmv           | parboil2 |   |   |
 | stencil        | parboil2 |   | x |
 | tpacf          | parboil2 | x |   |
-
 | backprop       | rodinia  |   |   |
 | bfs            | rodinia  |   |   |
 | b+tree         | rodinia  |   |   |
