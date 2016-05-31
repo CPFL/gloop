@@ -6,12 +6,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler ${OpenMP_CXX_FLAGS}")
 
 include_directories(src)
-add_executable(mummergpu
+add_executable(mummergpu-gloop
     src/mummergpu.cu
     src/mummergpu_gold.cpp
     src/mummergpu_main.cpp
     src/PoolMalloc.cpp
     src/suffix-tree.cpp
 )
-set_target_properties(mummergpu PROPERTIES LINKER_LANGUAGE CUDA)
-target_link_libraries(mummergpu ${GLOOP_CUDA_RUNTIME_LIBS})
+set_target_properties(mummergpu-gloop PROPERTIES LINKER_LANGUAGE CUDA)
+target_link_libraries(mummergpu-gloop gloop ${GLOOP_CUDA_RUNTIME_LIBS})
