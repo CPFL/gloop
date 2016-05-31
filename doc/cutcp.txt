@@ -1,0 +1,53 @@
+read 96603 atoms from file '/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/cutcp/large/input/watbox.sl100.pqr'
+extent of domain is:
+  minimum -49.998 -49.997 -49.996
+  maximum 50 49.99 49.971
+padding domain by 0.5 Angstroms
+domain lengths are 100.998 by 100.987 by 100.967
+==71263== NVPROF is profiling process 71263, command: /home/yusukesuzuki/dev/parboil2-gloop/benchmarks/cutcp/build/cuda_nvcc/cutcp -i /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/cutcp/large/input/watbox.sl100.pqr -o /home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/cutcp/run/large/lattice.d
+Invoking CUDA kernel on 26 region planes...
+computing extra atoms on CPU
+
+Finished CUDA kernel calls
+
+IO        : 0.319716
+Kernel    : 0.162877
+Copy      : 0.404492
+Driver    : 0.000662
+Compute   : 1.872506
+CPU/Kernel Overlap: 0.162877
+Timer Wall Time: 2.597402
+==71263== Profiling application: /home/yusukesuzuki/dev/parboil2-gloop/benchmarks/cutcp/build/cuda_nvcc/cutcp -i /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/cutcp/large/input/watbox.sl100.pqr -o /home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/cutcp/run/large/lattice.d
+==71263== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 89.44%  162.73ms        26  6.2587ms  3.0332ms  6.9195ms  cuda_cutoff_potential_lattice6overlap(int, int, float4*, float, float, float, float*, int)
+  9.97%  18.135ms         1  18.135ms  18.135ms  18.135ms  [CUDA memcpy DtoH]
+  0.51%  922.61us         3  307.54us  1.5360us  919.18us  [CUDA memcpy HtoD]
+  0.09%  164.19us         1  164.19us  164.19us  164.19us  [CUDA memset]
+
+==71263== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 92.31%  262.17ms         2  131.08ms  199.11us  261.97ms  cudaMalloc
+  6.97%  19.783ms         2  9.8917ms  1.1534ms  18.630ms  cudaMemcpy
+  0.32%  913.99us       166  5.5050us     203ns  200.47us  cuDeviceGetAttribute
+  0.12%  334.12us        26  12.850us  11.149us  36.036us  cudaLaunch
+  0.09%  242.19us         2  121.09us  86.041us  156.15us  cudaFree
+  0.04%  126.02us         2  63.011us  56.337us  69.686us  cuDeviceTotalMem
+  0.04%  122.68us         2  61.342us  11.125us  111.56us  cudaMemcpyToSymbol
+  0.03%  85.840us         2  42.920us  41.437us  44.403us  cuDeviceGetName
+  0.03%  80.859us       208     388ns     347ns  3.0470us  cudaSetupArgument
+  0.01%  38.779us         1  38.779us  38.779us  38.779us  cudaStreamCreate
+  0.01%  38.395us         1  38.395us  38.395us  38.395us  cudaMemset
+  0.01%  17.978us        26     691ns     602ns  1.5960us  cudaConfigureCall
+  0.01%  16.895us         1  16.895us  16.895us  16.895us  cudaStreamDestroy
+  0.00%  14.105us         1  14.105us  14.105us  14.105us  cudaStreamSynchronize
+  0.00%  10.745us         2  5.3720us  4.4070us  6.3380us  cudaEventRecord
+  0.00%  7.4640us         2  3.7320us  3.6350us  3.8290us  cudaEventCreate
+  0.00%  6.8380us         8     854ns     635ns  1.4040us  cudaGetLastError
+  0.00%  5.4560us         1  5.4560us  5.4560us  5.4560us  cudaThreadSynchronize
+  0.00%  2.4820us         1  2.4820us  2.4820us  2.4820us  cudaEventElapsedTime
+  0.00%  2.3640us         1  2.3640us  2.3640us  2.3640us  cudaEventQuery
+  0.00%  1.4470us         2     723ns     545ns     902ns  cuDeviceGetCount
+  0.00%  1.2460us         4     311ns     245ns     407ns  cuDeviceGet
+  0.00%  1.0080us         1  1.0080us  1.0080us  1.0080us  cudaEventSynchronize
+

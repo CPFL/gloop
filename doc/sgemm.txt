@@ -1,0 +1,42 @@
+Opening file:/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/sgemm/medium/input/matrix1.txt
+Matrix dimension: 1024x992
+Opening file:/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/sgemm/medium/input/matrix2t.txt
+Matrix dimension: 1056x992
+==72146== NVPROF is profiling process 72146, command: /home/yusukesuzuki/dev/parboil2-gloop/benchmarks/sgemm/build/cuda_nvcc/sgemm -i /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/sgemm/medium/input/matrix1.txt,/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/sgemm/medium/input/matrix2t.txt,/h
+Opening file:/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/sgemm/run/medium/matrix3.txt for write.
+Matrix dimension: 1024x1056
+GFLOPs = 627.673
+IO        : 1.873239
+Kernel    : 0.003418
+Copy      : 0.002176
+Driver    : 0.000063
+Compute   : 0.340157
+CPU/Kernel Overlap: 0.000077
+Timer Wall Time: 2.219147
+==72146== Profiling application: /home/yusukesuzuki/dev/parboil2-gloop/benchmarks/sgemm/build/cuda_nvcc/sgemm -i /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/sgemm/medium/input/matrix1.txt,/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/sgemm/medium/input/matrix2t.txt,/h
+==72146== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 65.32%  3.4116ms         1  3.4116ms  3.4116ms  3.4116ms  mysgemmNT(float const *, int, float const *, int, float*, int, int, float, float)
+ 24.96%  1.3036ms         2  651.78us  627.48us  676.08us  [CUDA memcpy HtoD]
+  9.72%  507.64us         1  507.64us  507.64us  507.64us  [CUDA memcpy DtoH]
+
+==72146== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 96.65%  212.77ms         3  70.924ms  125.96us  212.52ms  cudaMalloc
+  1.57%  3.4498ms         1  3.4498ms  3.4498ms  3.4498ms  cudaEventSynchronize
+  0.99%  2.1708ms         3  723.60us  630.78us  825.83us  cudaMemcpy
+  0.48%  1.0616ms       166  6.3940us     252ns  232.51us  cuDeviceGetAttribute
+  0.16%  354.34us         3  118.11us  90.944us  154.67us  cudaFree
+  0.06%  132.10us         2  66.048us  65.406us  66.690us  cuDeviceTotalMem
+  0.05%  116.28us         2  58.142us  48.465us  67.819us  cuDeviceGetName
+  0.02%  43.206us         1  43.206us  43.206us  43.206us  cudaLaunch
+  0.00%  8.3040us         1  8.3040us  8.3040us  8.3040us  cudaEventElapsedTime
+  0.00%  6.4040us         2  3.2020us  2.1380us  4.2660us  cudaEventRecord
+  0.00%  6.3880us         2  3.1940us  1.3680us  5.0200us  cudaEventCreate
+  0.00%  6.2630us         9     695ns     212ns  3.9040us  cudaSetupArgument
+  0.00%  2.1010us         2  1.0500us     607ns  1.4940us  cuDeviceGetCount
+  0.00%  2.0660us         1  2.0660us  2.0660us  2.0660us  cudaEventQuery
+  0.00%  1.7500us         4     437ns     252ns     696ns  cuDeviceGet
+  0.00%  1.5190us         1  1.5190us  1.5190us  1.5190us  cudaConfigureCall
+  0.00%     803ns         1     803ns     803ns     803ns  cudaGetLastError
+

@@ -1,0 +1,39 @@
+==71202== NVPROF is profiling process 71202, command: /home/yusukesuzuki/dev/parboil2-gloop/benchmarks/bfs/build/cuda_nvcc/bfs -i /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/bfs/SF/input/graph_input.dat -o /home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/bfs/run/SF/bfs.out
+Starting GPU kernel
+GPU kernel done
+IO        : 1.808760
+Kernel    : 0.029732
+Copy      : 0.410600
+Driver    : 0.029732
+CPU/Kernel Overlap: 0.029759
+Timer Wall Time: 2.249139
+==71202== Profiling application: /home/yusukesuzuki/dev/parboil2-gloop/benchmarks/bfs/build/cuda_nvcc/bfs -i /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/bfs/SF/input/graph_input.dat -o /home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/bfs/run/SF/bfs.out
+==71202== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 63.57%  28.167ms         2  14.084ms  140.77us  28.026ms  BFS_kernel_multi_blk_inGPU(int*, int*, int2*, int2*, int*, int*, int*, int*, int, int, int*, int*, int*, int*)
+ 31.48%  13.950ms        17  820.57us  1.0880us  10.597ms  [CUDA memcpy HtoD]
+  3.18%  1.4082ms        15  93.879us  2.4640us  726.58us  [CUDA memcpy DtoH]
+  1.61%  714.80us         2  357.40us  351.74us  363.07us  BFS_kernel(int*, int*, int2*, int2*, int*, int*, int, int*, int, int, int*)
+  0.15%  66.078us         1  66.078us  66.078us  66.078us  BFS_in_GPU_kernel(int*, int*, int2*, int2*, int*, int*, int, int*, int, int, int*)
+
+==71202== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 84.56%  262.01ms        14  18.715ms  10.257us  260.68ms  cudaMalloc
+ 14.72%  45.599ms        32  1.4250ms  6.8780us  28.042ms  cudaMemcpy
+  0.34%  1.0623ms       166  6.3990us     246ns  233.43us  cuDeviceGetAttribute
+  0.19%  585.14us         9  65.015us  9.7250us  163.74us  cudaFree
+  0.07%  232.10us         5  46.419us  24.820us  122.17us  cudaLaunch
+  0.04%  132.41us         2  66.204us  65.435us  66.973us  cuDeviceTotalMem
+  0.03%  101.13us         2  50.563us  48.450us  52.677us  cuDeviceGetName
+  0.02%  55.726us         2  27.863us  3.1900us  52.536us  cudaThreadSynchronize
+  0.01%  26.159us        61     428ns     317ns  4.9920us  cudaSetupArgument
+  0.00%  13.065us         2  6.5320us  3.4170us  9.6480us  cudaBindTexture
+  0.00%  10.630us         2  5.3150us  3.9840us  6.6460us  cudaEventRecord
+  0.00%  8.4760us         2  4.2380us  3.1320us  5.3440us  cudaEventCreate
+  0.00%  4.4180us         2  2.2090us     985ns  3.4330us  cudaUnbindTexture
+  0.00%  4.1920us         5     838ns     501ns  1.7420us  cudaConfigureCall
+  0.00%  2.6010us         1  2.6010us  2.6010us  2.6010us  cudaEventElapsedTime
+  0.00%  2.0210us         2  1.0100us     607ns  1.4140us  cuDeviceGetCount
+  0.00%  1.9420us         1  1.9420us  1.9420us  1.9420us  cudaEventSynchronize
+  0.00%  1.8140us         4     453ns     269ns     633ns  cuDeviceGet
+  0.00%  1.6610us         1  1.6610us  1.6610us  1.6610us  cudaEventQuery

@@ -1,0 +1,41 @@
+CUDA accelerated 7 points stencil codes****
+Original version by Li-Wen Chang <lchang20@illinois.edu> and I-Jui Sung<sung10@illinois.edu>
+This version maintained by Chris Rodrigues  ***********
+==72314== NVPROF is profiling process 72314, command: /home/yusukesuzuki/dev/parboil2-gloop/benchmarks/stencil/build/cuda_nvcc/stencil -i /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/stencil/default/input/512x512x64x100.bin -o /home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/stencil/run/def
+IO        : 0.426228
+Kernel    : 0.149800
+Copy      : 0.402683
+Driver    : 0.000824
+Compute   : 0.004252
+CPU/Kernel Overlap: 0.000838
+Timer Wall Time: 0.983697
+==72314== Profiling application: /home/yusukesuzuki/dev/parboil2-gloop/benchmarks/stencil/build/cuda_nvcc/stencil -i /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/stencil/default/input/512x512x64x100.bin -o /home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/stencil/run/def
+==72314== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 70.70%  149.49ms       100  1.4949ms  1.4742ms  1.5208ms  block2D_hybrid_coarsen_x(float, float, float*, float*, int, int, int)
+ 24.19%  51.146ms         1  51.146ms  51.146ms  51.146ms  [CUDA memcpy DtoH]
+  4.67%  9.8733ms         1  9.8733ms  9.8733ms  9.8733ms  [CUDA memcpy HtoD]
+  0.31%  647.54us         1  647.54us  647.54us  647.54us  [CUDA memcpy DtoD]
+  0.14%  300.92us         1  300.92us  300.92us  300.92us  [CUDA memset]
+
+==72314== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 49.73%  212.09ms         2  106.04ms  150.03us  211.94ms  cudaMalloc
+ 35.10%  149.67ms         1  149.67ms  149.67ms  149.67ms  cudaEventSynchronize
+ 14.61%  62.320ms         3  20.773ms  33.113us  52.043ms  cudaMemcpy
+  0.27%  1.1362ms       166  6.8440us     226ns  308.16us  cuDeviceGetAttribute
+  0.12%  524.35us       100  5.2430us  4.7810us  20.721us  cudaLaunch
+  0.06%  276.98us         2  138.49us  123.29us  153.69us  cudaFree
+  0.03%  131.52us         2  65.761us  65.620us  65.903us  cuDeviceTotalMem
+  0.03%  127.01us       700     181ns     170ns  2.9770us  cudaSetupArgument
+  0.02%  103.46us         2  51.730us  51.333us  52.128us  cuDeviceGetName
+  0.01%  22.996us       100     229ns     214ns  1.2390us  cudaConfigureCall
+  0.01%  21.990us         2  10.995us  4.3320us  17.658us  cudaEventRecord
+  0.00%  20.512us         1  20.512us  20.512us  20.512us  cudaMemset
+  0.00%  6.3540us         2  3.1770us  1.4910us  4.8630us  cudaEventCreate
+  0.00%  4.0840us         1  4.0840us  4.0840us  4.0840us  cudaEventElapsedTime
+  0.00%  2.6480us         1  2.6480us  2.6480us  2.6480us  cudaEventQuery
+  0.00%  2.0800us         2  1.0400us     674ns  1.4060us  cuDeviceGetCount
+  0.00%  1.6810us         4     420ns     249ns     558ns  cuDeviceGet
+  0.00%     489ns         1     489ns     489ns     489ns  cudaGetLastError
+
