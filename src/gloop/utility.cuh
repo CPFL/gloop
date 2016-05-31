@@ -23,9 +23,23 @@
 */
 #ifndef GLOOP_UTILITY_CU_H_
 #define GLOOP_UTILITY_CU_H_
+#include <cstdint>
 #include "utility.h"
 
 #define BEGIN_SINGLE_THREAD_WITHOUT_BARRIER if(FIRST_THREAD_IN_BLOCK()) { {
 #define END_SINGLE_THREAD_WITHOUT_BARRIER } }
 
+namespace gloop {
+
+static inline unsigned long long sumOfThreads(dim3 dim)
+{
+    return dim.x * dim.y * dim.z;
+}
+
+static inline unsigned long long sumOfBlocks(dim3 dim)
+{
+    return dim.x * dim.y * dim.z;
+}
+
+}  // namespace gloop
 #endif  // GLOOP_UTILITY_CU_H_
