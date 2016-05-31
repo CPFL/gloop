@@ -3,6 +3,7 @@
 
 #include <common.cu>
 #include <stdio.h>
+#include <gloop/gloop.h>
 
 #ifdef n__DEVICE_EMULATION__
 
@@ -730,8 +731,9 @@ __device__ void set_result(unsigned int cur,
 // TREE_ACCESS_HISTOGRAM 0
 
 // __device__ void
-__global__ void
+__device__ void
 mummergpuKernel(
+    gloop::DeviceLoop* loop,
     void* match_coords,
     char* queries,
     char* ref,
@@ -740,7 +742,7 @@ mummergpuKernel(
     const int numQueries,
     const int min_match_len)
 {
-    int qryid = __umul24(blockIdx.x, blockDim.x) + threadIdx.x;
+    int qryid = __umul24(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
     if (qryid >= numQueries) {
         return;
     }
@@ -907,7 +909,7 @@ mummergpuRCKernel(MatchCoord* match_coords,
     const int min_match_len)
 {
     /*
-   int qryid = __umul24(blockIdx.x,blockDim.x) + threadIdx.x;
+   int qryid = __umul24(gloop::logicalBlockIdx.x,blockDim.x) + threadIdx.x;
    if (qryid >= numQueries) { return; }
 
    int qlen = queryLengths[qryid];
@@ -1074,25 +1076,13 @@ mummergpuRCKernel(MatchCoord* match_coords,
     return;
 }
 
-__global__ void
-printKernel(MatchInfo* matches,
+__device__ void
+printKernel(
+    gloop::DeviceLoop* loop,
+    MatchInfo* matches,
     int totalMatches,
     Alignment* alignments,
-#if !QRYTEX
-#if COALESCED_QUERIES
-    int* queries,
-#else
     char* queries,
-#endif
-#endif
-
-#if !NODETEX
-    _PixelOfNode* nodes,
-#endif
-
-#if !CHILDTEX
-    _PixelOfChildren* childrenarr,
-#endif
     const int* queryAddrs,
     const int* queryLengths,
     const int page_begin,
@@ -1100,15 +1090,9 @@ printKernel(MatchInfo* matches,
     const int page_shadow_left,
     const int page_shadow_right,
     const int min_match_length
-
-#if TREE_ACCESS_HISTOGRAM
-    ,
-    int* node_hist,
-    int* child_hist
-#endif
     )
 {
-    int matchid = __umul24(blockIdx.x, blockDim.x) + threadIdx.x;
+    int matchid = __umul24(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
     if (matchid >= totalMatches) {
         return;
     }

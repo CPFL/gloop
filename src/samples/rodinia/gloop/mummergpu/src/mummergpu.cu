@@ -315,7 +315,7 @@ extern "C" int createMatchContext(Reference* ref,
     // gloop initialization.
     ctx->hostLoop = gloop::HostLoop::create(0).release();
     // FIXME, choose appropriate physical TBs.
-    ctx->hostContext = gloop::HostContext::create(*ctx->hostLoop, dim3(90)).release();
+    ctx->hostContext = gloop::HostContext::create(*ctx->hostLoop, dim3(120)).release();
     return 0;
 }
 
@@ -1333,40 +1333,35 @@ void runPrintKernel(MatchContext* ctx,
 
     fprintf(stderr, "  Calling print kernel... ");
 
-    printKernel<<<dimGrid, dimBlock, 0>>>(d_matches,
-        numMatches,
-        d_alignments,
 
-#if COALESCED_QUERIES
-        ctx->results.d_coord_tex_array,
-#endif
-
-#if !QRYTEX
-#if COALESCED_QUERIES
-        (int*)
-#endif
+    ctx->hostLoop->launch(*ctx->hostContext, dimGrid, dimBlock, [] __device__ (
+            gloop::DeviceLoop* loop,
+            MatchInfo* matches,
+            int totalMatches,
+            Alignment* alignments,
+            char* queries,
+            const int* queryAddrs,
+            const int* queryLengths,
+            const int page_begin,
+            const int page_end,
+            const int page_shadow_left,
+            const int page_shadow_right,
+            const int min_match_length
+        )
+    {
+        printKernel(loop, matches, totalMatches, alignments, queries, queryAddrs, queryLengths, page_begin, page_end, page_shadow_left, page_shadow_right, min_match_length);
+    },
+            d_matches,
+            numMatches,
+            d_alignments,
             ctx->queries->d_tex_array,
-#endif
-
-#if !NODETEX
-        (_PixelOfNode*)ctx->ref->d_node_tex_array,
-#endif
-#if !CHILDTEX
-        (_PixelOfChildren*)ctx->ref->d_children_tex_array,
-#endif
-        ctx->queries->d_addrs_tex_array,
-        ctx->queries->d_lengths_array,
-        page->begin,
-        page->end,
-        page->shadow_left,
-        page->shadow_right,
-        ctx->min_match_length
-
-#if TREE_ACCESS_HISTOGRAM
-        ,
-        ctx->ref->d_node_hist,
-        ctx->ref->d_child_hist
-#endif
+            ctx->queries->d_addrs_tex_array,
+            ctx->queries->d_lengths_array,
+            page->begin,
+            page->end,
+            page->shadow_left,
+            page->shadow_right,
+            ctx->min_match_length
         );
 
     cudaThreadSynchronize();
@@ -1865,10 +1860,27 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
             ctx->min_match_length);
     }
     else {
-        // ctx->hostLoop->launch(*ctx->hostContext, dimGrid, dimBlock, [] __device__ (gloop::DeviceLoop* loop) {
-        // });
-
-        mummergpuKernel<<<dimGrid, dimBlock, 0>>>(
+        fprintf(stderr, "threads:(%d),blocks(%d)\n", dimBlock.x, dimGrid.x);
+        ctx->hostLoop->launch(*ctx->hostContext, dimGrid, dimBlock, [] __device__ (
+            gloop::DeviceLoop* loop,
+            void* match_coords,
+            char* queries,
+            char* ref,
+            const int* queryAddrs,
+            const int* queryLengths,
+            const int numQueries,
+            const int min_match_len)
+        {
+            mummergpuKernel(
+                loop,
+                match_coords,
+                queries,
+                ref,
+                queryAddrs,
+                queryLengths,
+                numQueries,
+                min_match_len);
+        },
             ctx->results.d_match_coords,
             ctx->queries->d_tex_array,
             (char*)ctx->ref->d_ref_array,
