@@ -139,6 +139,7 @@ int main(int argc, char* argv[])
     fprintf(stderr, "MERGETEX is %d\n", MERGETEX);
     fprintf(stderr, "REORDER_TREE is %d\n", REORDER_TREE);
     fprintf(stderr, "RENUMBER_TREE is %d\n", RENUMBER_TREE);
+    fprintf(stderr, "TREE_ACCESS_HISTOGRAM is %d\n", TREE_ACCESS_HISTOGRAM);
 
     int err = 0;
 

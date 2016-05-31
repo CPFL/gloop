@@ -20,6 +20,8 @@
 #include <mummergpu.h>
 #include <mummergpu_kernel.cu>
 
+#include <gloop/gloop.h>
+
 int USE_PRINT_KERNEL = 1;
 
 #define BREATHING_ROOM (16 * 1024 * 1024)
@@ -309,12 +311,19 @@ extern "C" int createMatchContext(Reference* ref,
     ctx->show_query_length = showQueryLength;
     ctx->dotfilename = dotfilename;
     ctx->texfilename = texfilename;
+
+    // gloop initialization.
+    ctx->hostLoop = gloop::HostLoop::create(0).release();
+    // FIXME, choose appropriate physical TBs.
+    ctx->hostContext = gloop::HostContext::create(*ctx->hostLoop, dim3(90)).release();
     return 0;
 }
 
 extern "C" int destroyMatchContext(MatchContext* ctx)
 {
     free(ctx->full_ref);
+    delete ctx->hostContext;
+    delete ctx->hostLoop;
     //destroyReference(ctx->ref);
     destroyQuerySet(ctx->queries);
     return 0;
@@ -1856,39 +1865,17 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
             ctx->min_match_length);
     }
     else {
-        mummergpuKernel<<<dimGrid, dimBlock, 0>>>(ctx->results.d_match_coords,
-#if COALESCED_QUERIES
-            ctx->results.d_coord_tex_array,
-#endif
+        // ctx->hostLoop->launch(*ctx->hostContext, dimGrid, dimBlock, [] __device__ (gloop::DeviceLoop* loop) {
+        // });
 
-#if !QRYTEX
-#if COALESCED_QUERIES
-            (int*)
-#endif
-                ctx->queries->d_tex_array,
-#endif
-
-#if !NODETEX
-            (_PixelOfNode*)(ctx->ref->d_node_tex_array),
-#endif
-
-#if !CHILDTEX
-            (_PixelOfChildren*)(ctx->ref->d_children_tex_array),
-#endif
-
-#if !REFTEX
+        mummergpuKernel<<<dimGrid, dimBlock, 0>>>(
+            ctx->results.d_match_coords,
+            ctx->queries->d_tex_array,
             (char*)ctx->ref->d_ref_array,
-#endif
             ctx->queries->d_addrs_tex_array,
             ctx->queries->d_lengths_array,
             numQueries,
-            ctx->min_match_length
-#if TREE_ACCESS_HISTOGRAM
-            ,
-            ctx->ref->d_node_hist,
-            ctx->ref->d_child_hist
-#endif
-            );
+            ctx->min_match_length);
     }
 
     // check if kernel execution generated an error
@@ -1920,9 +1907,7 @@ void matchQueryBlockToReferencePage(MatchContext* ctx,
     startTimer(ktimer);
     if (ctx->on_cpu) {
         matchOnCPU(ctx, reverse_complement);
-    }
-    else {
-
+    } else {
         matchOnGPU(ctx, reverse_complement);
         cudaThreadSynchronize();
     }

@@ -1,5 +1,7 @@
 #include "common.cu"
 #include <stdlib.h>
+#include <memory>
+#include <gloop/fwd.h>
 
 extern "C" {
 struct QuerySet {
@@ -151,6 +153,9 @@ struct MatchContext {
     char* dotfilename;
     char* texfilename;
     Statistics statistics;
+
+    gloop::HostLoop* hostLoop;
+    gloop::HostContext* hostContext;
 };
 
 struct ReferencePage {

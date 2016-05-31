@@ -680,41 +680,65 @@ __device__ void set_result(unsigned int cur,
 // Compute forward substring matches
 /////////////////////////////////////
 
+// Original Arguments.
+// #if COALESCED_QUERIES
+//     int* coordAddrs,
+// #endif
+//
+// #if !QRYTEX
+// #if COALESCED_QUERIES
+//     int* queries,
+// #else
+//     char* queries,
+// #endif
+// #endif
+//
+// #if !NODETEX
+//     _PixelOfNode* nodes,
+// #endif
+//
+// #if !CHILDTEX
+//     _PixelOfChildren* childrenarr,
+// #endif
+//
+// #if !REFTEX
+//     char* ref,
+// #endif
+//     const int* queryAddrs,
+//     const int* queryLengths,
+//     const int numQueries,
+//     const int min_match_len
+// #if TREE_ACCESS_HISTOGRAM
+//     ,
+//     int* node_hist,
+//     int* child_hist
+// #endif
+
+// Configurations.
+//
+// TWO_LEVEL_NODE_TREE is 0
+// TWO_LEVEL_CHILD_TREE is 0
+// QRYTEX is 0
+// COALESCED_QUERIES is 0
+// REFTEX is 0
+// REORDER_REF is 0
+// NODETEX is 1
+// CHILDTEX is 1
+// MERGETEX is 0
+// REORDER_TREE is 1
+// RENUMBER_TREE is 1
+// TREE_ACCESS_HISTOGRAM 0
+
+// __device__ void
 __global__ void
-mummergpuKernel(void* match_coords,
-#if COALESCED_QUERIES
-    int* coordAddrs,
-#endif
-
-#if !QRYTEX
-#if COALESCED_QUERIES
-    int* queries,
-#else
+mummergpuKernel(
+    void* match_coords,
     char* queries,
-#endif
-#endif
-
-#if !NODETEX
-    _PixelOfNode* nodes,
-#endif
-
-#if !CHILDTEX
-    _PixelOfChildren* childrenarr,
-#endif
-
-#if !REFTEX
     char* ref,
-#endif
     const int* queryAddrs,
     const int* queryLengths,
     const int numQueries,
-    const int min_match_len
-#if TREE_ACCESS_HISTOGRAM
-    ,
-    int* node_hist,
-    int* child_hist
-#endif
-    )
+    const int min_match_len)
 {
     int qryid = __umul24(blockIdx.x, blockDim.x) + threadIdx.x;
     if (qryid >= numQueries) {
