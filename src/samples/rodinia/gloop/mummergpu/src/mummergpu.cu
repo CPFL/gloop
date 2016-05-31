@@ -1861,7 +1861,7 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
     }
     else {
         fprintf(stderr, "threads:(%d),blocks(%d)\n", dimBlock.x, dimGrid.x);
-        ctx->hostLoop->launch(*ctx->hostContext, dimGrid, dimBlock, [] __device__ (
+        ctx->hostLoop->launch(*ctx->hostContext, /* FIXME */ dim3(30), dimGrid, dimBlock, [] __device__ (
             gloop::DeviceLoop* loop,
             void* match_coords,
             char* queries,
