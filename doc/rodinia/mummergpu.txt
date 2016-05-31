@@ -1,0 +1,183 @@
+TWO_LEVEL_NODE_TREE is 0
+TWO_LEVEL_CHILD_TREE is 0
+QRYTEX is 0
+COALESCED_QUERIES is 0
+REFTEX is 0
+REORDER_REF is 0
+NODETEX is 1
+CHILDTEX is 1
+MERGETEX is 0
+REORDER_TREE is 1
+RENUMBER_TREE is 1
+Loading ref: ../../data/mummergpu/NC_003997.fna... 5227293 bp. [0.26443s]
+Opening ../../data/mummergpu/NC_003997_q100bp.fna...
+Streaming reference pages against all queries
+Stream will use 1 pages for 5227293 bases, page size = 5227293
+Building reference texture...
+  Creating Suffix Tree... 8606425 nodes [6.03252s]
+  Renumbering tree... [0.58238s]
+  Flattening Tree...  node: 4096x2112 children: 4096x2112 [3.60319s]
+This tree will need 276824064 bytes on the board
+The refstr requires 5231394 bytes
+Beginning reference page 0x13eb0e0
+==79271== NVPROF is profiling process 79271, command: bin/mummergpu ../../data/mummergpu/NC_003997.fna ../../data/mummergpu/NC_003997_q100bp.fna
+board free memory: 2037497856 total memory: 2144010240
+done
+Loading query block... 2293658 queries (229365800 bp), need 1738592764 bytes on the GPU (1738665182 avail) [2.28401s]
+done.
+Allocating device memory for queries...         Processing queries rid1 to rid2293658
+        allocated 252302380 bytes
+Matching queries rid1 - rid2293658 against ref coords 1 - 5231392
+Need 185786298 match coords for this result array
+Allocating result array for 2293658 queries (1486290384 bytes) ...board free memory: 1494695936 total memory: 2144010240
+done
+Memory footprint is:
+        queries: 252302380
+        ref: 282055458
+        results: 1486290384
+match kernel time= 865.551025
+board free memory: 1494695936 total memory: 2144010240
+board free memory: 1477918720
+Allocing 145732240 bytes of host memory for 18216530 alignments
+buffer prep time= 3025.926025
+Round 1: Printing results for match coords [0-16776959) of 185786298 using 16776959 matches and 18216530 alignments
+prepared 16776959 matches 18216530 alignments
+Copying 145732240 bytes to host memory for 18216530 alignments
+  Calling print kernel... memcpy time= 277.846008
+print kernel time= 2925.729004
+Allocing 146138608 bytes of host memory for 18267326 alignments
+buffer prep time= 1503.359985
+Round 2: Printing results for match coords [16776959-33553918) of 185786298 using 16776959 matches and 18267326 alignments
+prepared 16776959 matches 18267326 alignments
+Copying 146138608 bytes to host memory for 18267326 alignments
+  Calling print kernel... memcpy time= 147.763992
+print kernel time= 244.651993
+Allocing 145400008 bytes of host memory for 18175001 alignments
+buffer prep time= 1250.167969
+Round 3: Printing results for match coords [33553918-50330877) of 185786298 using 16776959 matches and 18175001 alignments
+prepared 16776959 matches 18175001 alignments
+Copying 145400008 bytes to host memory for 18175001 alignments
+  Calling print kernel... memcpy time= 143.556000
+print kernel time= 233.123001
+Allocing 146379000 bytes of host memory for 18297375 alignments
+buffer prep time= 1249.578003
+Round 4: Printing results for match coords [50330877-67107836) of 185786298 using 16776959 matches and 18297375 alignments
+prepared 16776959 matches 18297375 alignments
+Copying 146379000 bytes to host memory for 18297375 alignments
+  Calling print kernel... memcpy time= 144.307999
+print kernel time= 234.755005
+Allocing 146175200 bytes of host memory for 18271900 alignments
+buffer prep time= 1258.337036
+Round 5: Printing results for match coords [67107836-83884795) of 185786298 using 16776959 matches and 18271900 alignments
+prepared 16776959 matches 18271900 alignments
+Copying 146175200 bytes to host memory for 18271900 alignments
+  Calling print kernel... memcpy time= 161.369995
+print kernel time= 243.438995
+Allocing 146362152 bytes of host memory for 18295269 alignments
+buffer prep time= 1237.246948
+Round 6: Printing results for match coords [83884795-100661754) of 185786298 using 16776959 matches and 18295269 alignments
+prepared 16776959 matches 18295269 alignments
+Copying 146362152 bytes to host memory for 18295269 alignments
+  Calling print kernel... memcpy time= 143.770996
+print kernel time= 225.919006
+Allocing 146141736 bytes of host memory for 18267717 alignments
+buffer prep time= 1242.253052
+Round 7: Printing results for match coords [100661754-117438713) of 185786298 using 16776959 matches and 18267717 alignments
+prepared 16776959 matches 18267717 alignments
+Copying 146141736 bytes to host memory for 18267717 alignments
+  Calling print kernel... memcpy time= 144.544998
+print kernel time= 216.695007
+Allocing 145639608 bytes of host memory for 18204951 alignments
+buffer prep time= 1239.803955
+Round 8: Printing results for match coords [117438713-134215672) of 185786298 using 16776959 matches and 18204951 alignments
+prepared 16776959 matches 18204951 alignments
+Copying 145639608 bytes to host memory for 18204951 alignments
+  Calling print kernel... memcpy time= 143.333008
+print kernel time= 215.188995
+Allocing 146427992 bytes of host memory for 18303499 alignments
+buffer prep time= 1237.560059
+Round 9: Printing results for match coords [134215672-150992631) of 185786298 using 16776959 matches and 18303499 alignments
+prepared 16776959 matches 18303499 alignments
+Copying 146427992 bytes to host memory for 18303499 alignments
+  Calling print kernel... memcpy time= 166.233994
+print kernel time= 238.643005
+Allocing 146036608 bytes of host memory for 18254576 alignments
+buffer prep time= 1242.906982
+Round 10: Printing results for match coords [150992631-167769590) of 185786298 using 16776959 matches and 18254576 alignments
+prepared 16776959 matches 18254576 alignments
+Copying 146036608 bytes to host memory for 18254576 alignments
+  Calling print kernel... memcpy time= 145.427002
+print kernel time= 217.434998
+Allocing 145707528 bytes of host memory for 18213441 alignments
+buffer prep time= 1238.667969
+Round 11: Printing results for match coords [167769590-184546549) of 185786298 using 16776959 matches and 18213441 alignments
+prepared 16776959 matches 18213441 alignments
+Copying 145707528 bytes to host memory for 18213441 alignments
+  Calling print kernel... memcpy time= 145.558990
+print kernel time= 216.505005
+Allocing 10730792 bytes of host memory for 1341349 alignments
+buffer prep time= 92.027000
+Round 12: Printing results for match coords [184546549-185786298) of 185786298 using 1239749 matches and 1341349 alignments
+prepared 1239749 matches 1341349 alignments
+Copying 10730792 bytes to host memory for 1341349 alignments
+  Calling print kernel... memcpy time= 6.143000
+print kernel time= 12.100000
+Finished processing 185786298 matches and 202108934 potential alignments in 12 rounds
+Loading query block... 206342 queries (20634200 bp), need 156407236 bytes on the GPU (1738665182 avail) [0.25493s]
+done.
+Allocating device memory for queries...         Processing queries rid2293659 to rid2500000
+        allocated 22697620 bytes
+Matching queries rid2293659 - rid2500000 against ref coords 1 - 5231392
+Need 16713702 match coords for this result array
+Allocating result array for 206342 queries (133709616 bytes) ...board free memory: 1723826176 total memory: 2144010240
+done
+Memory footprint is:
+        queries: 22697620
+        ref: 282055458
+        results: 133709616
+match kernel time= 69.542999
+board free memory: 1723826176 total memory: 2144010240
+board free memory: 1707048960
+Allocing 145320000 bytes of host memory for 18165000 alignments
+buffer prep time= 1290.998047
+Round 1: Printing results for match coords [0-16713702) of 16713702 using 16713702 matches and 18165000 alignments
+prepared 16713702 matches 18165000 alignments
+Copying 145320000 bytes to host memory for 18165000 alignments
+  Calling print kernel... memcpy time= 72.222000
+print kernel time= 143.031998
+Finished processing 16713702 matches and 18165000 potential alignments in 1 rounds
+Loading query block... done.
+==79271== Profiling application: bin/mummergpu ../../data/mummergpu/NC_003997.fna ../../data/mummergpu/NC_003997_q100bp.fna
+==79271== Profiling result:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 84.62%  14.0808s        15  938.72ms  2.2527ms  12.7921s  [CUDA memcpy DtoH]
+  5.77%  960.46ms        13  73.881ms  5.1971ms  97.084ms  printKernel(MatchInfo*, int, Alignment*, char*, int const *, int const *, int, int, int, int, int)
+  5.58%  928.01ms         2  464.00ms  69.043ms  858.97ms  mummergpuKernel(void*, char*, char*, int const *, int const *, int, int)
+  3.66%  609.47ms        20  30.473ms  69.375us  61.337ms  [CUDA memcpy HtoD]
+  0.28%  46.724ms         2  23.362ms  20.769ms  25.956ms  [CUDA memcpy HtoA]
+  0.08%  14.031ms        15  935.37us  47.679us  6.5801ms  [CUDA memset]
+
+==79271== API calls:
+Time(%)      Time     Calls       Avg       Min       Max  Name
+ 75.56%  16.2125s        35  463.21ms  104.04us  14.2976s  cudaMemcpy
+ 11.70%  2.51045s        36  69.735ms  114.22us  1.46595s  cudaMalloc
+  8.83%  1.89558s        28  67.699ms  2.6990us  865.46ms  cudaThreadSynchronize
+  1.19%  255.86ms         5  51.172ms  52.310us  196.01ms  cuMemGetInfo
+  1.06%  226.64ms        15  15.109ms  27.985us  225.89ms  cudaLaunch
+  0.73%  156.97ms        15  10.465ms  31.579us  156.36ms  cudaMemset
+  0.34%  73.674ms         2  36.837ms  2.8990us  73.671ms  cudaUnbindTexture
+  0.28%  60.161ms        36  1.6711ms  86.720us  54.391ms  cudaFree
+  0.22%  46.884ms         2  23.442ms  20.811ms  26.073ms  cudaMemcpyToArray
+  0.06%  12.610ms         2  6.3047ms  122.50us  12.487ms  cudaFreeArray
+  0.02%  3.5722ms       157  22.753us     139ns  3.5295ms  cudaSetupArgument
+  0.01%  1.1026ms       166  6.6420us     249ns  248.92us  cuDeviceGetAttribute
+  0.00%  729.47us         2  364.74us  327.31us  402.17us  cudaMallocArray
+  0.00%  134.07us         2  67.036us  66.667us  67.405us  cuDeviceTotalMem
+  0.00%  104.30us         2  52.151us  50.156us  54.147us  cuDeviceGetName
+  0.00%  44.872us        15  2.9910us  1.5330us  12.625us  cudaConfigureCall
+  0.00%  21.283us         2  10.641us  9.6070us  11.676us  cudaBindTextureToArray
+  0.00%  9.5140us        15     634ns     405ns  1.5330us  cudaGetLastError
+  0.00%  2.2050us         2  1.1020us     707ns  1.4980us  cuDeviceGetCount
+  0.00%  2.1540us         4     538ns     346ns     801ns  cuDeviceGet
+  0.00%     808ns         3     269ns     187ns     331ns  cudaCreateChannelDesc
+
