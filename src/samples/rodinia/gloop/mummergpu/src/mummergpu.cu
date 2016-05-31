@@ -1333,36 +1333,22 @@ void runPrintKernel(MatchContext* ctx,
 
     fprintf(stderr, "  Calling print kernel... ");
 
-
-    ctx->hostLoop->launch(*ctx->hostContext, dimGrid, dimBlock, [] __device__ (
-            gloop::DeviceLoop* loop,
-            MatchInfo* matches,
-            int totalMatches,
-            Alignment* alignments,
-            char* queries,
-            const int* queryAddrs,
-            const int* queryLengths,
-            const int page_begin,
-            const int page_end,
-            const int page_shadow_left,
-            const int page_shadow_right,
-            const int min_match_length
-        )
-    {
+    ctx->hostLoop->launch(*ctx->hostContext, dimGrid, dimBlock, [] __device__(
+                                                                    gloop::DeviceLoop * loop,
+                                                                    MatchInfo * matches,
+                                                                    int totalMatches,
+                                                                    Alignment* alignments,
+                                                                    char* queries,
+                                                                    const int* queryAddrs,
+                                                                    const int* queryLengths,
+                                                                    const int page_begin,
+                                                                    const int page_end,
+                                                                    const int page_shadow_left,
+                                                                    const int page_shadow_right,
+                                                                    const int min_match_length) {
         printKernel(loop, matches, totalMatches, alignments, queries, queryAddrs, queryLengths, page_begin, page_end, page_shadow_left, page_shadow_right, min_match_length);
     },
-            d_matches,
-            numMatches,
-            d_alignments,
-            ctx->queries->d_tex_array,
-            ctx->queries->d_addrs_tex_array,
-            ctx->queries->d_lengths_array,
-            page->begin,
-            page->end,
-            page->shadow_left,
-            page->shadow_right,
-            ctx->min_match_length
-        );
+        d_matches, numMatches, d_alignments, ctx->queries->d_tex_array, ctx->queries->d_addrs_tex_array, ctx->queries->d_lengths_array, page->begin, page->end, page->shadow_left, page->shadow_right, ctx->min_match_length);
 
     cudaThreadSynchronize();
 
@@ -1861,16 +1847,15 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
     }
     else {
         fprintf(stderr, "threads:(%d),blocks(%d)\n", dimBlock.x, dimGrid.x);
-        ctx->hostLoop->launch(*ctx->hostContext, /* FIXME */ dim3(30), dimGrid, dimBlock, [] __device__ (
-            gloop::DeviceLoop* loop,
-            void* match_coords,
-            char* queries,
-            char* ref,
-            const int* queryAddrs,
-            const int* queryLengths,
-            const int numQueries,
-            const int min_match_len)
-        {
+        ctx->hostLoop->launch(*ctx->hostContext, /* FIXME */ dim3(30), dimGrid, dimBlock, [] __device__(
+                                                                                              gloop::DeviceLoop * loop,
+                                                                                              void* match_coords,
+                                                                                              char* queries,
+                                                                                              char* ref,
+                                                                                              const int* queryAddrs,
+                                                                                              const int* queryLengths,
+                                                                                              const int numQueries,
+                                                                                              const int min_match_len) {
             mummergpuKernel(
                 loop,
                 match_coords,
@@ -1881,13 +1866,7 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
                 numQueries,
                 min_match_len);
         },
-            ctx->results.d_match_coords,
-            ctx->queries->d_tex_array,
-            (char*)ctx->ref->d_ref_array,
-            ctx->queries->d_addrs_tex_array,
-            ctx->queries->d_lengths_array,
-            numQueries,
-            ctx->min_match_length);
+            ctx->results.d_match_coords, ctx->queries->d_tex_array, (char*)ctx->ref->d_ref_array, ctx->queries->d_addrs_tex_array, ctx->queries->d_lengths_array, numQueries, ctx->min_match_length);
     }
 
     // check if kernel execution generated an error
@@ -1919,7 +1898,8 @@ void matchQueryBlockToReferencePage(MatchContext* ctx,
     startTimer(ktimer);
     if (ctx->on_cpu) {
         matchOnCPU(ctx, reverse_complement);
-    } else {
+    }
+    else {
         matchOnGPU(ctx, reverse_complement);
         cudaThreadSynchronize();
     }

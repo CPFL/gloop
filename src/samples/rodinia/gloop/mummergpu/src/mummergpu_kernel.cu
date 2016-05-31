@@ -2,8 +2,8 @@
 #define _MUMMERGPU_KERNEL_H_
 
 #include <common.cu>
-#include <stdio.h>
 #include <gloop/gloop.h>
+#include <stdio.h>
 
 #ifdef n__DEVICE_EMULATION__
 
@@ -767,10 +767,7 @@ mummergpuKernel(
     SHIFT_QUERIES(queries, qryAddr);
 
     int last = qlen - min_match_len;
-    for (int qrystart = 0;
-         qrystart <= last;
-         qrystart++,
-             result += RESULT_SPAN) {
+    for (int qrystart = 0; qrystart <= last; qrystart++, result += RESULT_SPAN) {
         //_PixelOfNode node;
         unsigned int node_start;
         unsigned int prev;
@@ -1089,8 +1086,7 @@ printKernel(
     const int page_end,
     const int page_shadow_left,
     const int page_shadow_right,
-    const int min_match_length
-    )
+    const int min_match_length)
 {
     int matchid = __umul24(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
     if (matchid >= totalMatches) {
