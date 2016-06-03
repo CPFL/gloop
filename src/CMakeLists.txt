@@ -16,6 +16,7 @@ set(CMAKE_CUDA_FLAGS "\
     -std=c++11\
     -Xptxas -v,--warn-on-spills,--warn-on-local-memory-usage\
     -Xcompiler -Wall,-Wno-unused-parameter,-Wextra\
+    -g\
     -w\
     --keep\
 ")
