@@ -129,11 +129,14 @@ bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
 #if !defined(GLOOP_ENABLE_ELASTIC_KERNELS)
 #error "Elastic kernels are needed to enable I/O boosting."
 #endif
-    int blocks = m_physicalBlocks.x * m_physicalBlocks.y;
-    for (int i = 0; i < blocks; ++i) {
+    uint64_t blocks = sumOfBlocks(m_physicalBlocks);
+    for (uint64_t i = 0; i < blocks; ++i) {
         DeviceContext::PerBlockHostContext hostContext = m_hostContext[i];
+
+        // FIXME: This is not correct in the last sequence (some TBs are already finished).
+        // But, this may indicate that the next logical TB will start.
         if (hostContext.freeSlots == DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
-            continue;
+            return true;
         }
 
         uint32_t allocatedSlots = hostContext.freeSlots ^ DeviceContext::DeviceLoopControl::allFilledFreeSlots();

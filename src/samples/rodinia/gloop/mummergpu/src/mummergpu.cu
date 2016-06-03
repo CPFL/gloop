@@ -472,6 +472,7 @@ void boardMemory(size_t* free_mem, size_t* total_mem)
 
 void loadReferenceTexture(MatchContext* ctx)
 {
+    std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
     Reference* ref = ctx->ref;
     int numrows = ceil(ref->len / ((float)ref->pitch));
     int blocksize = 4;
@@ -1292,12 +1293,19 @@ void runPrintKernel(MatchContext* ctx,
 
     MatchInfo* d_matches;
     size_t matchesSize = numMatches * sizeof(MatchInfo);
-    CUDA_MALLOC((void**)&d_matches, matchesSize);
+
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
+        CUDA_MALLOC((void**)&d_matches, matchesSize);
+    }
 
     struct Alignment* d_alignments;
     size_t alignmentSize = numAlignments * sizeof(Alignment);
-    CUDA_MALLOC((void**)&d_alignments, alignmentSize);
-    CUDA_SAFE_CALL(cudaMemset((void*)d_alignments, 0, alignmentSize));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
+        CUDA_MALLOC((void**)&d_alignments, alignmentSize);
+        CUDA_SAFE_CALL(cudaMemset((void*)d_alignments, 0, alignmentSize));
+    }
 
     char* atimer = createTimer();
     startTimer(atimer);
@@ -1321,7 +1329,10 @@ void runPrintKernel(MatchContext* ctx,
         exit(0);
     }
 
-    CUDA_SAFE_CALL(cudaMemcpy(d_matches, h_matches, matchesSize, cudaMemcpyHostToDevice));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
+        CUDA_SAFE_CALL(cudaMemcpy(d_matches, h_matches, matchesSize, cudaMemcpyHostToDevice));
+    }
     stopTimer(atimer);
     float mtime = getTimerValue(atimer);
     // Launch the kernel
@@ -1334,7 +1345,7 @@ void runPrintKernel(MatchContext* ctx,
     fprintf(stderr, "  Calling print kernel... ");
 
     fprintf(stderr, "printKernel threads:(%d),blocks(%d)\n", dimBlock.x, dimGrid.x);
-    ctx->hostLoop->launch(*ctx->hostContext, dimGrid, dimBlock, [] __device__(
+    ctx->hostLoop->launch(*ctx->hostContext, dim3(60), dimGrid, dimBlock, [] __device__(
                                                                     gloop::DeviceLoop * loop,
                                                                     MatchInfo * matches,
                                                                     int totalMatches,
@@ -1348,33 +1359,41 @@ void runPrintKernel(MatchContext* ctx,
                                                                     const int page_shadow_right,
                                                                     const int min_match_length) {
         printKernel(loop, matches, totalMatches, alignments, queries, queryAddrs, queryLengths, page_begin, page_end, page_shadow_left, page_shadow_right, min_match_length);
-    },
-        d_matches, numMatches, d_alignments, ctx->queries->d_tex_array, ctx->queries->d_addrs_tex_array, ctx->queries->d_lengths_array, page->begin, page->end, page->shadow_left, page->shadow_right, ctx->min_match_length);
+    }, d_matches, numMatches, d_alignments, ctx->queries->d_tex_array, ctx->queries->d_addrs_tex_array, ctx->queries->d_lengths_array, page->begin, page->end, page->shadow_left, page->shadow_right, ctx->min_match_length);
 
-    cudaThreadSynchronize();
+    // cudaThreadSynchronize();
 
-    cudaError_t err = cudaGetLastError();
-    if (cudaSuccess != err) {
-        fprintf(stderr, "Kernel execution failed: %s.\n",
-            cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
+        cudaError_t err = cudaGetLastError();
+        if (cudaSuccess != err) {
+            fprintf(stderr, "Kernel execution failed: %s.\n",
+                cudaGetErrorString(err));
+            exit(EXIT_FAILURE);
+        }
     }
 
     startTimer(atimer);
     // Copy the results back to the host
-    CUDA_SAFE_CALL(cudaMemcpy((void*)alignments,
-        (void*)d_alignments,
-        alignmentSize,
-        cudaMemcpyDeviceToHost));
-    cudaThreadSynchronize();
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
+        CUDA_SAFE_CALL(cudaMemcpy((void*)alignments,
+            (void*)d_alignments,
+            alignmentSize,
+            cudaMemcpyDeviceToHost));
+    }
+    // cudaThreadSynchronize();
     stopTimer(atimer);
 
     float atime = getTimerValue(atimer);
     fprintf(stderr, "memcpy time= %f\n", atime + mtime);
     deleteTimer(atimer);
     // Cleanup
-    CUDA_SAFE_CALL(cudaFree(d_alignments));
-    CUDA_SAFE_CALL(cudaFree(d_matches));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
+        CUDA_SAFE_CALL(cudaFree(d_alignments));
+        CUDA_SAFE_CALL(cudaFree(d_matches));
+    }
 }
 
 // TODO: need reverse-complement printing support
@@ -1488,7 +1507,10 @@ void getExactAlignments(MatchContext* ctx, ReferencePage* page, bool on_cpu)
         rTotalMatches += numMatches;
 
         if (num_bind_tex_calls > 100) {
-            cudaThreadExit();
+            {
+                std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
+                cudaThreadExit();
+            }
             num_bind_tex_calls = 0;
             loadReference(ctx);
             loadQueries(ctx);
@@ -1839,14 +1861,16 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
     // Match the reverse complement of the queries to the ref
     if (doRC) {
         //TODO: GPU RC is disabled
-        mummergpuRCKernel<<<dimGrid, dimBlock, 0>>>(ctx->results.d_match_coords,
-            ctx->queries->d_tex_array,
-            ctx->queries->d_addrs_tex_array,
-            ctx->queries->d_lengths_array,
-            numQueries,
-            ctx->min_match_length);
-    }
-    else {
+        {
+            std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
+            mummergpuRCKernel<<<dimGrid, dimBlock, 0>>>(ctx->results.d_match_coords,
+                ctx->queries->d_tex_array,
+                ctx->queries->d_addrs_tex_array,
+                ctx->queries->d_lengths_array,
+                numQueries,
+                ctx->min_match_length);
+        }
+    } else {
         fprintf(stderr, "mummergpuKernel threads:(%d),blocks(%d)\n", dimBlock.x, dimGrid.x);
         ctx->hostLoop->launch(*ctx->hostContext, /* FIXME */ dim3(30), dimGrid, dimBlock, [] __device__(
                                                                                               gloop::DeviceLoop * loop,
@@ -1866,16 +1890,19 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
                 queryLengths,
                 numQueries,
                 min_match_len);
-        },
-            ctx->results.d_match_coords, ctx->queries->d_tex_array, (char*)ctx->ref->d_ref_array, ctx->queries->d_addrs_tex_array, ctx->queries->d_lengths_array, numQueries, ctx->min_match_length);
+        }, ctx->results.d_match_coords, ctx->queries->d_tex_array, (char*)ctx->ref->d_ref_array, ctx->queries->d_addrs_tex_array, ctx->queries->d_lengths_array, numQueries, ctx->min_match_length);
+        fprintf(stderr, "mummergpuKernel threads:(%d),blocks(%d)\n", dimBlock.x, dimGrid.x);
     }
 
-    // check if kernel execution generated an error
-    cudaError_t err = cudaGetLastError();
-    if (cudaSuccess != err) {
-        fprintf(stderr, "Kernel execution failed: %s.\n",
-            cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
+        // check if kernel execution generated an error
+        cudaError_t err = cudaGetLastError();
+        if (cudaSuccess != err) {
+            fprintf(stderr, "Kernel execution failed: %s.\n",
+                cudaGetErrorString(err));
+            exit(EXIT_FAILURE);
+        }
     }
 }
 
@@ -1902,7 +1929,7 @@ void matchQueryBlockToReferencePage(MatchContext* ctx,
     }
     else {
         matchOnGPU(ctx, reverse_complement);
-        cudaThreadSynchronize();
+        // cudaThreadSynchronize();
     }
     stopTimer(ktimer);
 
@@ -1947,7 +1974,7 @@ int matchSubset(MatchContext* ctx,
     return 0;
 }
 
-int getFreeDeviceMemory(bool on_cpu)
+int getFreeDeviceMemory(MatchContext* ctx, bool on_cpu)
 {
     size_t free_mem = 0;
     size_t total_mem = 0;
@@ -1955,8 +1982,11 @@ int getFreeDeviceMemory(bool on_cpu)
     // We have to 'prime' CUDA by making an allocation here.  cuMemGetInfo
     // will return zeroes until we do a malloc.
     int* p = NULL;
-    CUDA_SAFE_CALL(cudaMalloc((void**)&p, sizeof(int)));
-    CUDA_SAFE_CALL(cudaFree(p));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
+        CUDA_SAFE_CALL(cudaMalloc((void**)&p, sizeof(int)));
+        CUDA_SAFE_CALL(cudaFree(p));
+    }
     if (!on_cpu) {
 
         boardMemory(&free_mem, &total_mem);
@@ -1974,7 +2004,7 @@ int matchQueriesToReferencePage(MatchContext* ctx, ReferencePage* page)
 {
     fprintf(stderr, "Beginning reference page %p\n", page);
 
-    int free_mem = getFreeDeviceMemory(ctx->on_cpu);
+    int free_mem = getFreeDeviceMemory(ctx, ctx->on_cpu);
 
     int available_mem = free_mem - page->ref.bytes_on_board - BREATHING_ROOM;
     ctx->ref = &(page->ref);
@@ -1985,6 +2015,7 @@ int matchQueriesToReferencePage(MatchContext* ctx, ReferencePage* page)
         ctx->statistics.bp_avg_query_length = ctx->queries->texlen / (float)(ctx->queries->count) - 2;
         destroyQueryBlock(ctx->queries);
         if (num_bind_tex_calls > 100) {
+            std::abort();
             cudaThreadExit();
             num_bind_tex_calls = 0;
             loadReference(ctx);

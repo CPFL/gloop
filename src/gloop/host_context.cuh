@@ -37,6 +37,7 @@
 #include "mapped_memory.cuh"
 #include "noncopyable.h"
 #include "spinlock.h"
+#include "utility.cuh"
 namespace gloop {
 
 class HostLoop;
@@ -137,8 +138,8 @@ GLOOP_ALWAYS_INLINE __host__ request::Payload* RPC::request(HostContext& hostCon
 template<typename Callback>
 inline void HostContext::forEachRPC(Callback callback)
 {
-    int blocks = m_physicalBlocks.x * m_physicalBlocks.y;
-    for (int i = 0; i < blocks; ++i) {
+    uint64_t blocks = sumOfBlocks(m_physicalBlocks);
+    for (uint64_t i = 0; i < blocks; ++i) {
         for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
             RPC rpc { i * GLOOP_SHARED_SLOT_SIZE + j };
             callback(rpc);

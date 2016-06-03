@@ -735,162 +735,167 @@ __device__ void
 mummergpuKernel(
     gloop::DeviceLoop* loop,
     void* match_coords,
-    char* queries,
+    char* aQueries,
     char* ref,
     const int* queryAddrs,
     const int* queryLengths,
     const int numQueries,
     const int min_match_len)
 {
-    int qryid = __umul24(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
-    if (qryid >= numQueries) {
-        return;
-    }
-    XPRINTF("> qryid: %d\n", qryid);
+    gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
+        int qryid = __umul24(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
+        if (qryid >= numQueries) {
+            return;
+        }
+        XPRINTF("> qryid: %d\n", qryid);
 
-    if (qryid == 0) {
-        PRINTNODES(0, 200);
-    }
-
-    int qlen = queryLengths[qryid];
-    int qryAddr = queryAddrs[qryid];
-
-    //TextureAddress cur;
-    unsigned int cur = 0;
-    //cur.data = 0;
-
-    int mustmatch = 0;
-    int qry_match_len = 0;
-
-    _MatchCoord* result = MATCH_BASE(match_coords, qryid);
-
-    SHIFT_QUERIES(queries, qryAddr);
-
-    int last = qlen - min_match_len;
-    for (int qrystart = 0; qrystart <= last; qrystart++, result += RESULT_SPAN) {
-        //_PixelOfNode node;
-        unsigned int node_start;
-        unsigned int prev;
-
-        if ((cur == 0) || (qry_match_len < 1)) {
-            // start at root of tree
-            GOROOT(cur);
-            qry_match_len = 1;
-            mustmatch = 0;
+        if (qryid == 0) {
+            PRINTNODES(0, 200);
         }
 
-        char c = GETQCHAR(qrystart + qry_match_len);
+        int qlen = queryLengths[qryid];
+        int qryAddr = queryAddrs[qryid];
 
-        XPRINTF("In node (" fNID "): starting with %c [%d] =>  \n",
-            NID(cur), c, qry_match_len);
+        //TextureAddress cur;
+        unsigned int cur = 0;
+        //cur.data = 0;
 
-        int refpos = 0;
-        while ((c != '\0')) {
-            XPRINTF("Next edge to follow: %c (%d)\n", c, qry_match_len);
+        // mustmatch / qry_match_len
+        int mustmatch = 0;
+        int qry_match_len = 0;
 
-            _PixelOfChildren children;
-            children.data = GETCHILDRENHIST(cur, false);
-            prev = cur;
-            uchar3 next;
-            switch (c) {
-            case 'A':
-                next = children.a;
-                break;
-            case 'C':
-                next = children.c;
-                break;
-            case 'G':
-                next = children.g;
-                break;
-            case 'T':
-                next = children.t;
-                break;
-            default:
-                next = make_uchar3(0, 0, 0);
-                break;
-            };
+        _MatchCoord* result = MATCH_BASE(match_coords, qryid);
 
-            arrayToAddress(next, cur);
+        // OK, queries are fixed during the loop.
+        char* queries = aQueries;
+        SHIFT_QUERIES(queries, qryAddr);
 
-            XPRINTF(" In node: (" fNID ")\n", NID(cur));
+        int last = qlen - min_match_len;
 
-            // No edge to follow out of the node
-            if (cur == 0) {
-                XPRINTF(" no edge\n");
-                SET_RESULT(prev, result, 0, qry_match_len, min_match_len, FORWARD);
 
-                qry_match_len -= 1;
+        for (int qrystart = 0; qrystart <= last; qrystart++, result += RESULT_SPAN) {
+            //_PixelOfNode node;
+            unsigned int node_start;
+            unsigned int prev;
+
+            if ((cur == 0) || (qry_match_len < 1)) {
+                // start at root of tree
+                GOROOT(cur);
+                qry_match_len = 1;
                 mustmatch = 0;
-
-                goto NEXT_SUBSTRING;
             }
 
-            _PixelOfNode node;
-            node.data = GETNODEHIST(cur, true);
-            node_start = MKI(node.start);
-            unsigned int node_end = MKI(node.end);
+            char c = GETQCHAR(qrystart + qry_match_len);
 
-            XPRINTF(" Edge coordinates: %d - %d\n", node_start, node_end);
-            {
-                int edgelen = node_end - node_start + 1;
-                int edge_matchlen = node_start + mustmatch;
-                int past_node_end = node_end + 1;
-                int dist_to_edge_end = mustmatch - edgelen;
-                if (mustmatch) {
-                    refpos = min(edge_matchlen, past_node_end);
-                    qry_match_len += min(edgelen, mustmatch);
-                    mustmatch = max(dist_to_edge_end, 0);
+            XPRINTF("In node (" fNID "): starting with %c [%d] =>  \n",
+                NID(cur), c, qry_match_len);
+
+            int refpos = 0;
+            while ((c != '\0')) {
+                XPRINTF("Next edge to follow: %c (%d)\n", c, qry_match_len);
+
+                _PixelOfChildren children;
+                children.data = GETCHILDRENHIST(cur, false);
+                prev = cur;
+                uchar3 next;
+                switch (c) {
+                case 'A':
+                    next = children.a;
+                    break;
+                case 'C':
+                    next = children.c;
+                    break;
+                case 'G':
+                    next = children.g;
+                    break;
+                case 'T':
+                    next = children.t;
+                    break;
+                default:
+                    next = make_uchar3(0, 0, 0);
+                    break;
+                };
+
+                arrayToAddress(next, cur);
+
+                XPRINTF(" In node: (" fNID ")\n", NID(cur));
+
+                // No edge to follow out of the node
+                if (cur == 0) {
+                    XPRINTF(" no edge\n");
+                    SET_RESULT(prev, result, 0, qry_match_len, min_match_len, FORWARD);
+
+                    qry_match_len -= 1;
+                    mustmatch = 0;
+
+                    goto NEXT_SUBSTRING;
                 }
-                else {
-                    // Try to walk the edge, the first char definitely matches
-                    qry_match_len++;
-                    refpos = node_start + 1;
+
+                _PixelOfNode node;
+                node.data = GETNODEHIST(cur, true);
+                node_start = MKI(node.start);
+                unsigned int node_end = MKI(node.end);
+
+                XPRINTF(" Edge coordinates: %d - %d\n", node_start, node_end);
+                {
+                    int edgelen = node_end - node_start + 1;
+                    int edge_matchlen = node_start + mustmatch;
+                    int past_node_end = node_end + 1;
+                    int dist_to_edge_end = mustmatch - edgelen;
+                    if (mustmatch) {
+                        refpos = min(edge_matchlen, past_node_end);
+                        qry_match_len += min(edgelen, mustmatch);
+                        mustmatch = max(dist_to_edge_end, 0);
+                    }
+                    else {
+                        // Try to walk the edge, the first char definitely matches
+                        qry_match_len++;
+                        refpos = node_start + 1;
+                    }
                 }
-            }
-
-            c = GETQCHAR(qrystart + qry_match_len);
-
-            while (refpos <= node_end && c != '\0') {
-                char r = GETRCHAR(refpos);
-
-                XPRINTF(" Edge cmp ref: %d %c, qry: %d %c\n", refpos, r, qry_match_len, c);
-
-                if (r != c) {
-                    // mismatch on edge
-                    XPRINTF("mismatch on edge: %d, edge_pos: %d\n", qry_match_len, refpos - (node_start));
-                    goto RECORD_RESULT;
-                }
-
-                qry_match_len++;
-                refpos++;
 
                 c = GETQCHAR(qrystart + qry_match_len);
+
+                while (refpos <= node_end && c != '\0') {
+                    char r = GETRCHAR(refpos);
+
+                    XPRINTF(" Edge cmp ref: %d %c, qry: %d %c\n", refpos, r, qry_match_len, c);
+
+                    if (r != c) {
+                        // mismatch on edge
+                        XPRINTF("mismatch on edge: %d, edge_pos: %d\n", qry_match_len, refpos - (node_start));
+                        goto RECORD_RESULT;
+                    }
+
+                    qry_match_len++;
+                    refpos++;
+
+                    c = GETQCHAR(qrystart + qry_match_len);
+                }
             }
+
+            XPRINTF("end of string\n");
+
+        RECORD_RESULT : {
+            //_PixelOfNode node;
+            //node.data = getnodehist(cur, false);
+            SET_RESULT(cur, result, refpos - node_start, qry_match_len,
+                min_match_len, FORWARD);
+
+            mustmatch = refpos - node_start;
+            qry_match_len -= mustmatch + 1;
         }
-
-        XPRINTF("end of string\n");
-
-    RECORD_RESULT : {
-        //_PixelOfNode node;
-        //node.data = getnodehist(cur, false);
-        SET_RESULT(cur, result, refpos - node_start, qry_match_len,
-            min_match_len, FORWARD);
-
-        mustmatch = refpos - node_start;
-        qry_match_len -= mustmatch + 1;
-    }
-    NEXT_SUBSTRING : {
-        _PixelOfNode node;
-        node.data = GETNODEHIST(prev, false);
-        arrayToAddress(node.suffix, cur);
-    }
-        //XPRINTF(" following suffix link. mustmatch:%d qry_match_len:%d sl:("fNID")\n",
-        //       mustmatch, qry_match_len, NID(cur));
-        do {
-        } while (0);
-    }
-
-    return;
+        NEXT_SUBSTRING : {
+            _PixelOfNode node;
+            node.data = GETNODEHIST(prev, false);
+            arrayToAddress(node.suffix, cur);
+        }
+            //XPRINTF(" following suffix link. mustmatch:%d qry_match_len:%d sl:("fNID")\n",
+            //       mustmatch, qry_match_len, NID(cur));
+            do {
+            } while (0);
+        }
+    });
 }
 
 ///////////////////////////////////////
