@@ -23,6 +23,8 @@ endmacro()
 include_directories("${PROJECT_BINARY_DIR}/include")
 
 add_subdirectory(third_party)
+include_directories("third_party/nvidia-sdk")
+
 add_subdirectory(src)
 add_subdirectory(test)
 # add_subdirectory(tools)
