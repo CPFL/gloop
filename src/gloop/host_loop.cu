@@ -161,7 +161,8 @@ void HostLoop::initialize()
     {
         // This ensures that primary GPU context is initialized.
         std::lock_guard<KernelLock> lock(m_kernelLock);
-        GLOOP_CUDA_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceMapHost | cudaDeviceScheduleSpin));
+        // GLOOP_CUDA_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceMapHost | cudaDeviceScheduleSpin));
+        GLOOP_CUDA_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceMapHost));
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pgraph));
 
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
