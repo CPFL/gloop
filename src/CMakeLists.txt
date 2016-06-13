@@ -7,11 +7,12 @@
 # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -g -G -rdc=true --expt-extended-lambda -std=c++11 -w --keep")
 set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unused-parameter -g3")
 # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -maxrregcount 32 --generate-code code=sm_30,arch=compute_30 -rdc=true --expt-extended-lambda -std=c++11 -w --keep")
+#    --generate-code code=sm_30,arch=compute_30\
 set(CMAKE_CUDA_FLAGS "\
     ${CMAKE_CUDA_FLAGS}\
     -maxrregcount 32\
-    --generate-code code=sm_30,arch=compute_30\
     -rdc=true\
+    --generate-code code=sm_35,arch=compute_35\
     --expt-extended-lambda\
     -std=c++11\
     -Xptxas -v,--warn-on-spills,--warn-on-local-memory-usage\
