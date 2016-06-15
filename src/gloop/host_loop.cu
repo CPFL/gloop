@@ -155,6 +155,10 @@ bool HostLoop::threadReady()
     return true;
 }
 
+__global__ void initializeHostLoop()
+{
+}
+
 void HostLoop::initialize()
 {
     initializeInThread();
@@ -176,6 +180,10 @@ void HostLoop::initialize()
         CUDA_SAFE_CALL(cudaPeekAtLastError());
 
         CUDA_SAFE_CALL(cudaGetDeviceProperties(&m_deviceProperties, m_deviceNumber));
+
+        // And initialize launch related things eagerly here.
+        // initializeHostLoop<<<1, 1, 0, m_pgraph>>>();
+        // cudaStreamSynchronize(m_pgraph);
 #if 1
         printf("clock rate:(%d)\n", m_deviceProperties.clockRate);
 #endif
