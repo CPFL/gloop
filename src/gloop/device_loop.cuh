@@ -43,8 +43,8 @@ class DeviceLoop {
 public:
     friend struct RPC;
     enum ResumeTag { Resume };
-    inline __device__ int initialize(volatile uint32_t* signal, DeviceContext, ResumeTag);
-    inline __device__ void initialize(volatile uint32_t* signal, DeviceContext);
+    inline __device__ int initialize(DeviceContext, ResumeTag);
+    inline __device__ void initialize(DeviceContext);
 
     template<typename Lambda>
     inline __device__ RPC enqueueRPC(Lambda&& lambda);
@@ -119,6 +119,7 @@ extern __device__ __shared__ DeviceLoop sharedDeviceLoop;
 extern __device__ __shared__ uint2 logicalGridDim;
 extern __device__ __shared__ uint2 logicalBlockIdx;
 extern __device__ UninitializedDeviceCallbackStorage nextKernel;
+extern __device__ volatile uint32_t* signal;
 
 }  // namespace gloop
 #endif  // GLOOP_DEVICE_LOOP_H_

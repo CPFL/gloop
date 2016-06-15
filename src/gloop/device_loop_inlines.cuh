@@ -269,7 +269,7 @@ __device__ int DeviceLoop::drain()
                 uint64_t now = clock64();
                 if (((now - m_start) > m_deviceContext.killClock)) {
                     m_start = ((now / m_deviceContext.killClock) * m_deviceContext.killClock);
-                    if (gloop::readNoCache<uint32_t>(m_control.signal) != 0) {
+                    if (gloop::readNoCache<uint32_t>(signal) != 0) {
                         position = shouldExitPosition();
                         goto next;
                     }
@@ -336,7 +336,7 @@ __device__ int DeviceLoop::suspend()
         uint64_t now = clock64();
         if (((now - m_start) > m_deviceContext.killClock)) {
             m_start = ((now / m_deviceContext.killClock) * m_deviceContext.killClock);
-            if (gloop::readNoCache<uint32_t>(m_control.signal) != 0) {
+            if (gloop::readNoCache<uint32_t>(signal) != 0) {
 
                 // Save the control state.
                 DeviceContext::PerBlockContext* blockContext = context();
@@ -391,18 +391,18 @@ __device__ void DeviceLoop::initializeImpl(DeviceContext deviceContext)
 #endif
 }
 
-__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext)
+__device__ void DeviceLoop::initialize(DeviceContext deviceContext)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);
-    m_control.initialize(deviceContext.logicalBlocks, signal);
+    m_control.initialize(deviceContext.logicalBlocks);
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     logicalGridDim = m_control.logicalGridDim;
     logicalBlockIdx = m_control.logicalBlockIdx;
 #endif
 }
 
-__device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, ResumeTag)
+__device__ int DeviceLoop::initialize(DeviceContext deviceContext, ResumeTag)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);

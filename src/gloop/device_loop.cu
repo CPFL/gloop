@@ -34,5 +34,6 @@ __device__ __shared__ DeviceLoop sharedDeviceLoop;
 __device__ __shared__ uint2 logicalGridDim;
 __device__ __shared__ uint2 logicalBlockIdx;
 __device__ UninitializedDeviceCallbackStorage nextKernel;
+__device__ volatile uint32_t* signal;
 
 }  // namespace gloop

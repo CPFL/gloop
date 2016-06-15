@@ -33,16 +33,16 @@ namespace gloop {
 typedef std::aligned_storage<sizeof(DeviceLoop), alignof(DeviceLoop)>::type UninitializedDeviceLoopStorage;
 
 template<typename DeviceLambda, class... Args>
-inline __global__ void resume(volatile uint32_t* signal, DeviceContext context, const DeviceLambda& callback, Args... args)
+inline __global__ void resume(int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     __shared__ int callbackKicked;
     BEGIN_SINGLE_THREAD
     {
-        if (signal) {
+        if (isInitialExecution) {
             callbackKicked = 0;
-            sharedDeviceLoop.initialize(signal, context);
+            sharedDeviceLoop.initialize(context);
         } else {
-            callbackKicked = sharedDeviceLoop.initialize(signal, context, DeviceLoop::Resume);
+            callbackKicked = sharedDeviceLoop.initialize(context, DeviceLoop::Resume);
         }
     }
     END_SINGLE_THREAD

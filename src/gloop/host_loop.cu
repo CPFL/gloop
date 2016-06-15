@@ -184,6 +184,7 @@ void HostLoop::initialize()
         // And initialize launch related things eagerly here.
         // initializeHostLoop<<<1, 1, 0, m_pgraph>>>();
         // cudaStreamSynchronize(m_pgraph);
+        GLOOP_CUDA_SAFE_CALL(cudaMemcpyToSymbol(gloop::signal, &m_deviceSignal, sizeof(m_deviceSignal)));
 #if 1
         printf("clock rate:(%d)\n", m_deviceProperties.clockRate);
 #endif

@@ -37,7 +37,7 @@ struct DeviceContext {
             return ((1U << GLOOP_SHARED_SLOT_SIZE) - 1);
         }
 
-        __host__ __device__ void initialize(uint3 logicalBlocksDim, volatile uint32_t* sig)
+        __host__ __device__ void initialize(uint3 logicalBlocksDim)
         {
             freePages = (1U << GLOOP_SHARED_PAGE_COUNT) - 1;
             freeSlots = allFilledFreeSlots();
@@ -63,7 +63,6 @@ struct DeviceContext {
             logicalBlockIdx = make_uint2(currentLogicalBlockCount % logicalBlocksDim.x, currentLogicalBlockCount / logicalBlocksDim.x);
             logicalGridDim = make_uint2(logicalBlocksDim.x, logicalGridDim.y);
 #endif
-            signal = sig;
         }
 
         uint32_t freePages;
@@ -78,8 +77,6 @@ struct DeviceContext {
         uint2 logicalBlockIdx;
         uint2 logicalGridDim;
 #endif
-
-        volatile uint32_t* signal;
     };
 
     struct OnePage {
