@@ -55,7 +55,7 @@ public:
 
     uint32_t id() const { return m_id; }
 
-    uint64_t killClock() const { return m_deviceProperties.clockRate * GLOOP_KILL_TIME; }
+    uint64_t killClock() const { return m_deviceProperties.clockRate * GLOOP_KILL_TIME / 1000; }
 
     static std::unique_ptr<HostLoop> create(int deviceNumber, uint64_t costPerBit = 1);
 

@@ -33,7 +33,9 @@
 #define GLOOP_SHARED_RESPONSE_QUEUE "gloop_shared_response_queue_"
 #define GLOOP_SHARED_MEMORY "gloop_shared_memory_"
 #define GLOOP_SHARED_MEMORY_SIZE 0x1000UL
-#define GLOOP_ROUGH_TIMESLICE 10
+// The unit of the timeslice is us.
+// #define GLOOP_ROUGH_TIMESLICE 1000
+#define GLOOP_ROUGH_TIMESLICE 10000
 #define GLOOP_KILL_TIME (GLOOP_ROUGH_TIMESLICE / 2)
 
 // <= 32.

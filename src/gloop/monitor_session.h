@@ -54,7 +54,7 @@ public:
 
     static Duration boostThreshold()
     {
-        return std::chrono::milliseconds(GLOOP_ROUGH_TIMESLICE);
+        return std::chrono::microseconds(GLOOP_ROUGH_TIMESLICE);
     }
 
     boost::asio::local::stream_protocol::socket& socket() { return m_socket; }

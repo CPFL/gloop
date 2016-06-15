@@ -109,6 +109,8 @@ struct _pagehelper{
 #define INPUT_PREFETCH_SIZE (THREADS*32)
 
 #define CORPUS_PREFETCH_SIZE (16384)
+// #define CORPUS_PREFETCH_SIZE (4096)
+// #define CORPUS_PREFETCH_SIZE (1024)
 
 __device__ int find_overlap(char* dst)
 {
@@ -211,6 +213,8 @@ __device__ char* get_next(struct context& ctx, char* str, char** next, int* db_s
 
 #define ROW_SIZE (THREADS*32)
 #define PREFETCH_SIZE 16384
+// #define PREFETCH_SIZE 4096
+// #define PREFETCH_SIZE 1024
 
 __device__ int global_output;
 __device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context ctx, char* next_db, int zfd_db, size_t _cursor, size_t db_size, int db_strlen);
