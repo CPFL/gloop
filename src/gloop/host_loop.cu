@@ -177,9 +177,9 @@ void HostLoop::initialize()
             m_copyWorkPool->registerCopyWork(CopyWork::create(*this));
         }
 
-        CUDA_SAFE_CALL(cudaPeekAtLastError());
+        GLOOP_CUDA_SAFE_CALL(cudaPeekAtLastError());
 
-        CUDA_SAFE_CALL(cudaGetDeviceProperties(&m_deviceProperties, m_deviceNumber));
+        GLOOP_CUDA_SAFE_CALL(cudaGetDeviceProperties(&m_deviceProperties, m_deviceNumber));
 
         // And initialize launch related things eagerly here.
         // initializeHostLoop<<<1, 1, 0, m_pgraph>>>();
