@@ -43,8 +43,8 @@ class DeviceLoop {
 public:
     friend struct RPC;
     enum ResumeTag { Resume };
-    __device__ int initialize(volatile uint32_t* signal, DeviceContext, ResumeTag);
-    __device__ void initialize(volatile uint32_t* signal, DeviceContext);
+    inline __device__ int initialize(volatile uint32_t* signal, DeviceContext, ResumeTag);
+    inline __device__ void initialize(volatile uint32_t* signal, DeviceContext);
 
     template<typename Lambda>
     inline __device__ RPC enqueueRPC(Lambda&& lambda);
@@ -53,7 +53,7 @@ public:
 
     template<typename Lambda>
     inline __device__ void allocOnePage(Lambda&& lambda);
-    __device__ void freeOnePage(void* page);
+    inline __device__ void freeOnePage(void* page);
 
     inline __device__ int drain();
 
@@ -72,7 +72,7 @@ public:
     GLOOP_ALWAYS_INLINE __device__ int shouldPostTask();
 
 private:
-    __device__ void initializeImpl(DeviceContext);
+    inline __device__ void initializeImpl(DeviceContext);
 
     template<typename Lambda>
     inline __device__ uint32_t enqueueSleep(Lambda&& lambda);
@@ -84,7 +84,7 @@ private:
 
     inline __device__ uint32_t dequeue();
 
-    __device__ void resume();
+    inline __device__ void resume();
     inline __device__ int suspend();
 
     GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots(uint32_t position);

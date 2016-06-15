@@ -24,7 +24,11 @@
 #ifndef GLOOP_DEVICE_LOOP_INLINES_CU_H_
 #define GLOOP_DEVICE_LOOP_INLINES_CU_H_
 #include <utility>
+#include "device_context.cuh"
 #include "device_loop.cuh"
+#include "function.cuh"
+#include "sync_read_write.h"
+#include "utility.h"
 namespace gloop {
 
 GLOOP_ALWAYS_INLINE __device__ void RPC::emit(DeviceLoop* loop, Code code)
@@ -365,6 +369,75 @@ __device__ int DeviceLoop::suspend()
 
     // Finish the whole kernel.
     return /* stop the loop */ 1;
+}
+
+__device__ void DeviceLoop::initializeImpl(DeviceContext deviceContext)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+
+    m_deviceContext = deviceContext;
+    m_codes = deviceContext.codes + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
+    m_payloads = deviceContext.payloads + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
+    m_slots = reinterpret_cast<DeviceCallback*>(&context()->slots);
+
+    uint64_t startClock = clock64();
+    m_start = atomicCAS((unsigned long long*)&deviceContext.kernel->globalClock, 0ULL, (unsigned long long)startClock);
+    if (m_start == 0)
+        m_start = startClock;
+
+#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
+    m_scratchIndex1 = invalidPosition();
+    m_scratchIndex2 = invalidPosition();
+#endif
+}
+
+__device__ void DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    initializeImpl(deviceContext);
+    m_control.initialize(deviceContext.logicalBlocks, signal);
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
+    logicalGridDim = m_control.logicalGridDim;
+    logicalBlockIdx = m_control.logicalBlockIdx;
+#endif
+}
+
+__device__ int DeviceLoop::initialize(volatile uint32_t* signal, DeviceContext deviceContext, ResumeTag)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    initializeImpl(deviceContext);
+    resume();
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
+    logicalGridDim = m_control.logicalGridDim;
+    logicalBlockIdx = m_control.logicalBlockIdx;
+#endif
+
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
+    return m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+#else
+    return 1;
+#endif
+}
+
+__device__ void DeviceLoop::resume()
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    // __threadfence_system();  // FIXME
+    DeviceContext::PerBlockContext* blockContext = context();
+    m_control = blockContext->control;
+    // __threadfence_system();  // FIXME
+}
+
+__device__ void DeviceLoop::freeOnePage(void* aPage)
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    uint32_t pos = position(static_cast<DeviceContext::OnePage*>(aPage));
+    m_control.freePages |= (1UL << pos);
+    GPU_ASSERT(pos < GLOOP_SHARED_PAGE_COUNT);
+    int freePageWaitingCallbackPlusOne = __ffs(m_control.pageSleepSlots);
+    if (freePageWaitingCallbackPlusOne) {
+        m_control.wakeupSlots |= (1U << (freePageWaitingCallbackPlusOne - 1));
+    }
 }
 
 }  // namespace gloop
