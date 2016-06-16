@@ -96,7 +96,7 @@ void Session::kill()
 
 void Session::configureTick(boost::asio::high_resolution_timer& timer)
 {
-    timer.expires_from_now(std::chrono::microseconds(GLOOP_KILL_TIME));
+    timer.expires_from_now(std::chrono::microseconds(GLOOP_KILL_TIME * 3));
     timer.async_wait([&](const boost::system::error_code& ec) {
         if (!ec) {
             // This is ASIO call. So it is executed under the main thread now. (Since only the main thread invokes ASIO's ioService.run()).
