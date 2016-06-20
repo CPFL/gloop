@@ -1957,7 +1957,7 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
         mummergpuKernel1 <<< dimGrid, dimBlock, 0 >>> (
             drivers,ctx->results.d_match_coords, ctx->queries->d_tex_array, (char*)ctx->ref->d_ref_array, ctx->queries->d_addrs_tex_array, ctx->queries->d_lengths_array, numQueries, ctx->min_match_length);
 
-        for (int i = 0; i < 80; ++i) {
+        for (int i = 0; i < 81; ++i) {
             mummergpuKernel2 <<< dimGrid, dimBlock, 0 >>> (
                 drivers,ctx->results.d_match_coords, ctx->queries->d_tex_array, (char*)ctx->ref->d_ref_array, ctx->queries->d_addrs_tex_array, ctx->queries->d_lengths_array, numQueries, ctx->min_match_length);
         }
