@@ -794,7 +794,7 @@ __device__ void perform(
     __syncthreads();
 
     for (; qrystart <= longestQuery; qrystart++, result += RESULT_SPAN) {
-        if (qrystart < last) {
+        if (qrystart <= last) {
             //_PixelOfNode node;
             unsigned int node_start;
             unsigned int prev;
