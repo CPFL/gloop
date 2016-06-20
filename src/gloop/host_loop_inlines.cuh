@@ -47,9 +47,8 @@ void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads
 template<typename DeviceLambda, class... Args>
 void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
 {
-    std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
-    benchmark->begin();
-
+//     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
+//     benchmark->begin();
     hostContext.prologue(logicalBlocks, physicalBlocks);
 
 #if 0

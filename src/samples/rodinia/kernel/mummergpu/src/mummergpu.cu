@@ -1952,7 +1952,15 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
                 ctx->min_match_length);
     }
     else {
-        mummergpuKernel <<< dimGrid, dimBlock, 0 >>> (ctx->results.d_match_coords,
+        Driver* drivers = nullptr;
+        unsigned* flag = nullptr;
+        CUDA_SAFE_CALL(cudaMalloc((void**)&drivers, sizeof(Driver) * dimGrid.x));
+        CUDA_SAFE_CALL(cudaMallocHost((void**)&flag, sizeof(unsigned)));
+        *flag = 0;
+        mummergpuKernel1 <<< dimGrid, dimBlock, 0 >>> (
+                drivers,
+                flag,
+                ctx->results.d_match_coords,
 #if COALESCED_QUERIES
                 ctx->results.d_coord_tex_array,
 #endif
@@ -1983,7 +1991,53 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
                 , ctx->ref->d_node_hist,
                 ctx->ref->d_child_hist
 #endif
-				);
+        );
+        cudaDeviceSynchronize();
+
+#if 0
+        while (*flag != dimGrid.x) {
+            printf("%u\n", *flag);
+            mummergpuKernel2 <<< dimGrid, dimBlock, 0 >>> (
+                    drivers,
+                    flag,
+                    ctx->results.d_match_coords,
+#if COALESCED_QUERIES
+                    ctx->results.d_coord_tex_array,
+#endif
+
+#if !QRYTEX
+#if COALESCED_QUERIES
+                    (int*)
+#endif
+                    ctx->queries->d_tex_array,
+#endif
+
+#if !NODETEX
+                    (_PixelOfNode*)(ctx->ref->d_node_tex_array),
+#endif
+
+#if !CHILDTEX
+                    (_PixelOfChildren*)(ctx->ref->d_children_tex_array),
+#endif
+
+#if !REFTEX
+                    (char*)ctx->ref->d_ref_array,
+#endif
+                    ctx->queries->d_addrs_tex_array,
+                    ctx->queries->d_lengths_array,
+                    numQueries,
+                    ctx->min_match_length
+#if TREE_ACCESS_HISTOGRAM
+                    , ctx->ref->d_node_hist,
+                    ctx->ref->d_child_hist
+#endif
+            );
+            cudaDeviceSynchronize();
+        }
+#endif
+
+        CUDA_SAFE_CALL(cudaFree(drivers));
+        CUDA_SAFE_CALL(cudaFreeHost(flag));
     }
 
 	// check if kernel execution generated an error
