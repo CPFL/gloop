@@ -756,6 +756,7 @@ __device__ void set_result(unsigned int cur,
 
 struct Driver {
     int qrystart;
+    int done;
     unsigned int* cur;
     int* mustmatch;
     int* qry_match_len;
@@ -764,7 +765,6 @@ struct Driver {
 
 __device__ void perform(
     Driver* driver,
-    unsigned* stop,
     void* match_coords,
     char* aQueries,
     char* ref,
@@ -775,12 +775,17 @@ __device__ void perform(
 {
     int qryid = __umul24(blockIdx.x, blockDim.x) + threadIdx.x;
     if (qryid >= numQueries) {
+        BEGIN_SINGLE_THREAD
+        {
+            if (!driver->done) {
+                driver->done = 1;
+                delete [] driver->cur;
+                delete [] driver->mustmatch;
+                delete [] driver->qry_match_len;
+            }
+        }
+        END_SINGLE_THREAD
         return;
-    }
-    XPRINTF("> qryid: %d\n", qryid);
-
-    if (qryid == 0) {
-        PRINTNODES(0, 200);
     }
 
     //TextureAddress cur;
@@ -816,6 +821,9 @@ __device__ void perform(
     END_SINGLE_THREAD
     atomicMax(&longestQuery, last);
     __syncthreads();
+    BEGIN_SINGLE_THREAD
+        printf("LONGEST, block:(%d),query:(%d)\n", (int)(blockIdx.x), longestQuery);
+    END_SINGLE_THREAD
 
     for (; qrystart <= longestQuery; qrystart++, result += RESULT_SPAN) {
         if (qrystart < last) {
@@ -953,14 +961,20 @@ __device__ void perform(
     }
 
     BEGIN_SINGLE_THREAD
-        atomicInc(stop, 1);
+    {
+        if (!driver->done) {
+            driver->done = 1;
+            delete [] driver->cur;
+            delete [] driver->mustmatch;
+            delete [] driver->qry_match_len;
+        }
+    }
     END_SINGLE_THREAD
 }
 
 __global__ void
 mummergpuKernel2(
     Driver* drivers,
-    unsigned* stop,
     void* match_coords,
     char* aQueries,
     char* ref,
@@ -972,16 +986,15 @@ mummergpuKernel2(
     __shared__ Driver* driver;
     BEGIN_SINGLE_THREAD
     {
-        driver = drivers + GLOOP_BID();
+        driver = drivers + blockIdx.x;
     }
     END_SINGLE_THREAD
-    perform(driver, stop, match_coords, aQueries, ref, queryAddrs, queryLengths, numQueries, min_match_len);
+    perform(driver, match_coords, aQueries, ref, queryAddrs, queryLengths, numQueries, min_match_len);
 }
 
 __global__ void
 mummergpuKernel1(
     Driver* drivers,
-    unsigned* stop,
     void* match_coords,
     char* aQueries,
     char* ref,
@@ -998,14 +1011,22 @@ mummergpuKernel1(
         driver->cur = new unsigned int[blockDim.x];
         driver->mustmatch = new int[blockDim.x];
         driver->qry_match_len = new int[blockDim.x];
-        if (blockIdx.x == 0) {
-            *stop = 0;
-        }
     }
     END_SINGLE_THREAD
     driver->cur[threadIdx.x] = 0;
     driver->mustmatch[threadIdx.x] = 0;
     driver->qry_match_len[threadIdx.x] = 0;
+
+    int qryid = __umul24(blockIdx.x, blockDim.x) + threadIdx.x;
+    if (qryid >= numQueries) {
+        return;
+    }
+
+    XPRINTF("> qryid: %d\n", qryid);
+
+    if (qryid == 0) {
+        PRINTNODES(0, 200);
+    }
 }
 
 ///////////////////////////////////////

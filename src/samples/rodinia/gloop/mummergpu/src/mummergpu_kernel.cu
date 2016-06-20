@@ -951,7 +951,6 @@ __device__ void perform(
 #endif
     }
 
-
     BEGIN_SINGLE_THREAD
     {
         delete [] driver->cur;
@@ -987,6 +986,17 @@ mummergpuKernel(
     driver->cur[threadIdx.x] = 0;
     driver->mustmatch[threadIdx.x] = 0;
     driver->qry_match_len[threadIdx.x] = 0;
+
+    int qryid = __umul24(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
+    if (qryid >= numQueries) {
+        return;
+    }
+    XPRINTF("> qryid: %d\n", qryid);
+
+    if (qryid == 0) {
+        PRINTNODES(0, 200);
+    }
+
     gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
         perform(loop, driver, match_coords, aQueries, ref, queryAddrs, queryLengths, numQueries, min_match_len);
     });
