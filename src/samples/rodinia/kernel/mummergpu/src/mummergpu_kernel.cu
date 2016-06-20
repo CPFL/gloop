@@ -821,9 +821,6 @@ __device__ void perform(
     END_SINGLE_THREAD
     atomicMax(&longestQuery, last);
     __syncthreads();
-    BEGIN_SINGLE_THREAD
-        printf("LONGEST, block:(%d),query:(%d)\n", (int)(blockIdx.x), longestQuery);
-    END_SINGLE_THREAD
 
     for (; qrystart <= longestQuery; qrystart++, result += RESULT_SPAN) {
         if (qrystart < last) {
