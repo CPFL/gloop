@@ -59,9 +59,6 @@ struct DeviceContext {
                 currentLogicalBlockCount = count * bid + remaining;
             }
             logicalBlocksCount = count;
-
-            logicalBlockIdx = make_uint2(currentLogicalBlockCount % logicalBlocksDim.x, currentLogicalBlockCount / logicalBlocksDim.x);
-            logicalGridDim = make_uint2(logicalBlocksDim.x, logicalGridDim.y);
 #endif
         }
 
@@ -74,8 +71,6 @@ struct DeviceContext {
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
         uint32_t logicalBlocksCount;
         uint32_t currentLogicalBlockCount;
-        uint2 logicalBlockIdx;
-        uint2 logicalGridDim;
 #endif
     };
 
@@ -88,6 +83,8 @@ struct DeviceContext {
         typedef std::aligned_storage<PerBlockSize>::type Slots;
         Slots slots;
         DeviceLoopControl control;
+        uint2 logicalBlockIdx;
+        uint2 logicalGridDim;
     };
 
     struct KernelContext {

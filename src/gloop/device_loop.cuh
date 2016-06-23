@@ -96,15 +96,20 @@ private:
     __device__ static constexpr uint32_t invalidPosition() { return UINT32_MAX; }
     GLOOP_ALWAYS_INLINE __device__ static bool isValidPosition(uint32_t position);
 
-    DeviceContext m_deviceContext;
+    DeviceContext::PerBlockContext* m_context;
+    DeviceContext::PerBlockHostContext* m_hostContext;
 
     // SoA.
     int32_t* m_codes;
     request::Payload* m_payloads;
+    DeviceContext::OnePage* m_pages;
+
+    DeviceContext::KernelContext* m_kernel;
+    uint64_t m_killClock;
+    uint64_t m_start;
 
     DeviceCallback* m_slots;
     DeviceContext::DeviceLoopControl m_control;
-    uint64_t m_start;
 
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     uint32_t m_scratchIndex1;

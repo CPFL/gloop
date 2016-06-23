@@ -74,13 +74,13 @@ __device__ auto DeviceLoop::slots(uint32_t position) -> DeviceCallback*
 __device__ auto DeviceLoop::context() const -> DeviceContext::PerBlockContext*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    return m_deviceContext.context + GLOOP_BID();
+    return m_context;
 }
 
 __device__ auto DeviceLoop::pages() const -> DeviceContext::OnePage*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    return m_deviceContext.pages + (GLOOP_BID() * GLOOP_SHARED_PAGE_COUNT);
+    return m_pages;
 }
 
 template<typename Lambda>
@@ -234,7 +234,7 @@ __device__ void DeviceLoop::deallocate(uint32_t pos)
 __device__ int DeviceLoop::shouldPostTask()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    return (clock64() - m_start) > m_deviceContext.killClock;
+    return (clock64() - m_start) > m_killClock;
 }
 
 __device__ int DeviceLoop::drain()
@@ -267,8 +267,8 @@ __device__ int DeviceLoop::drain()
 
             {
                 uint64_t now = clock64();
-                if (((now - m_start) > m_deviceContext.killClock)) {
-                    m_start = ((now / m_deviceContext.killClock) * m_deviceContext.killClock);
+                if (((now - m_start) > m_killClock)) {
+                    m_start = ((now / m_killClock) * m_killClock);
                     if (gloop::readNoCache<uint32_t>(signal) != 0) {
                         position = shouldExitPosition();
                         goto next;
@@ -300,11 +300,12 @@ __device__ int DeviceLoop::suspend()
     if (m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
         // Save the control state.
         DeviceContext::PerBlockContext* blockContext = context();
-        DeviceContext::PerBlockHostContext* hostContext = m_deviceContext.hostContext + GLOOP_BID();
         blockContext->control = m_control;
-        hostContext->freeSlots = m_control.freeSlots;
-        hostContext->sleepSlots = m_control.sleepSlots;
-        hostContext->wakeupSlots = m_control.wakeupSlots;
+        blockContext->logicalBlockIdx = gloop::logicalBlockIdx;
+        blockContext->logicalGridDim = gloop::logicalGridDim;
+        m_hostContext->freeSlots = m_control.freeSlots;
+        m_hostContext->sleepSlots = m_control.sleepSlots;
+        m_hostContext->wakeupSlots = m_control.wakeupSlots;
 
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
         if (m_scratchIndex1 != invalidPosition()) {
@@ -318,7 +319,7 @@ __device__ int DeviceLoop::suspend()
 #endif
 
         // Request the resume.
-        atomicAdd(&m_deviceContext.kernel->pending, 1);
+        atomicAdd(&m_kernel->pending, 1);
         return /* stop the loop */ 1;
     }
 
@@ -327,32 +328,32 @@ __device__ int DeviceLoop::suspend()
     if (--m_control.logicalBlocksCount != 0) {
         // There is some remaining logical thread blocks.
         // Let's increment the logical block index.
-        m_control.logicalBlockIdx.x += 1;
-        if (m_control.logicalBlockIdx.x == m_control.logicalGridDim.x) {
-            m_control.logicalBlockIdx.x = 0;
-            m_control.logicalBlockIdx.y += 1;
+        gloop::logicalBlockIdx.x += 1;
+        if (gloop::logicalBlockIdx.x == gloop::logicalGridDim.x) {
+            gloop::logicalBlockIdx.x = 0;
+            gloop::logicalBlockIdx.y += 1;
         }
 
         uint64_t now = clock64();
-        if (((now - m_start) > m_deviceContext.killClock)) {
-            m_start = ((now / m_deviceContext.killClock) * m_deviceContext.killClock);
+        if (((now - m_start) > m_killClock)) {
+            m_start = ((now / m_killClock) * m_killClock);
             if (gloop::readNoCache<uint32_t>(signal) != 0) {
 
                 // Save the control state.
                 DeviceContext::PerBlockContext* blockContext = context();
-                DeviceContext::PerBlockHostContext* hostContext = m_deviceContext.hostContext + GLOOP_BID();
                 blockContext->control = m_control;
-                hostContext->freeSlots = DeviceContext::DeviceLoopControl::allFilledFreeSlots();
-                hostContext->sleepSlots = 0;
-                hostContext->wakeupSlots = 0;
+                blockContext->logicalBlockIdx = gloop::logicalBlockIdx;
+                blockContext->logicalGridDim = gloop::logicalGridDim;
+                m_hostContext->freeSlots = DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+                m_hostContext->sleepSlots = 0;
+                m_hostContext->wakeupSlots = 0;
 
                 // Request the resume.
-                atomicAdd(&m_deviceContext.kernel->pending, 1);
+                atomicAdd(&m_kernel->pending, 1);
                 return /* stop the loop */ 1;
             }
         }
 
-        logicalBlockIdx = m_control.logicalBlockIdx;
         return /* continue the next loop */ 0;
     }
 #endif
@@ -361,11 +362,12 @@ __device__ int DeviceLoop::suspend()
     // the other thread block may not stop yet. In that case, this
     // this block may be re-launched.
     DeviceContext::PerBlockContext* blockContext = context();
-    DeviceContext::PerBlockHostContext* hostContext = m_deviceContext.hostContext + GLOOP_BID();
     blockContext->control = m_control;
-    hostContext->freeSlots = DeviceContext::DeviceLoopControl::allFilledFreeSlots();
-    hostContext->sleepSlots = 0;
-    hostContext->wakeupSlots = 0;
+    blockContext->logicalBlockIdx = gloop::logicalBlockIdx;
+    blockContext->logicalGridDim = gloop::logicalGridDim;
+    m_hostContext->freeSlots = DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+    m_hostContext->sleepSlots = 0;
+    m_hostContext->wakeupSlots = 0;
 
     // Finish the whole kernel.
     return /* stop the loop */ 1;
@@ -375,15 +377,20 @@ __device__ void DeviceLoop::initializeImpl(DeviceContext deviceContext)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
-    m_deviceContext = deviceContext;
+    m_context = deviceContext.context + GLOOP_BID();
+    m_hostContext = deviceContext.hostContext + GLOOP_BID();
     m_codes = deviceContext.codes + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
     m_payloads = deviceContext.payloads + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
-    m_slots = reinterpret_cast<DeviceCallback*>(&context()->slots);
+    m_pages = deviceContext.pages + (GLOOP_BID() * GLOOP_SHARED_PAGE_COUNT);
+    m_kernel = deviceContext.kernel;
+    m_killClock = deviceContext.killClock;
 
     uint64_t startClock = clock64();
-    m_start = atomicCAS((unsigned long long*)&deviceContext.kernel->globalClock, 0ULL, (unsigned long long)startClock);
+    m_start = atomicCAS((unsigned long long*)&m_kernel->globalClock, 0ULL, (unsigned long long)startClock);
     if (m_start == 0)
         m_start = startClock;
+
+    m_slots = reinterpret_cast<DeviceCallback*>(&context()->slots);
 
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     m_scratchIndex1 = invalidPosition();
@@ -395,10 +402,11 @@ __device__ void DeviceLoop::initialize(DeviceContext deviceContext)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);
-    m_control.initialize(deviceContext.logicalBlocks);
+    uint3 logicalBlocksDim = deviceContext.logicalBlocks;
+    m_control.initialize(logicalBlocksDim);
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    logicalGridDim = m_control.logicalGridDim;
-    logicalBlockIdx = m_control.logicalBlockIdx;
+    gloop::logicalBlockIdx = make_uint2(m_control.currentLogicalBlockCount % logicalBlocksDim.x, m_control.currentLogicalBlockCount / logicalBlocksDim.x);
+    gloop::logicalGridDim = make_uint2(logicalBlocksDim.x, logicalBlocksDim.y);
 #endif
 }
 
@@ -407,11 +415,6 @@ __device__ int DeviceLoop::initialize(DeviceContext deviceContext, ResumeTag)
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);
     resume();
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    logicalGridDim = m_control.logicalGridDim;
-    logicalBlockIdx = m_control.logicalBlockIdx;
-#endif
-
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     return m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
 #else
@@ -425,6 +428,12 @@ __device__ void DeviceLoop::resume()
     // __threadfence_system();  // FIXME
     DeviceContext::PerBlockContext* blockContext = context();
     m_control = blockContext->control;
+
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
+    gloop::logicalGridDim = blockContext->logicalGridDim;
+    gloop::logicalBlockIdx = blockContext->logicalBlockIdx;
+#endif
+
     // __threadfence_system();  // FIXME
 }
 
