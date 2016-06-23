@@ -73,13 +73,13 @@ __device__ void addData1024(volatile unsigned int* s_WarpHist, unsigned int data
     } while (s_WarpHist[data] != count);
 }
 
-__global__ void histogram1024Kernel(unsigned int* d_Result, float* d_Data, float minimum, float maximum, int dataN)
+__device__ void histogram1024Kernel(gloop::DeviceLoop* loop, unsigned int* d_Result, float* d_Data, float minimum, float maximum, int dataN)
 {
 
     //Current global thread index
-    const int globalTid = IMUL(blockIdx.x, blockDim.x) + threadIdx.x;
+    const int globalTid = IMUL(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
     //Total number of threads in the compute grid
-    const int numThreads = IMUL(blockDim.x, gridDim.x);
+    const int numThreads = IMUL(blockDim.x, gloop::logicalGridDim.x);
     //WARP_LOG_SIZE higher bits of counter values are tagged
     //by lower WARP_LOG_SIZE threadID bits
     // Will correctly issue warning when compiling for debug (x<<32-0)
@@ -149,12 +149,24 @@ void histogram1024GPU(
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         checkCudaErrors(cudaMemset(d_Result1024, 0, HISTOGRAM_SIZE));
     }
+    hostLoop.launch(hostContext, dim3(BLOCK_N), dim3(THREAD_N), [] __device__(
+        gloop::DeviceLoop* loop,
+        unsigned int* d_Result,
+        float* d_Data,
+        float minimum,
+        float maximum,
+        int dataN
+        ) {
+        histogram1024Kernel(loop, d_Result, d_Data, minimum, maximum, dataN);
+    }, d_Result1024, d_Data, minimum, maximum, dataN);
+#if 0
     histogram1024Kernel<<<BLOCK_N, THREAD_N>>>(
         d_Result1024,
         d_Data,
         minimum,
         maximum,
         dataN);
+#endif
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         checkCudaErrors(cudaMemcpy(h_Result, d_Result1024, HISTOGRAM_SIZE, cudaMemcpyDeviceToHost));
