@@ -822,8 +822,8 @@ __device__ void perform(
     atomicMax(&longestQuery, last);
     __syncthreads();
 
-    for (; qrystart <= longestQuery; qrystart++, result += RESULT_SPAN) {
-        if (qrystart < last) {
+    if (qrystart <= longestQuery) {
+        if (qrystart <= last) {
             //_PixelOfNode node;
             unsigned int node_start;
             unsigned int prev;

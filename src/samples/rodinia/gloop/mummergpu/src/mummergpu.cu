@@ -1891,7 +1891,6 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
                 numQueries,
                 min_match_len);
         }, ctx->results.d_match_coords, ctx->queries->d_tex_array, (char*)ctx->ref->d_ref_array, ctx->queries->d_addrs_tex_array, ctx->queries->d_lengths_array, numQueries, ctx->min_match_length);
-        fprintf(stderr, "mummergpuKernel threads:(%d),blocks(%d)\n", dimBlock.x, dimGrid.x);
     }
 
     {
