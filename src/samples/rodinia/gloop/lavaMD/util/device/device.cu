@@ -16,8 +16,8 @@
 //	SET DEVICE
 //====================================================================================================100
 
+#if 0
 void setdevice(void){
-
 	// variables
 	int num_devices;
 	int device;
@@ -44,8 +44,8 @@ void setdevice(void){
 		}
 		cudaSetDevice(max_device);
 	}
-
 }
+#endif
 
 //====================================================================================================100
 //	GET LAST ERROR
