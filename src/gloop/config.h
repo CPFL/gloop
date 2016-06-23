@@ -48,7 +48,7 @@
 #define GLOOP_INITIAL_COPY_WORKS 32
 
 // sizeof(uint64_t) * GLOOP_LAMBDA_SIZE.
-#define GLOOP_LAMBDA_SIZE 64
+#define GLOOP_LAMBDA_SIZE 48
 
 namespace gloop {
 }  // namespace gloop
