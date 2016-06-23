@@ -92,8 +92,9 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         checkCudaErrors(cudaMemset((void*)d_offsets, 0, histosize * sizeof(int)));
-        histogram1024GPU(h_offsets, d_input, minimum, maximum, listsize);
     }
+    histogram1024GPU(hostLoop, hostContext, h_offsets, d_input, minimum, maximum, listsize);
+
     for (int i = 0; i < histosize; i++)
         historesult[i] = (float)h_offsets[i];
 

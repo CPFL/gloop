@@ -137,18 +137,26 @@ void closeHistogram1024(void)
 
 //histogram1024 CPU front-end
 void histogram1024GPU(
+    gloop::HostLoop& hostLoop,
+    gloop::HostContext& hostContext,
     unsigned int* h_Result,
     float* d_Data,
     float minimum,
     float maximum,
     int dataN)
 {
-    checkCudaErrors(cudaMemset(d_Result1024, 0, HISTOGRAM_SIZE));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        checkCudaErrors(cudaMemset(d_Result1024, 0, HISTOGRAM_SIZE));
+    }
     histogram1024Kernel<<<BLOCK_N, THREAD_N>>>(
         d_Result1024,
         d_Data,
         minimum,
         maximum,
         dataN);
-    checkCudaErrors(cudaMemcpy(h_Result, d_Result1024, HISTOGRAM_SIZE, cudaMemcpyDeviceToHost));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        checkCudaErrors(cudaMemcpy(h_Result, d_Result1024, HISTOGRAM_SIZE, cudaMemcpyDeviceToHost));
+    }
 }
