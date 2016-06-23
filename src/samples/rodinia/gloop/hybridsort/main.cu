@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <gloop/gloop.h>
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,8 +45,8 @@ inline int compare(const void* a, const void* b)
 ////////////////////////////////////////////////////////////////////////////////
 // Forward declaration
 ////////////////////////////////////////////////////////////////////////////////
-void cudaSort(float* origList, float minimum, float maximum,
-    float* resultList, int numElements);
+void cudaSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
+        float* origList, float minimum, float maximum, float* resultList, int numElements);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
@@ -116,9 +117,11 @@ int main(int argc, char** argv)
     }
 
     cout << "Sorting on GPU..." << flush;
+    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(120));
     // GPU Sort
     for (int i = 0; i < TEST; i++)
-        cudaSort(cpu_idata, datamin, datamax, gpu_odata, numElements);
+        cudaSort(*hostLoop, *hostContext, cpu_idata, datamin, datamax, gpu_odata, numElements);
     cout << "done.\n";
 #ifdef VERIFY
     cout << "Sorting on CPU..." << flush;
@@ -179,8 +182,8 @@ int main(int argc, char** argv)
     free(gpu_odata);
 }
 
-void cudaSort(float* origList, float minimum, float maximum,
-    float* resultList, int numElements)
+void cudaSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
+        float* origList, float minimum, float maximum, float* resultList, int numElements)
 {
     // Initialization and upload data
     float* d_input = NULL;
@@ -188,10 +191,10 @@ void cudaSort(float* origList, float minimum, float maximum,
     int mem_size = (numElements + DIVISIONS * 4) * sizeof(float);
     sdkStartTimer(&uploadTimer);
     {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         cudaMalloc((void**)&d_input, mem_size);
         cudaMalloc((void**)&d_output, mem_size);
-        cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float),
-            cudaMemcpyHostToDevice);
+        cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float), cudaMemcpyHostToDevice);
         init_bucketsort(numElements);
     }
     sdkStopTimer(&uploadTimer);
@@ -203,8 +206,7 @@ void cudaSort(float* origList, float minimum, float maximum,
     int* sizes = (int*)malloc(DIVISIONS * sizeof(int));
     int* nullElements = (int*)malloc(DIVISIONS * sizeof(int));
     unsigned int* origOffsets = (unsigned int*)malloc((DIVISIONS + 1) * sizeof(int));
-    bucketSort(d_input, d_output, numElements, sizes, nullElements,
-        minimum, maximum, origOffsets);
+    bucketSort(hostLoop, hostContext, d_input, d_output, numElements, sizes, nullElements, minimum, maximum, origOffsets);
     sdkStopTimer(&bucketTimer);
 
     // Mergesort the result
@@ -216,22 +218,27 @@ void cudaSort(float* origList, float minimum, float maximum,
     for (int i = 0; i < DIVISIONS; i++)
         newlistsize += sizes[i] * 4;
 
-    float4* mergeresult = runMergeSort(newlistsize, DIVISIONS, d_origList, d_resultList,
-        sizes, nullElements, origOffsets); //d_origList;
-    cudaThreadSynchronize();
+    float4* mergeresult = runMergeSort(hostLoop, hostContext, newlistsize, DIVISIONS, d_origList, d_resultList, sizes, nullElements, origOffsets); //d_origList;
+    // cudaThreadSynchronize();
     sdkStopTimer(&mergeTimer);
     sdkStopTimer(&totalTimer);
 
     // Download result
     sdkStartTimer(&downloadTimer);
-    checkCudaErrors(cudaMemcpy((void*)resultList,
-        (void*)mergeresult, numElements * sizeof(float), cudaMemcpyDeviceToHost));
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        checkCudaErrors(cudaMemcpy((void*)resultList,
+            (void*)mergeresult, numElements * sizeof(float), cudaMemcpyDeviceToHost));
+    }
     sdkStopTimer(&downloadTimer);
 
     // Clean up
-    finish_bucketsort();
-    cudaFree(d_input);
-    cudaFree(d_output);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        finish_bucketsort();
+        cudaFree(d_input);
+        cudaFree(d_output);
+    }
     free(nullElements);
     free(sizes);
 }

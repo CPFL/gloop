@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <gloop/gloop.h>
 // includes, kernels
 #include "bucketsort_kernel.cu"
 #include "histogram1024_kernel.cu"
@@ -81,7 +82,7 @@ void finish_bucketsort()
 // Given the input array of floats and the min and max of the distribution,
 // sort the elements into float4 aligned buckets of roughly equal size
 ////////////////////////////////////////////////////////////////////////////////
-void bucketSort(float* d_input, float* d_output, int listsize,
+void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, float* d_input, float* d_output, int listsize,
     int* sizes, int* nullElements, float minimum, float maximum,
     unsigned int* origOffsets)
 {

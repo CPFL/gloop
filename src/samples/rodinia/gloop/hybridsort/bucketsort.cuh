@@ -1,12 +1,14 @@
 #ifndef __BUCKETSORT
 #define __BUCKETSORT
 
+#include <gloop/gloop.h>
+
 #define LOG_DIVISIONS 10
 #define DIVISIONS (1 << LOG_DIVISIONS)
 
 void init_bucketsort(int listsize);
 void finish_bucketsort();
-void bucketSort(float* d_input, float* d_output, int listsize,
+void bucketSort(gloop::HostLoop&, gloop::HostContext&, float* d_input, float* d_output, int listsize,
     int* sizes, int* nullElements, float minimum, float maximum,
     unsigned int* origOffsets);
 
