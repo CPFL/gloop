@@ -62,7 +62,9 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
     //	INITIAL DRIVER OVERHEAD
     //====================================================================================================100
 
-    cudaThreadSynchronize();
+    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(60));
+    // cudaThreadSynchronize();
 
     //====================================================================================================100
     //	VARIABLES
@@ -91,41 +93,45 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
     //	GPU MEMORY				(MALLOC)
     //======================================================================================================================================================150
 
-    //====================================================================================================100
-    //	GPU MEMORY				(MALLOC) COPY IN
-    //====================================================================================================100
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
 
-    //==================================================50
-    //	boxes
-    //==================================================50
+        //====================================================================================================100
+        //	GPU MEMORY				(MALLOC) COPY IN
+        //====================================================================================================100
 
-    cudaMalloc((void**)&d_box_gpu,
-        dim_cpu.box_mem);
+        //==================================================50
+        //	boxes
+        //==================================================50
 
-    //==================================================50
-    //	rv
-    //==================================================50
+        cudaMalloc((void**)&d_box_gpu,
+            dim_cpu.box_mem);
 
-    cudaMalloc((void**)&d_rv_gpu,
-        dim_cpu.space_mem);
+        //==================================================50
+        //	rv
+        //==================================================50
 
-    //==================================================50
-    //	qv
-    //==================================================50
+        cudaMalloc((void**)&d_rv_gpu,
+            dim_cpu.space_mem);
 
-    cudaMalloc((void**)&d_qv_gpu,
-        dim_cpu.space_mem2);
+        //==================================================50
+        //	qv
+        //==================================================50
 
-    //====================================================================================================100
-    //	GPU MEMORY				(MALLOC) COPY
-    //====================================================================================================100
+        cudaMalloc((void**)&d_qv_gpu,
+            dim_cpu.space_mem2);
 
-    //==================================================50
-    //	fv
-    //==================================================50
+        //====================================================================================================100
+        //	GPU MEMORY				(MALLOC) COPY
+        //====================================================================================================100
 
-    cudaMalloc((void**)&d_fv_gpu,
-        dim_cpu.space_mem);
+        //==================================================50
+        //	fv
+        //==================================================50
+
+        cudaMalloc((void**)&d_fv_gpu,
+            dim_cpu.space_mem);
+    }
 
     time2 = get_time();
 
@@ -133,49 +139,53 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
     //	GPU MEMORY			COPY
     //======================================================================================================================================================150
 
-    //====================================================================================================100
-    //	GPU MEMORY				(MALLOC) COPY IN
-    //====================================================================================================100
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
 
-    //==================================================50
-    //	boxes
-    //==================================================50
+        //====================================================================================================100
+        //	GPU MEMORY				(MALLOC) COPY IN
+        //====================================================================================================100
 
-    cudaMemcpy(d_box_gpu,
-        box_cpu,
-        dim_cpu.box_mem,
-        cudaMemcpyHostToDevice);
+        //==================================================50
+        //	boxes
+        //==================================================50
 
-    //==================================================50
-    //	rv
-    //==================================================50
+        cudaMemcpy(d_box_gpu,
+            box_cpu,
+            dim_cpu.box_mem,
+            cudaMemcpyHostToDevice);
 
-    cudaMemcpy(d_rv_gpu,
-        rv_cpu,
-        dim_cpu.space_mem,
-        cudaMemcpyHostToDevice);
+        //==================================================50
+        //	rv
+        //==================================================50
 
-    //==================================================50
-    //	qv
-    //==================================================50
+        cudaMemcpy(d_rv_gpu,
+            rv_cpu,
+            dim_cpu.space_mem,
+            cudaMemcpyHostToDevice);
 
-    cudaMemcpy(d_qv_gpu,
-        qv_cpu,
-        dim_cpu.space_mem2,
-        cudaMemcpyHostToDevice);
+        //==================================================50
+        //	qv
+        //==================================================50
 
-    //====================================================================================================100
-    //	GPU MEMORY				(MALLOC) COPY
-    //====================================================================================================100
+        cudaMemcpy(d_qv_gpu,
+            qv_cpu,
+            dim_cpu.space_mem2,
+            cudaMemcpyHostToDevice);
 
-    //==================================================50
-    //	fv
-    //==================================================50
+        //====================================================================================================100
+        //	GPU MEMORY				(MALLOC) COPY
+        //====================================================================================================100
 
-    cudaMemcpy(d_fv_gpu,
-        fv_cpu,
-        dim_cpu.space_mem,
-        cudaMemcpyHostToDevice);
+        //==================================================50
+        //	fv
+        //==================================================50
+
+        cudaMemcpy(d_fv_gpu,
+            fv_cpu,
+            dim_cpu.space_mem,
+            cudaMemcpyHostToDevice);
+    }
 
     time3 = get_time();
 
@@ -184,15 +194,20 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
     //======================================================================================================================================================150
 
     // launch kernel - all boxes
-    kernel_gpu_cuda<<<blocks, threads>>>(par_cpu,
-        dim_cpu,
-        d_box_gpu,
-        d_rv_gpu,
-        d_qv_gpu,
-        d_fv_gpu);
+    hostLoop->launch(*hostContext, blocks, threads, [] __device__(
+        gloop::DeviceLoop* loop,
+        par_str d_par_gpu,
+        dim_str d_dim_gpu,
+        box_str* d_box_gpu,
+        FOUR_VECTOR* d_rv_gpu,
+        fp* d_qv_gpu,
+        FOUR_VECTOR* d_fv_gpu
+        ) {
+        kernel_gpu_cuda(loop, d_par_gpu, d_dim_gpu, d_box_gpu, d_rv_gpu, d_qv_gpu, d_fv_gpu);
+    }, par_cpu, dim_cpu, d_box_gpu, d_rv_gpu, d_qv_gpu, d_fv_gpu);
 
-    checkCUDAError("Start");
-    cudaThreadSynchronize();
+    // checkCUDAError("Start");
+    // cudaThreadSynchronize();
 
     time4 = get_time();
 
@@ -200,10 +215,14 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
     //	GPU MEMORY			COPY (CONTD.)
     //======================================================================================================================================================150
 
-    cudaMemcpy(fv_cpu,
-        d_fv_gpu,
-        dim_cpu.space_mem,
-        cudaMemcpyDeviceToHost);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+
+        cudaMemcpy(fv_cpu,
+            d_fv_gpu,
+            dim_cpu.space_mem,
+            cudaMemcpyDeviceToHost);
+    }
 
     time5 = get_time();
 
@@ -211,10 +230,14 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
     //	GPU MEMORY DEALLOCATION
     //======================================================================================================================================================150
 
-    cudaFree(d_rv_gpu);
-    cudaFree(d_qv_gpu);
-    cudaFree(d_fv_gpu);
-    cudaFree(d_box_gpu);
+    {
+        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+
+        cudaFree(d_rv_gpu);
+        cudaFree(d_qv_gpu);
+        cudaFree(d_fv_gpu);
+        cudaFree(d_box_gpu);
+    }
 
     time6 = get_time();
 

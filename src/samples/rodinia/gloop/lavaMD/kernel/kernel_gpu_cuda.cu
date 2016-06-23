@@ -2,7 +2,9 @@
 //	plasmaKernel_gpu_2
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------200
 
-__global__ void kernel_gpu_cuda(par_str d_par_gpu,
+__device__ void kernel_gpu_cuda(
+    gloop::DeviceLoop* loop,
+    par_str d_par_gpu,
     dim_str d_dim_gpu,
     box_str* d_box_gpu,
     FOUR_VECTOR* d_rv_gpu,
@@ -14,7 +16,7 @@ __global__ void kernel_gpu_cuda(par_str d_par_gpu,
     //	THREAD PARAMETERS
     //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------180
 
-    int bx = blockIdx.x; // get current horizontal block index (0-n)
+    int bx = gloop::logicalBlockIdx.x; // get current horizontal block index (0-n)
     int tx = threadIdx.x; // get current horizontal thread index (0-n)
     // int ax = bx*NUMBER_THREADS+tx;
     // int wbx = bx;
@@ -38,7 +40,7 @@ __global__ void kernel_gpu_cuda(par_str d_par_gpu,
         int first_i;
         FOUR_VECTOR* rA;
         FOUR_VECTOR* fA;
-        __shared__ FOUR_VECTOR rA_shared[100];
+        __shared__ FOUR_VECTOR rA_shared[NUMBER_PAR_PER_BOX];
 
         // nei box
         int pointer;
@@ -47,8 +49,8 @@ __global__ void kernel_gpu_cuda(par_str d_par_gpu,
         FOUR_VECTOR* rB;
         fp* qB;
         int j = 0;
-        __shared__ FOUR_VECTOR rB_shared[100];
-        __shared__ double qB_shared[100];
+        __shared__ FOUR_VECTOR rB_shared[NUMBER_PAR_PER_BOX];
+        __shared__ double qB_shared[NUMBER_PAR_PER_BOX];
 
         // common
         fp r2;
