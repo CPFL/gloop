@@ -35,6 +35,7 @@ typedef std::aligned_storage<sizeof(DeviceLoop), alignof(DeviceLoop)>::type Unin
 template<typename DeviceLambda, class... Args>
 inline __global__ void resume(int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
+    __shared__ DeviceLoop sharedDeviceLoop;
     __shared__ int callbackKicked;
     BEGIN_SINGLE_THREAD
     {

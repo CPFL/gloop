@@ -120,7 +120,6 @@ private:
 };
 static_assert(std::is_trivially_destructible<DeviceLoop>::value, "DeviceLoop is trivially destructible");
 
-extern __device__ __shared__ DeviceLoop sharedDeviceLoop;
 extern __device__ __shared__ uint2 logicalGridDim;
 extern __device__ __shared__ uint2 logicalBlockIdx;
 extern __device__ volatile uint32_t* signal;
