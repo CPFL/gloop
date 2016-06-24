@@ -1,6 +1,7 @@
 add_executable(hybridsort-gloop
     main.cu
     bucketsort.cu
+    bucketcount.cu
     mergesort.cu
     histogram1024.cu
 )

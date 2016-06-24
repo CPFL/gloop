@@ -118,10 +118,7 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     int blocks = ((listsize - 1) / (threads.x * BUCKET_BAND)) + 1;
     dim3 grid(blocks, 1);
     // Find the new indice for all elements
-    hostLoop.launch(hostContext, dim3(120), grid, threads, [] __device__ (gloop::DeviceLoop* loop, float* input, int* indice, unsigned int* d_prefixoffsets, int size) {
-        bucketcount(loop, input, indice, d_prefixoffsets, size);
-    }, d_input, d_indice, d_prefixoffsets, listsize);
-    // bucketcount<<<grid, threads>>>(d_input, d_indice, d_prefixoffsets, listsize);
+    bucketcount(hostLoop, hostContext, grid, threads, d_input, d_indice, d_prefixoffsets, listsize);
 ///////////////////////////////////////////////////////////////////////////
 // Prefix scan offsets and align each division to float4 (required by
 // mergesort)
