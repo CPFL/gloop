@@ -39,8 +39,11 @@ class HostContext;
 struct RPC {
     uint32_t position;
 
+    template<typename DeviceLoop>
     __device__ Code peek(DeviceLoop*);
+    template<typename DeviceLoop>
     __device__ void emit(DeviceLoop*, Code code);
+    template<typename DeviceLoop>
     __device__ request::Payload* request(DeviceLoop*);
 
     __host__ Code peek(HostContext&);
