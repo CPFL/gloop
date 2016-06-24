@@ -63,7 +63,7 @@
 #define BLOCK_MEMORY (WARP_N * BIN_COUNT)
 #define IMUL(a, b) __mul24(a, b)
 
-__device__ void addData1024(volatile unsigned int* s_WarpHist, unsigned int data, unsigned int threadTag)
+static __device__ void addData1024(volatile unsigned int* s_WarpHist, unsigned int data, unsigned int threadTag)
 {
     unsigned int count;
     do {
@@ -73,7 +73,7 @@ __device__ void addData1024(volatile unsigned int* s_WarpHist, unsigned int data
     } while (s_WarpHist[data] != count);
 }
 
-__device__ void histogram1024Kernel(gloop::DeviceLoop* loop, unsigned int* d_Result, float* d_Data, float minimum, float maximum, int dataN)
+static __device__ void histogram1024Kernel(gloop::DeviceLoop* loop, unsigned int* d_Result, float* d_Data, float minimum, float maximum, int dataN)
 {
 
     //Current global thread index

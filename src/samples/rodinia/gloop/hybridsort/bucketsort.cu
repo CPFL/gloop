@@ -19,7 +19,7 @@
 #include <gloop/gloop.h>
 // includes, kernels
 #include "bucketsort_kernel.cu"
-#include "histogram1024_kernel.cu"
+#include "histogram1024.cuh"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Forward declarations
