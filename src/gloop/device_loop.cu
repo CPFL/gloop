@@ -21,12 +21,7 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "device_context.cuh"
-#include "device_loop_inlines.cuh"
-#include "dump_memory.cuh"
-#include "function.cuh"
-#include "sync_read_write.h"
-#include "utility.h"
+#include "device_loop.cuh"
 namespace gloop {
 
 // Initialize a device loop per thread block.
