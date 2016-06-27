@@ -30,8 +30,6 @@
 
 namespace gloop {
 
-typedef std::aligned_storage<sizeof(DeviceLoop), alignof(DeviceLoop)>::type UninitializedDeviceLoopStorage;
-
 template<typename DeviceLambda, class... Args>
 inline __global__ void resume(int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
