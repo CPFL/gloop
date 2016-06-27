@@ -38,7 +38,7 @@ namespace tcp {
 
 static_assert(sizeof(void*) == sizeof(uint64_t), "In both the host and the device, the size of the pointer should be 64bit.");
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto connect(DeviceLoop* loop, struct sockaddr_in* addr, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -53,7 +53,7 @@ inline __device__ auto connect(DeviceLoop* loop, struct sockaddr_in* addr, Lambd
     END_SINGLE_THREAD
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto bind(DeviceLoop* loop, struct sockaddr_in* addr, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -68,7 +68,7 @@ inline __device__ auto bind(DeviceLoop* loop, struct sockaddr_in* addr, Lambda c
     END_SINGLE_THREAD
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto unbind(DeviceLoop* loop, Server* server, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -83,7 +83,7 @@ inline __device__ auto unbind(DeviceLoop* loop, Server* server, Lambda callback)
     END_SINGLE_THREAD
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto accept(DeviceLoop* loop, net::Server* server, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -98,7 +98,7 @@ inline __device__ auto accept(DeviceLoop* loop, net::Server* server, Lambda call
     END_SINGLE_THREAD
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto receiveOnePage(DeviceLoop* loop, net::Socket* socket, size_t count, int flags, Lambda callback) -> void
 {
     GPU_ASSERT(count <= GLOOP_SHARED_PAGE_SIZE);
@@ -120,7 +120,7 @@ inline __device__ auto receiveOnePage(DeviceLoop* loop, net::Socket* socket, siz
     });
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto performOnePageReceive(DeviceLoop* loop, net::Socket* socket, ssize_t requestedCount, int flags, size_t count, unsigned char* buffer, size_t requestedOffset, ssize_t receiveCount, void* page, Lambda callback) -> void
 {
     ssize_t accumulatedCount = requestedOffset + receiveCount;
@@ -154,7 +154,7 @@ inline __device__ auto performOnePageReceive(DeviceLoop* loop, net::Socket* sock
     }
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, int flags, Lambda callback) -> void
 {
     ssize_t requestedCount = min(count, GLOOP_SHARED_PAGE_SIZE);
@@ -163,7 +163,7 @@ inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t cou
     });
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto sendOnePage(DeviceLoop* loop, net::Socket* socket, size_t transferringSize, unsigned char* buffer, Lambda callback) -> void
 {
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
@@ -188,7 +188,7 @@ inline __device__ auto sendOnePage(DeviceLoop* loop, net::Socket* socket, size_t
     });
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto performOnePageSend(DeviceLoop* loop, net::Socket* socket, ssize_t requestedCount, size_t count, unsigned char* buffer, ssize_t requestedOffset, ssize_t sentCount, Lambda callback) -> void
 {
     ssize_t accumulatedCount = requestedOffset + sentCount;
@@ -211,7 +211,7 @@ inline __device__ auto performOnePageSend(DeviceLoop* loop, net::Socket* socket,
     callback(loop, accumulatedCount);
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     // __threadfence_system();
@@ -221,7 +221,7 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
     });
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto close(DeviceLoop* loop, Socket* socket, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD

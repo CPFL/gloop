@@ -33,7 +33,7 @@
 namespace gloop {
 namespace fs {
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto open(DeviceLoop* loop, const char* filename, int mode, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -49,7 +49,7 @@ inline __device__ auto open(DeviceLoop* loop, const char* filename, int mode, La
     END_SINGLE_THREAD
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto fstat(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -64,7 +64,7 @@ inline __device__ auto fstat(DeviceLoop* loop, int fd, Lambda callback) -> void
     END_SINGLE_THREAD
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto close(DeviceLoop* loop, int fd, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -79,7 +79,7 @@ inline __device__ auto close(DeviceLoop* loop, int fd, Lambda callback) -> void
     END_SINGLE_THREAD
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto ftruncate(DeviceLoop* loop, int fd, off_t offset, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -95,7 +95,7 @@ inline __device__ auto ftruncate(DeviceLoop* loop, int fd, off_t offset, Lambda 
     END_SINGLE_THREAD
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto readOnePage(DeviceLoop* loop, int fd, size_t offset, size_t count, Lambda callback) -> void
 {
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
@@ -116,7 +116,7 @@ inline __device__ auto readOnePage(DeviceLoop* loop, int fd, size_t offset, size
     });
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, size_t requestedOffset, ssize_t readCount, void* page, Lambda callback) -> void
 {
     ssize_t cursor = requestedOffset + readCount;
@@ -149,7 +149,7 @@ inline __device__ auto performOnePageRead(DeviceLoop* loop, int fd, size_t offse
     }
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     readOnePage(loop, fd, offset, min(count, GLOOP_SHARED_PAGE_SIZE), [=](DeviceLoop* loop, ssize_t readCount, void* page) {
@@ -157,7 +157,7 @@ inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t coun
     });
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, size_t transferringSize, unsigned char* buffer, Lambda callback) -> void
 {
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
@@ -183,7 +183,7 @@ inline __device__ auto writeOnePage(DeviceLoop* loop, int fd, size_t offset, siz
     });
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto performOnePageWrite(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, size_t requestedOffset, ssize_t writtenCount, Lambda callback) -> void
 {
     ssize_t cursor = requestedOffset + writtenCount;
@@ -205,7 +205,7 @@ inline __device__ auto performOnePageWrite(DeviceLoop* loop, int fd, size_t offs
     callback(loop, count);
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     // Ensure buffer's modification is flushed.
@@ -215,7 +215,7 @@ inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t cou
     });
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto mmap(DeviceLoop* loop, void* address, size_t size, int prot, int flags, int fd, off_t offset, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -236,7 +236,7 @@ inline __device__ auto mmap(DeviceLoop* loop, void* address, size_t size, int pr
 }
 
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto munmap(DeviceLoop* loop, volatile void* address, size_t size, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -252,7 +252,7 @@ inline __device__ auto munmap(DeviceLoop* loop, volatile void* address, size_t s
     END_SINGLE_THREAD
 }
 
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto msync(DeviceLoop* loop, volatile void* address, size_t size, int flags, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD

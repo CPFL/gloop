@@ -31,16 +31,19 @@
 #include "utility.h"
 namespace gloop {
 
+template<typename DeviceLoop>
 GLOOP_ALWAYS_INLINE __device__ void RPC::emit(DeviceLoop* loop, Code code)
 {
     syncWrite(&loop->m_codes[position], static_cast<int32_t>(code));
 }
 
+template<typename DeviceLoop>
 GLOOP_ALWAYS_INLINE __device__ Code RPC::peek(DeviceLoop* loop)
 {
     return readNoCache<Code>(&loop->m_codes[position]);
 }
 
+template<typename DeviceLoop>
 GLOOP_ALWAYS_INLINE __device__ request::Payload* RPC::request(DeviceLoop* loop)
 {
     return &loop->m_payloads[position];
