@@ -39,11 +39,6 @@ namespace gloop {
 
 struct RPC;
 
-enum DeviceLoopAllocationPolicy {
-    Global,
-    Shared,
-};
-
 class DeviceLoop {
 public:
     friend struct RPC;

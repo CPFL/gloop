@@ -29,6 +29,14 @@
 #include "device_callback.cuh"
 namespace gloop {
 
+enum DeviceLoopAllocationPolicyGlobalTag {
+    Global,
+};
+
+enum DeviceLoopAllocationPolicySharedTag {
+    Shared,
+};
+
 struct DeviceContext {
     static_assert(GLOOP_SHARED_PAGE_COUNT < 32, "Should be less than 32");
     struct DeviceLoopControl {

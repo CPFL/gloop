@@ -68,7 +68,7 @@ void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logica
                 std::lock_guard<KernelLock> lock(m_kernelLock);
                 // GLOOP_DATA_LOG("acquire for launch\n");
                 prepareForLaunch(hostContext);
-                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(/* isInitialExecution */ 1, hostContext.deviceContext(), callback, args...);
+                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(Shared, /* isInitialExecution */ 1, hostContext.deviceContext(), callback, args...);
                 cudaError_t error = cudaGetLastError();
                 GLOOP_CUDA_SAFE(error);
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
@@ -104,7 +104,7 @@ void HostLoop::resume(HostContext& hostContext, dim3 threads, DeviceLambda callb
             prepareForLaunch(hostContext);
 
             {
-                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(/* isInitialExecution */ 0, hostContext.deviceContext(), callback, args...);
+                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(Shared, /* isInitialExecution */ 0, hostContext.deviceContext(), callback, args...);
                 cudaError_t error = cudaGetLastError();
                 GLOOP_CUDA_SAFE(error);
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));

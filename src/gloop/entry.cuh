@@ -31,7 +31,45 @@
 namespace gloop {
 
 template<typename DeviceLambda, class... Args>
-inline __global__ void resume(int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
+inline __global__ void resume(DeviceLoopAllocationPolicyGlobalTag, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
+{
+    __shared__ DeviceLoop sharedDeviceLoop;
+    __shared__ int callbackKicked;
+    BEGIN_SINGLE_THREAD
+    {
+        if (isInitialExecution) {
+            callbackKicked = 0;
+            sharedDeviceLoop.initialize(context);
+        } else {
+            callbackKicked = sharedDeviceLoop.initialize(context, DeviceLoop::Resume);
+        }
+    }
+    END_SINGLE_THREAD
+
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
+    if (sharedDeviceLoop.logicalBlocksCount() == 0)
+        return;
+#endif
+
+    int suspended = 0;
+    if (callbackKicked) {
+        suspended = sharedDeviceLoop.drain();
+    }
+
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
+    while (!suspended) {
+#endif
+        {
+            callback(&sharedDeviceLoop, args...);
+            suspended = sharedDeviceLoop.drain();
+        }
+#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
+    }
+#endif
+}
+
+template<typename DeviceLambda, class... Args>
+inline __global__ void resume(DeviceLoopAllocationPolicySharedTag, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     __shared__ DeviceLoop sharedDeviceLoop;
     __shared__ int callbackKicked;
