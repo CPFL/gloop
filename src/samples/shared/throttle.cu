@@ -34,9 +34,9 @@ __device__ void throttle(gloop::DeviceLoop* loop, int count, int limit)
     }
 }
 
+#if 0
 __device__ void shared(gloop::DeviceLoop* loop, int count, int limit, unsigned int* ok)
 {
-    __shared__ unsigned int buf[1024];
     unsigned int* hello = buf;
     if (count != limit) {
         gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
@@ -44,6 +44,7 @@ __device__ void shared(gloop::DeviceLoop* loop, int count, int limit, unsigned i
         });
     }
 }
+#endif
 
 int main(int argc, char** argv) {
 
@@ -77,9 +78,11 @@ int main(int argc, char** argv) {
             throttle(loop, 0, trials);
         }, trials);
 
+#if 0
         hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int trials) {
             shared(loop, 0, trials, nullptr);
         }, trials);
+#endif
 
         hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int trials) {
             throttle(loop, 0, trials);
