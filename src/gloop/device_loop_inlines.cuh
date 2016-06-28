@@ -240,6 +240,7 @@ __device__ int DeviceLoop::shouldPostTask()
     return (clock64() - m_start) > m_killClock;
 }
 
+#if 1
 __device__ int DeviceLoop::drain()
 {
     uint32_t position = shouldExitPosition();
@@ -301,7 +302,7 @@ next:
     return __syncthreads_or(suspended);
 }
 
-#if 0
+#else
 __device__ int DeviceLoop::drain()
 {
     __shared__ uint32_t position;
