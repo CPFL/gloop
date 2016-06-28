@@ -242,6 +242,68 @@ __device__ int DeviceLoop::shouldPostTask()
 
 __device__ int DeviceLoop::drain()
 {
+    uint32_t position = shouldExitPosition();
+
+    BEGIN_SINGLE_THREAD
+    {
+        m_nextCallback = nullptr;
+        if (m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
+            position = invalidPosition();
+        }
+    }
+    END_SINGLE_THREAD
+
+    while (__syncthreads_or(position != shouldExitPosition())) {
+        if (m_nextCallback) {
+            // One shot function always destroys the function and syncs threads.
+            (*m_nextCallback)(this, m_nextPayload);
+        }
+
+        __syncthreads();
+        BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
+        {
+            if (position != invalidPosition()) {
+                deallocate(position);
+            }
+
+            {
+                uint64_t now = clock64();
+                if (((now - m_start) > m_killClock)) {
+                    m_start = ((now / m_killClock) * m_killClock);
+                    if (gloop::readNoCache<uint32_t>(signal) != 0) {
+                        position = shouldExitPosition();
+                        goto next;
+                    }
+                }
+            }
+
+            position = dequeue();
+            if (isValidPosition(position)) {
+                m_nextCallback = slots(position);
+                m_nextPayload = &m_payloads[position];
+            } else {
+                m_nextCallback = nullptr;
+            }
+next:
+        }
+        END_SINGLE_THREAD_WITHOUT_BARRIER
+    }
+
+    // CAUTION: Do not use shared memory to broadcast the result.
+    // We use __syncthreads_or carefully here to scatter the boolean value.
+    int suspended = 0;
+    __syncthreads();
+    BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
+    {
+        suspended = suspend();
+    }
+    END_SINGLE_THREAD_WITHOUT_BARRIER
+    return __syncthreads_or(suspended);
+}
+
+#if 0
+__device__ int DeviceLoop::drain()
+{
     __shared__ uint32_t position;
     __shared__ DeviceCallback* callback;
 
@@ -300,6 +362,9 @@ next:
     END_SINGLE_THREAD_WITHOUT_BARRIER
     return __syncthreads_or(suspended);
 }
+#endif
+
+
 
 __device__ int DeviceLoop::suspend()
 {

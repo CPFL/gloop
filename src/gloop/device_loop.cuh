@@ -104,6 +104,10 @@ private:
     request::Payload* m_payloads;
     DeviceContext::OnePage* m_pages;
 
+    // FIXME: Global case only.
+    DeviceCallback* m_nextCallback;
+    request::Payload* m_nextPayload;
+
     DeviceContext::KernelContext* m_kernel;
     uint64_t m_killClock;
     uint64_t m_start;

@@ -38,20 +38,16 @@ inline __global__ void resume(DeviceLoopAllocationPolicyGlobalTag, int isInitial
     DeviceLoop* loop;
     {
         __shared__ DeviceLoop* sharedDeviceLoop;
-        __shared__ int sharedCallbackKicked;
-
         BEGIN_SINGLE_THREAD
         {
             sharedDeviceLoop = new DeviceLoop();
             if (isInitialExecution) {
-                sharedCallbackKicked = 0;
                 sharedDeviceLoop->initialize(context);
             } else {
-                sharedCallbackKicked = sharedDeviceLoop->initialize(context, DeviceLoop::Resume);
+                callbackKicked = sharedDeviceLoop->initialize(context, DeviceLoop::Resume);
             }
         }
         END_SINGLE_THREAD
-        callbackKicked = sharedCallbackKicked;
         loop = sharedDeviceLoop;
     }
     {
@@ -60,7 +56,7 @@ inline __global__ void resume(DeviceLoopAllocationPolicyGlobalTag, int isInitial
             return;
 #endif
 
-        if (callbackKicked) {
+        if (__syncthreads_or(callbackKicked)) {
             suspended = loop->drain();
         }
     }
