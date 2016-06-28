@@ -288,13 +288,17 @@ next:
         }
         END_SINGLE_THREAD
     }
-    __shared__ int suspended;
-    BEGIN_SINGLE_THREAD
+
+    // CAUTION: Do not use shared memory to broadcast the result.
+    // We use __syncthreads_or carefully here to scatter the boolean value.
+    int suspended = 0;
+    __syncthreads();
+    BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
     {
         suspended = suspend();
     }
-    END_SINGLE_THREAD
-    return suspended;
+    END_SINGLE_THREAD_WITHOUT_BARRIER
+    return __syncthreads_or(suspended);
 }
 
 __device__ int DeviceLoop::suspend()

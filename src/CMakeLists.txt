@@ -67,7 +67,7 @@ include_directories(".")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/gloop")
 include_directories("${CUDA_RUNTIME_INCLUDE_DIR}")
 
-add_subdirectory(cmalloc)
+# add_subdirectory(cmalloc)
 # add_subdirectory(gpufs)
 add_subdirectory(gloop)
 add_subdirectory(samples)
