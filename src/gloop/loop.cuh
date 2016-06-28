@@ -56,10 +56,12 @@ inline __device__ auto forceExit(DeviceLoop* loop, Lambda callback) -> void
 template<typename DeviceLoop, typename Lambda>
 inline __device__ auto postTaskIfNecessary(DeviceLoop* loop, Lambda callback) -> int
 {
-    __shared__ int posted;
-    BEGIN_SINGLE_THREAD
+    // CAUTION: Do not use shared memory to broadcast the result.
+    // We use __syncthreads_or carefully here to scatter the boolean value.
+    int posted = 0;
+    __syncthreads();
+    BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
     {
-        posted = 0;
         if (loop->shouldPostTask()) {
             posted = 1;
             loop->enqueueLater([callback](DeviceLoop* loop, volatile request::Request* req) {
@@ -67,8 +69,8 @@ inline __device__ auto postTaskIfNecessary(DeviceLoop* loop, Lambda callback) ->
             });
         }
     }
-    END_SINGLE_THREAD
-    return posted;
+    END_SINGLE_THREAD_WITHOUT_BARRIER
+    return __syncthreads_or(posted);
 }
 
 
