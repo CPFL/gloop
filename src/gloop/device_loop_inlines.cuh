@@ -445,7 +445,7 @@ __device__ int DeviceLoop::suspend()
     return /* stop the loop */ 1;
 }
 
-__device__ void DeviceLoop::initializeImpl(DeviceContext deviceContext)
+__device__ void DeviceLoop::initializeImpl(const DeviceContext& deviceContext)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
@@ -470,7 +470,7 @@ __device__ void DeviceLoop::initializeImpl(DeviceContext deviceContext)
 #endif
 }
 
-__device__ void DeviceLoop::initialize(DeviceContext deviceContext)
+__device__ void DeviceLoop::initialize(const DeviceContext& deviceContext)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);
@@ -482,7 +482,7 @@ __device__ void DeviceLoop::initialize(DeviceContext deviceContext)
 #endif
 }
 
-__device__ int DeviceLoop::initialize(DeviceContext deviceContext, ResumeTag)
+__device__ int DeviceLoop::initialize(const DeviceContext& deviceContext, ResumeTag)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);

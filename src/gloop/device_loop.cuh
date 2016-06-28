@@ -28,8 +28,7 @@
 #include "code.cuh"
 #include "config.h"
 #include "device_callback.cuh"
-#include "device_context.cuh"
-#include "one_shot_function.cuh"
+#include "device_data.cuh"
 #include "rpc.cuh"
 #include "request.h"
 #include "utility.h"
@@ -37,14 +36,14 @@
 #include "utility/util.cu.h"
 namespace gloop {
 
-struct RPC;
+struct DeviceContext;
 
 class DeviceLoop {
 public:
     friend struct RPC;
     enum ResumeTag { Resume };
-    inline __device__ int initialize(DeviceContext, ResumeTag);
-    inline __device__ void initialize(DeviceContext);
+    inline __device__ int initialize(const DeviceContext&, ResumeTag);
+    inline __device__ void initialize(const DeviceContext&);
 
     template<typename Lambda>
     inline __device__ RPC enqueueRPC(Lambda&& lambda);
@@ -72,7 +71,7 @@ public:
     GLOOP_ALWAYS_INLINE __device__ int shouldPostTask();
 
 private:
-    inline __device__ void initializeImpl(DeviceContext);
+    inline __device__ void initializeImpl(const DeviceContext&);
 
     template<typename Lambda>
     inline __device__ uint32_t enqueueSleep(Lambda&& lambda);

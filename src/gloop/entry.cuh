@@ -35,20 +35,18 @@ inline __global__ void resume(DeviceLoopAllocationPolicyGlobalTag, int isInitial
 {
     int callbackKicked = 0;
     int suspended = 0;
-    DeviceLoop* loop;
+    DeviceLoop* loop = reinterpret_cast<DeviceLoop*>(context.deviceLoopStorage + GLOOP_BID());
     {
-        __shared__ DeviceLoop* sharedDeviceLoop;
         BEGIN_SINGLE_THREAD
         {
-            sharedDeviceLoop = new DeviceLoop();
+            new (loop) DeviceLoop();
             if (isInitialExecution) {
-                sharedDeviceLoop->initialize(context);
+                loop->initialize(context);
             } else {
-                callbackKicked = sharedDeviceLoop->initialize(context, DeviceLoop::Resume);
+                callbackKicked = loop->initialize(context, DeviceLoop::Resume);
             }
         }
         END_SINGLE_THREAD
-        loop = sharedDeviceLoop;
     }
     {
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
@@ -71,12 +69,6 @@ inline __global__ void resume(DeviceLoopAllocationPolicyGlobalTag, int isInitial
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     }
 #endif
-
-    BEGIN_SINGLE_THREAD
-    {
-        delete loop;
-    }
-    END_SINGLE_THREAD
 }
 
 template<typename DeviceLambda, class... Args>
