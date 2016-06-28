@@ -83,11 +83,10 @@ template<typename DeviceLambda, class... Args>
 inline __global__ void resume(DeviceLoopAllocationPolicySharedTag, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     __shared__ DeviceLoop sharedDeviceLoop;
-    __shared__ int callbackKicked;
+    int callbackKicked = 0;
     BEGIN_SINGLE_THREAD
     {
         if (isInitialExecution) {
-            callbackKicked = 0;
             sharedDeviceLoop.initialize(context);
         } else {
             callbackKicked = sharedDeviceLoop.initialize(context, DeviceLoop::Resume);
@@ -101,7 +100,7 @@ inline __global__ void resume(DeviceLoopAllocationPolicySharedTag, int isInitial
 #endif
 
     int suspended = 0;
-    if (callbackKicked) {
+    if (__syncthreads_or(callbackKicked)) {
         suspended = sharedDeviceLoop.drain();
     }
 
