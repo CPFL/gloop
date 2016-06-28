@@ -33,39 +33,54 @@ namespace gloop {
 template<typename DeviceLambda, class... Args>
 inline __global__ void resume(DeviceLoopAllocationPolicyGlobalTag, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
-    __shared__ DeviceLoop sharedDeviceLoop;
-    __shared__ int callbackKicked;
-    BEGIN_SINGLE_THREAD
+    int callbackKicked = 0;
+    int suspended = 0;
+    DeviceLoop* loop;
     {
-        if (isInitialExecution) {
-            callbackKicked = 0;
-            sharedDeviceLoop.initialize(context);
-        } else {
-            callbackKicked = sharedDeviceLoop.initialize(context, DeviceLoop::Resume);
-        }
-    }
-    END_SINGLE_THREAD
+        __shared__ DeviceLoop* sharedDeviceLoop;
+        __shared__ int sharedCallbackKicked;
 
+        BEGIN_SINGLE_THREAD
+        {
+            sharedDeviceLoop = new DeviceLoop();
+            if (isInitialExecution) {
+                sharedCallbackKicked = 0;
+                sharedDeviceLoop->initialize(context);
+            } else {
+                sharedCallbackKicked = sharedDeviceLoop->initialize(context, DeviceLoop::Resume);
+            }
+        }
+        END_SINGLE_THREAD
+        callbackKicked = sharedCallbackKicked;
+        loop = sharedDeviceLoop;
+    }
+    {
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    if (sharedDeviceLoop.logicalBlocksCount() == 0)
-        return;
+        if (loop->logicalBlocksCount() == 0)
+            return;
 #endif
 
-    int suspended = 0;
-    if (callbackKicked) {
-        suspended = sharedDeviceLoop.drain();
+        if (callbackKicked) {
+            suspended = loop->drain();
+        }
     }
 
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     while (!suspended) {
 #endif
         {
-            callback(&sharedDeviceLoop, args...);
-            suspended = sharedDeviceLoop.drain();
+            callback(loop, args...);
+            suspended = loop->drain();
         }
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     }
 #endif
+
+    BEGIN_SINGLE_THREAD
+    {
+        delete loop;
+    }
+    END_SINGLE_THREAD
 }
 
 template<typename DeviceLambda, class... Args>
