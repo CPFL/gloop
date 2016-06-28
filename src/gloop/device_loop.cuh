@@ -88,32 +88,32 @@ private:
     inline __device__ int suspend();
 
     GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots(uint32_t position);
-    GLOOP_ALWAYS_INLINE __device__ DeviceContext::PerBlockContext* context() const;
-    GLOOP_ALWAYS_INLINE __device__ DeviceContext::OnePage* pages() const;
-    GLOOP_ALWAYS_INLINE __device__ uint32_t position(DeviceContext::OnePage*);
+    GLOOP_ALWAYS_INLINE __device__ PerBlockContext* context() const;
+    GLOOP_ALWAYS_INLINE __device__ OnePage* pages() const;
+    GLOOP_ALWAYS_INLINE __device__ uint32_t position(OnePage*);
 
     __device__ static constexpr uint32_t shouldExitPosition() { return UINT32_MAX - 1; }
     __device__ static constexpr uint32_t invalidPosition() { return UINT32_MAX; }
     GLOOP_ALWAYS_INLINE __device__ static bool isValidPosition(uint32_t position);
 
-    DeviceContext::PerBlockContext* m_context;
-    DeviceContext::PerBlockHostContext* m_hostContext;
+    PerBlockContext* m_context;
+    PerBlockHostContext* m_hostContext;
 
     // SoA.
     int32_t* m_codes;
     request::Payload* m_payloads;
-    DeviceContext::OnePage* m_pages;
+    OnePage* m_pages;
 
     // FIXME: Global case only.
     DeviceCallback* m_nextCallback;
     request::Payload* m_nextPayload;
 
-    DeviceContext::KernelContext* m_kernel;
+    KernelContext* m_kernel;
     uint64_t m_killClock;
     uint64_t m_start;
 
     DeviceCallback* m_slots;
-    DeviceContext::DeviceLoopControl m_control;
+    DeviceLoopControl m_control;
 
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     uint32_t m_scratchIndex1;

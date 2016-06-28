@@ -108,7 +108,7 @@ private:
     std::shared_ptr<MappedMemory> m_hostContextMemory { nullptr };
     DeviceContext m_context { nullptr };
     int32_t* m_codes;
-    DeviceContext::PerBlockHostContext* m_hostContext { nullptr };
+    PerBlockHostContext* m_hostContext { nullptr };
     request::Payload* m_payloads;
     dim3 m_logicalBlocks { };
     dim3 m_maxPhysicalBlocks { };

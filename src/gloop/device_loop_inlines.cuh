@@ -49,7 +49,7 @@ GLOOP_ALWAYS_INLINE __device__ request::Payload* RPC::request(DeviceLoop* loop)
     return &loop->m_payloads[position];
 }
 
-__device__ uint32_t DeviceLoop::position(DeviceContext::OnePage* page)
+__device__ uint32_t DeviceLoop::position(OnePage* page)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return page - pages();
@@ -74,13 +74,13 @@ __device__ auto DeviceLoop::slots(uint32_t position) -> DeviceCallback*
     return m_slots + position;
 }
 
-__device__ auto DeviceLoop::context() const -> DeviceContext::PerBlockContext*
+__device__ auto DeviceLoop::context() const -> PerBlockContext*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return m_context;
 }
 
-__device__ auto DeviceLoop::pages() const -> DeviceContext::OnePage*
+__device__ auto DeviceLoop::pages() const -> OnePage*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return m_pages;
@@ -168,14 +168,14 @@ __device__ auto DeviceLoop::dequeue() -> uint32_t
     GLOOP_ASSERT_SINGLE_THREAD();
 
     uint32_t freeSlots = m_control.freeSlots;
-    if (freeSlots == DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
+    if (freeSlots == DeviceLoopControl::allFilledFreeSlots()) {
         return shouldExitPosition();
     }
 
     // __threadfence_system();
     // We first search wake up slots. It is always ready to execute.
     // And we can get the slot without costly DMA.
-    uint32_t allocatedSlots = freeSlots ^ DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+    uint32_t allocatedSlots = freeSlots ^ DeviceLoopControl::allFilledFreeSlots();
     uint32_t wakeupSlots = (allocatedSlots & m_control.sleepSlots) & m_control.wakeupSlots;
 
     if (wakeupSlots) {
@@ -247,7 +247,7 @@ __device__ int DeviceLoop::drain()
     BEGIN_SINGLE_THREAD
     {
         m_nextCallback = nullptr;
-        if (m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
+        if (m_control.freeSlots != DeviceLoopControl::allFilledFreeSlots()) {
             position = invalidPosition();
         }
     }
@@ -310,7 +310,7 @@ __device__ int DeviceLoop::drain()
     BEGIN_SINGLE_THREAD
     {
         callback = nullptr;
-        if (m_control.freeSlots == DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
+        if (m_control.freeSlots == DeviceLoopControl::allFilledFreeSlots()) {
             position = shouldExitPosition();
         } else {
             position = invalidPosition();
@@ -369,9 +369,9 @@ next:
 __device__ int DeviceLoop::suspend()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    if (m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
+    if (m_control.freeSlots != DeviceLoopControl::allFilledFreeSlots()) {
         // Save the control state.
-        DeviceContext::PerBlockContext* blockContext = context();
+        PerBlockContext* blockContext = context();
         blockContext->control = m_control;
         blockContext->logicalBlockIdx = gloop::logicalBlockIdx;
         blockContext->logicalGridDim = gloop::logicalGridDim;
@@ -412,11 +412,11 @@ __device__ int DeviceLoop::suspend()
             if (gloop::readNoCache<uint32_t>(signal) != 0) {
 
                 // Save the control state.
-                DeviceContext::PerBlockContext* blockContext = context();
+                PerBlockContext* blockContext = context();
                 blockContext->control = m_control;
                 blockContext->logicalBlockIdx = gloop::logicalBlockIdx;
                 blockContext->logicalGridDim = gloop::logicalGridDim;
-                m_hostContext->freeSlots = DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+                m_hostContext->freeSlots = DeviceLoopControl::allFilledFreeSlots();
                 m_hostContext->sleepSlots = 0;
                 m_hostContext->wakeupSlots = 0;
 
@@ -433,11 +433,11 @@ __device__ int DeviceLoop::suspend()
     // Save the control state. We need to save the control state since
     // the other thread block may not stop yet. In that case, this
     // this block may be re-launched.
-    DeviceContext::PerBlockContext* blockContext = context();
+    PerBlockContext* blockContext = context();
     blockContext->control = m_control;
     blockContext->logicalBlockIdx = gloop::logicalBlockIdx;
     blockContext->logicalGridDim = gloop::logicalGridDim;
-    m_hostContext->freeSlots = DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+    m_hostContext->freeSlots = DeviceLoopControl::allFilledFreeSlots();
     m_hostContext->sleepSlots = 0;
     m_hostContext->wakeupSlots = 0;
 
@@ -488,7 +488,7 @@ __device__ int DeviceLoop::initialize(DeviceContext deviceContext, ResumeTag)
     initializeImpl(deviceContext);
     resume();
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    return m_control.freeSlots != DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+    return m_control.freeSlots != DeviceLoopControl::allFilledFreeSlots();
 #else
     return 1;
 #endif
@@ -498,7 +498,7 @@ __device__ void DeviceLoop::resume()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     // __threadfence_system();  // FIXME
-    DeviceContext::PerBlockContext* blockContext = context();
+    PerBlockContext* blockContext = context();
     m_control = blockContext->control;
 
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
@@ -512,7 +512,7 @@ __device__ void DeviceLoop::resume()
 __device__ void DeviceLoop::freeOnePage(void* aPage)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    uint32_t pos = position(static_cast<DeviceContext::OnePage*>(aPage));
+    uint32_t pos = position(static_cast<OnePage*>(aPage));
     m_control.freePages |= (1UL << pos);
     GPU_ASSERT(pos < GLOOP_SHARED_PAGE_COUNT);
     int freePageWaitingCallbackPlusOne = __ffs(m_control.pageSleepSlots);

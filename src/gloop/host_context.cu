@@ -85,10 +85,10 @@ bool HostContext::initialize(HostLoop& hostLoop)
         m_payloadsMemory = MappedMemory::create(sizeof(request::Payload) * allSlotsSize);
         m_payloads = (request::Payload*)m_payloadsMemory->mappedPointer();
 
-        m_hostContextMemory = MappedMemory::create(sizeof(DeviceContext::PerBlockHostContext) * blocksSize);
-        m_hostContext = (DeviceContext::PerBlockHostContext*)m_hostContextMemory->mappedPointer();
+        m_hostContextMemory = MappedMemory::create(sizeof(PerBlockHostContext) * blocksSize);
+        m_hostContext = (PerBlockHostContext*)m_hostContextMemory->mappedPointer();
 
-        m_kernel = MappedMemory::create(sizeof(DeviceContext::KernelContext));
+        m_kernel = MappedMemory::create(sizeof(KernelContext));
 
         m_context.killClock = hostLoop.killClock();
 
@@ -96,10 +96,10 @@ bool HostContext::initialize(HostLoop& hostLoop)
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.payloads, m_payloadsMemory->mappedPointer(), 0));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.hostContext, m_hostContextMemory->mappedPointer(), 0));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_context.kernel, m_kernel->mappedPointer(), 0));
-        fprintf(stderr, "SIZE %u / %u\n", sizeof(DeviceContext::PerBlockContext) * blocksSize, sizeof(DeviceContext::PerBlockContext));
-        GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(DeviceContext::PerBlockContext) * blocksSize));
+        fprintf(stderr, "SIZE %u / %u\n", sizeof(PerBlockContext) * blocksSize, sizeof(PerBlockContext));
+        GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.context, sizeof(PerBlockContext) * blocksSize));
         if (m_pageCount) {
-            GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(DeviceContext::OnePage) * m_pageCount * blocksSize));
+            GLOOP_CUDA_SAFE_CALL(cudaMalloc(&m_context.pages, sizeof(OnePage) * m_pageCount * blocksSize));
         }
 
         assert(!m_poller);
@@ -113,7 +113,7 @@ bool HostContext::initialize(HostLoop& hostLoop)
 
 uint32_t HostContext::pending() const
 {
-    return readNoCache<uint32_t>(&((DeviceContext::KernelContext*)m_kernel->mappedPointer())->pending);
+    return readNoCache<uint32_t>(&((KernelContext*)m_kernel->mappedPointer())->pending);
 }
 
 bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
@@ -131,15 +131,15 @@ bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
 #endif
     uint64_t blocks = sumOfBlocks(m_physicalBlocks);
     for (uint64_t i = 0; i < blocks; ++i) {
-        DeviceContext::PerBlockHostContext hostContext = m_hostContext[i];
+        PerBlockHostContext hostContext = m_hostContext[i];
 
         // FIXME: This is not correct in the last sequence (some TBs are already finished).
         // But, this may indicate that the next logical TB will start.
-        if (hostContext.freeSlots == DeviceContext::DeviceLoopControl::allFilledFreeSlots()) {
+        if (hostContext.freeSlots == DeviceLoopControl::allFilledFreeSlots()) {
             return true;
         }
 
-        uint32_t allocatedSlots = hostContext.freeSlots ^ DeviceContext::DeviceLoopControl::allFilledFreeSlots();
+        uint32_t allocatedSlots = hostContext.freeSlots ^ DeviceLoopControl::allFilledFreeSlots();
         for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE && allocatedSlots; ++j) {
             uint32_t bit = 1U << j;
             if (allocatedSlots & bit) {
@@ -167,8 +167,8 @@ bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
 
 void HostContext::prepareForLaunch()
 {
-    writeNoCache<uint64_t>(&((DeviceContext::KernelContext*)m_kernel->mappedPointer())->globalClock, 0);
-    writeNoCache<uint32_t>(&((DeviceContext::KernelContext*)m_kernel->mappedPointer())->pending, 0);
+    writeNoCache<uint64_t>(&((KernelContext*)m_kernel->mappedPointer())->globalClock, 0);
+    writeNoCache<uint32_t>(&((KernelContext*)m_kernel->mappedPointer())->pending, 0);
     // Clean up ExitRequired flags.
     {
         std::unique_lock<Mutex> guard(m_mutex);
