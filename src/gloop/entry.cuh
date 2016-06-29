@@ -31,8 +31,18 @@
 namespace gloop {
 
 template<typename DeviceLoop, typename DeviceLambda, class... Args>
-inline __device__ void mainLoop(DeviceLoop* loop, int callbackKicked, const DeviceLambda& callback, Args&&... args)
+inline __device__ void mainLoop(DeviceLoop* loop, int isInitialExecution, DeviceContext&& context, const DeviceLambda& callback, Args&&... args)
 {
+    int callbackKicked = 0;
+    BEGIN_SINGLE_THREAD
+    {
+        if (isInitialExecution) {
+            loop->initialize(context);
+        } else {
+            callbackKicked = loop->initialize(context, DeviceLoop::Resume);
+        }
+    }
+    END_SINGLE_THREAD
     int suspended = 0;
     {
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
@@ -60,38 +70,15 @@ inline __device__ void mainLoop(DeviceLoop* loop, int callbackKicked, const Devi
 template<typename DeviceLambda, class... Args>
 inline __global__ void resume(Global, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
-    int callbackKicked = 0;
     DeviceLoop<Global>* loop = reinterpret_cast<DeviceLoop<Global>*>(context.deviceLoopStorage + GLOOP_BID());
-    {
-        BEGIN_SINGLE_THREAD
-        {
-            new (loop) DeviceLoop<Global>();
-            if (isInitialExecution) {
-                loop->initialize(context);
-            } else {
-                callbackKicked = loop->initialize(context, DeviceLoop<Global>::Resume);
-            }
-        }
-        END_SINGLE_THREAD
-    }
-    return mainLoop(loop, callbackKicked, callback, std::forward<Args&&>(args)...);
+    return mainLoop(loop, isInitialExecution, std::move(context), callback, std::forward<Args&&>(args)...);
 }
 
 template<typename DeviceLambda, class... Args>
 inline __global__ void resume(Shared, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     __shared__ DeviceLoop<Shared> sharedDeviceLoop;
-    int callbackKicked = 0;
-    BEGIN_SINGLE_THREAD
-    {
-        if (isInitialExecution) {
-            sharedDeviceLoop.initialize(context);
-        } else {
-            callbackKicked = sharedDeviceLoop.initialize(context, DeviceLoop<Shared>::Resume);
-        }
-    }
-    END_SINGLE_THREAD
-    return mainLoop(&sharedDeviceLoop, callbackKicked, callback, std::forward<Args&&>(args)...);
+    return mainLoop(&sharedDeviceLoop, isInitialExecution, std::move(context), callback, std::forward<Args&&>(args)...);
 }
 
 }  // namespace gloop
