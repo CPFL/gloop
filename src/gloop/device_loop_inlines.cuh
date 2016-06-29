@@ -385,8 +385,8 @@ __device__ int DeviceLoop<Policy>::suspend()
         // Save the control state.
         PerBlockContext* blockContext = context();
         blockContext->control = m_control;
-        blockContext->logicalBlockIdx = logicalBlockIdx();
-        blockContext->logicalGridDim = logicalGridDim();
+        blockContext->logicalBlockIdx = logicalBlockIdxInternal();
+        blockContext->logicalGridDim = logicalGridDimInternal();
         m_hostContext->freeSlots = m_control.freeSlots;
         m_hostContext->sleepSlots = m_control.sleepSlots;
         m_hostContext->wakeupSlots = m_control.wakeupSlots;
@@ -412,10 +412,10 @@ __device__ int DeviceLoop<Policy>::suspend()
     if (--m_control.logicalBlocksCount != 0) {
         // There is some remaining logical thread blocks.
         // Let's increment the logical block index.
-        logicalBlockIdx().x += 1;
-        if (logicalBlockIdx().x == logicalGridDim().x) {
-            logicalBlockIdx().x = 0;
-            logicalBlockIdx().y += 1;
+        logicalBlockIdxInternal().x += 1;
+        if (logicalBlockIdxInternal().x == logicalGridDimInternal().x) {
+            logicalBlockIdxInternal().x = 0;
+            logicalBlockIdxInternal().y += 1;
         }
 
         uint64_t now = clock64();
@@ -426,8 +426,8 @@ __device__ int DeviceLoop<Policy>::suspend()
                 // Save the control state.
                 PerBlockContext* blockContext = context();
                 blockContext->control = m_control;
-                blockContext->logicalBlockIdx = logicalBlockIdx();
-                blockContext->logicalGridDim = logicalGridDim();
+                blockContext->logicalBlockIdx = logicalBlockIdxInternal();
+                blockContext->logicalGridDim = logicalGridDimInternal();
                 m_hostContext->freeSlots = DeviceLoopControl::allFilledFreeSlots();
                 m_hostContext->sleepSlots = 0;
                 m_hostContext->wakeupSlots = 0;
@@ -447,8 +447,8 @@ __device__ int DeviceLoop<Policy>::suspend()
     // this block may be re-launched.
     PerBlockContext* blockContext = context();
     blockContext->control = m_control;
-    blockContext->logicalBlockIdx = logicalBlockIdx();
-    blockContext->logicalGridDim = logicalGridDim();
+    blockContext->logicalBlockIdx = logicalBlockIdxInternal();
+    blockContext->logicalGridDim = logicalGridDimInternal();
     m_hostContext->freeSlots = DeviceLoopControl::allFilledFreeSlots();
     m_hostContext->sleepSlots = 0;
     m_hostContext->wakeupSlots = 0;
@@ -491,8 +491,8 @@ __device__ void DeviceLoop<Policy>::initialize(const DeviceContext& deviceContex
     uint3 logicalBlocksDim = deviceContext.logicalBlocks;
     m_control.initialize(logicalBlocksDim);
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    logicalBlockIdx() = make_uint2(m_control.currentLogicalBlockCount % logicalBlocksDim.x, m_control.currentLogicalBlockCount / logicalBlocksDim.x);
-    logicalGridDim() = make_uint2(logicalBlocksDim.x, logicalBlocksDim.y);
+    logicalBlockIdxInternal() = make_uint2(m_control.currentLogicalBlockCount % logicalBlocksDim.x, m_control.currentLogicalBlockCount / logicalBlocksDim.x);
+    logicalGridDimInternal() = make_uint2(logicalBlocksDim.x, logicalBlocksDim.y);
 #endif
 }
 
@@ -518,8 +518,8 @@ __device__ void DeviceLoop<Policy>::resume()
     m_control = blockContext->control;
 
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    logicalGridDim() = blockContext->logicalGridDim;
-    logicalBlockIdx() = blockContext->logicalBlockIdx;
+    logicalBlockIdxInternal() = blockContext->logicalBlockIdx;
+    logicalGridDimInternal() = blockContext->logicalGridDim;
 #endif
 
     // __threadfence_system();  // FIXME
@@ -539,49 +539,49 @@ __device__ void DeviceLoop<Policy>::freeOnePage(void* aPage)
 }
 
 template<>
-GLOOP_ALWAYS_INLINE __device__ auto DeviceLoop<Global>::logicalBlockIdx() const -> const uint2&
+GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Global>::logicalBlockIdx() const
 {
     return m_logicalBlockIdx;
 }
 
 template<>
-GLOOP_ALWAYS_INLINE __device__ auto DeviceLoop<Global>::logicalGridDim() const -> const uint2&
+GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Global>::logicalGridDim() const
 {
     return m_logicalGridDim;
 }
 
 template<>
-GLOOP_ALWAYS_INLINE __device__ auto DeviceLoop<Shared>::logicalBlockIdx() const -> const uint2&
+GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Global>::logicalBlockIdxInternal()
+{
+    return m_logicalBlockIdx;
+}
+
+template<>
+GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Global>::logicalGridDimInternal()
+{
+    return m_logicalGridDim;
+}
+
+template<>
+GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Shared>::logicalBlockIdx() const
 {
     return gloop::logicalBlockIdx;
 }
 
 template<>
-GLOOP_ALWAYS_INLINE __device__ auto DeviceLoop<Shared>::logicalGridDim() const -> const uint2&
+GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Shared>::logicalGridDim() const
 {
     return gloop::logicalGridDim;
 }
 
 template<>
-GLOOP_ALWAYS_INLINE __device__ auto DeviceLoop<Global>::logicalBlockIdx() -> uint2&
-{
-    return m_logicalBlockIdx;
-}
-
-template<>
-GLOOP_ALWAYS_INLINE __device__ auto DeviceLoop<Global>::logicalGridDim() -> uint2&
-{
-    return m_logicalGridDim;
-}
-
-template<>
-GLOOP_ALWAYS_INLINE __device__ auto DeviceLoop<Shared>::logicalBlockIdx() -> uint2&
+GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Shared>::logicalBlockIdxInternal()
 {
     return gloop::logicalBlockIdx;
 }
 
 template<>
-GLOOP_ALWAYS_INLINE __device__ auto DeviceLoop<Shared>::logicalGridDim() -> uint2&
+GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Shared>::logicalGridDimInternal()
 {
     return gloop::logicalGridDim;
 }

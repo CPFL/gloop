@@ -60,18 +60,18 @@ public:
 
     inline __device__ int drain();
 
-    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() const -> const uint2&;
+    GLOOP_ALWAYS_INLINE __device__ const uint2& logicalBlockIdx() const;
 
-    GLOOP_ALWAYS_INLINE __device__ auto logicalGridDim() const -> const uint2&;
+    GLOOP_ALWAYS_INLINE __device__ const uint2& logicalGridDim() const;
 
     GLOOP_ALWAYS_INLINE __device__ unsigned logicalBlocksCount() const { return m_control.logicalBlocksCount; }
 
     GLOOP_ALWAYS_INLINE __device__ int shouldPostTask();
 
 private:
-    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() -> uint2&;
+    GLOOP_ALWAYS_INLINE __device__ uint2& logicalBlockIdxInternal();
 
-    GLOOP_ALWAYS_INLINE __device__ auto logicalGridDim() -> uint2&;
+    GLOOP_ALWAYS_INLINE __device__ uint2& logicalGridDimInternal();
 
 
     inline __device__ void initializeImpl(const DeviceContext&);
