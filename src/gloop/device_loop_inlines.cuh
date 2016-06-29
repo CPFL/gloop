@@ -62,18 +62,25 @@ __device__ bool DeviceLoop<Policy>::isValidPosition(uint32_t position)
     return position < GLOOP_SHARED_SLOT_SIZE;
 }
 
-template<typename Policy>
-__device__ auto DeviceLoop<Policy>::slots(uint32_t position) -> DeviceCallback*
+template<>
+GLOOP_ALWAYS_INLINE __device__ auto DeviceLoop<Shared>::slots(uint32_t position) -> DeviceCallback*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
-    if (position == m_scratchIndex1) {
-        return reinterpret_cast<DeviceCallback*>(&m_scratch1);
+    if (position == m_special.m_scratchIndex1) {
+        return reinterpret_cast<DeviceCallback*>(&m_special.m_scratch1);
     }
-    if (position == m_scratchIndex2) {
-        return reinterpret_cast<DeviceCallback*>(&m_scratch2);
+    if (position == m_special.m_scratchIndex2) {
+        return reinterpret_cast<DeviceCallback*>(&m_special.m_scratch2);
     }
 #endif
+    return m_slots + position;
+}
+
+template<>
+GLOOP_ALWAYS_INLINE __device__ auto DeviceLoop<Global>::slots(uint32_t position) -> DeviceCallback*
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
     return m_slots + position;
 }
 
@@ -147,6 +154,28 @@ __device__ RPC DeviceLoop<Policy>::enqueueRPC(Lambda&& lambda)
     return { pos };
 }
 
+template<>
+inline __device__ void* DeviceLoop<Global>::allocateSharedSlotIfNecessary(uint32_t pos)
+{
+    return m_slots + pos;
+}
+
+template<>
+inline __device__ void* DeviceLoop<Shared>::allocateSharedSlotIfNecessary(uint32_t pos)
+{
+    void* target = m_slots + pos;
+#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
+    if (m_special.m_scratchIndex1 == invalidPosition()) {
+        m_special.m_scratchIndex1 = pos;
+        target = &m_special.m_scratch1;
+    } else if (m_special.m_scratchIndex2 == invalidPosition()) {
+        m_special.m_scratchIndex2 = pos;
+        target = &m_special.m_scratch2;
+    }
+#endif
+    return target;
+}
+
 template<typename Policy>
 template<typename Lambda>
 __device__ uint32_t DeviceLoop<Policy>::allocate(Lambda&& lambda)
@@ -157,16 +186,7 @@ __device__ uint32_t DeviceLoop<Policy>::allocate(Lambda&& lambda)
     GPU_ASSERT(m_control.freeSlots & (1U << pos));
     m_control.freeSlots &= ~(1U << pos);
 
-    void* target = m_slots + pos;
-#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
-    if (m_scratchIndex1 == invalidPosition()) {
-        m_scratchIndex1 = pos;
-        target = &m_scratch1;
-    } else if (m_scratchIndex2 == invalidPosition()) {
-        m_scratchIndex2 = pos;
-        target = &m_scratch2;
-    }
-#endif
+    void* target = allocateSharedSlotIfNecessary(pos);
 
     new (target) DeviceCallback(std::forward<Lambda&&>(lambda));
 
@@ -225,6 +245,25 @@ __device__ auto DeviceLoop<Policy>::dequeue() -> uint32_t
     return invalidPosition();
 }
 
+template<>
+inline __device__ void DeviceLoop<Global>::deallocateSharedSlotIfNecessary(uint32_t pos)
+{
+}
+
+template<>
+inline __device__ void DeviceLoop<Shared>::deallocateSharedSlotIfNecessary(uint32_t pos)
+{
+    // We are using one shot function. After calling the function, destruction is already done.
+    // callback->~DeviceCallback();
+#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
+    if (pos == m_special.m_scratchIndex1) {
+        m_special.m_scratchIndex1 = invalidPosition();
+    } else if (pos == m_special.m_scratchIndex2) {
+        m_special.m_scratchIndex2 = invalidPosition();
+    }
+#endif
+}
+
 template<typename Policy>
 __device__ void DeviceLoop<Policy>::deallocate(uint32_t pos)
 {
@@ -232,17 +271,7 @@ __device__ void DeviceLoop<Policy>::deallocate(uint32_t pos)
     // printf("pos:(%u)\n", (unsigned)pos);
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
     GPU_ASSERT(!(m_control.freeSlots & (1U << pos)));
-
-    // We are using one shot function. After calling the function, destruction is already done.
-    // callback->~DeviceCallback();
-#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
-    if (pos == m_scratchIndex1) {
-        m_scratchIndex1 = invalidPosition();
-    } else if (pos == m_scratchIndex2) {
-        m_scratchIndex2 = invalidPosition();
-    }
-#endif
-
+    deallocateSharedSlotIfNecessary(pos);
     m_control.freeSlots |= (1U << pos);
 }
 
@@ -260,7 +289,7 @@ inline __device__ int DeviceLoop<Global>::drain()
 
     BEGIN_SINGLE_THREAD
     {
-        m_nextCallback = nullptr;
+        m_special.m_nextCallback = nullptr;
         if (m_control.freeSlots != DeviceLoopControl::allFilledFreeSlots()) {
             position = invalidPosition();
         }
@@ -268,9 +297,9 @@ inline __device__ int DeviceLoop<Global>::drain()
     END_SINGLE_THREAD
 
     while (__syncthreads_or(position != shouldExitPosition())) {
-        if (m_nextCallback) {
+        if (m_special.m_nextCallback) {
             // One shot function always destroys the function and syncs threads.
-            (*m_nextCallback)(this, m_nextPayload);
+            (*reinterpret_cast<DeviceCallback*>(m_special.m_nextCallback))(this, m_special.m_nextPayload);
         }
 
         __syncthreads();
@@ -293,10 +322,10 @@ inline __device__ int DeviceLoop<Global>::drain()
 
             position = dequeue();
             if (isValidPosition(position)) {
-                m_nextCallback = slots(position);
-                m_nextPayload = &m_payloads[position];
+                m_special.m_nextCallback = slots(position);
+                m_special.m_nextPayload = &m_payloads[position];
             } else {
-                m_nextCallback = nullptr;
+                m_special.m_nextCallback = nullptr;
             }
 next:
         }
@@ -377,6 +406,26 @@ next:
     return __syncthreads_or(suspended);
 }
 
+template<>
+inline __device__ void DeviceLoop<Global>::suspendSharedSlots(PerBlockContext*)
+{
+}
+
+template<>
+inline __device__ void DeviceLoop<Shared>::suspendSharedSlots(PerBlockContext* blockContext)
+{
+#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
+    if (m_special.m_scratchIndex1 != invalidPosition()) {
+        new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_special.m_scratchIndex1) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_special.m_scratch1));
+        reinterpret_cast<DeviceCallback*>(&m_special.m_scratch1)->~DeviceCallback();
+    }
+    if (m_special.m_scratchIndex2 != invalidPosition()) {
+        new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_special.m_scratchIndex2) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_special.m_scratch2));
+        reinterpret_cast<DeviceCallback*>(&m_special.m_scratch2)->~DeviceCallback();
+    }
+#endif
+}
+
 template<typename Policy>
 __device__ int DeviceLoop<Policy>::suspend()
 {
@@ -391,16 +440,7 @@ __device__ int DeviceLoop<Policy>::suspend()
         m_hostContext->sleepSlots = m_control.sleepSlots;
         m_hostContext->wakeupSlots = m_control.wakeupSlots;
 
-#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
-        if (m_scratchIndex1 != invalidPosition()) {
-            new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_scratchIndex1) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_scratch1));
-            reinterpret_cast<DeviceCallback*>(&m_scratch1)->~DeviceCallback();
-        }
-        if (m_scratchIndex2 != invalidPosition()) {
-            new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_scratchIndex2) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_scratch2));
-            reinterpret_cast<DeviceCallback*>(&m_scratch2)->~DeviceCallback();
-        }
-#endif
+        suspendSharedSlots(blockContext);
 
         // Request the resume.
         atomicAdd(&m_kernel->pending, 1);
@@ -457,6 +497,20 @@ __device__ int DeviceLoop<Policy>::suspend()
     return /* stop the loop */ 1;
 }
 
+template<>
+inline __device__ void DeviceLoop<Global>::initializeSharedSlots()
+{
+}
+
+template<>
+inline __device__ void DeviceLoop<Shared>::initializeSharedSlots()
+{
+#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
+    m_special.m_scratchIndex1 = invalidPosition();
+    m_special.m_scratchIndex2 = invalidPosition();
+#endif
+}
+
 template<typename Policy>
 __device__ void DeviceLoop<Policy>::initializeImpl(const DeviceContext& deviceContext)
 {
@@ -476,11 +530,7 @@ __device__ void DeviceLoop<Policy>::initializeImpl(const DeviceContext& deviceCo
         m_start = startClock;
 
     m_slots = reinterpret_cast<DeviceCallback*>(&context()->slots);
-
-#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
-    m_scratchIndex1 = invalidPosition();
-    m_scratchIndex2 = invalidPosition();
-#endif
+    initializeSharedSlots();
 }
 
 template<typename Policy>
@@ -541,25 +591,25 @@ __device__ void DeviceLoop<Policy>::freeOnePage(void* aPage)
 template<>
 GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Global>::logicalBlockIdx() const
 {
-    return m_logicalBlockIdx;
+    return m_special.m_logicalBlockIdx;
 }
 
 template<>
 GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Global>::logicalGridDim() const
 {
-    return m_logicalGridDim;
+    return m_special.m_logicalGridDim;
 }
 
 template<>
 GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Global>::logicalBlockIdxInternal()
 {
-    return m_logicalBlockIdx;
+    return m_special.m_logicalBlockIdx;
 }
 
 template<>
 GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Global>::logicalGridDimInternal()
 {
-    return m_logicalGridDim;
+    return m_special.m_logicalGridDim;
 }
 
 template<>

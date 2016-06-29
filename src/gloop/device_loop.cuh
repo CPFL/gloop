@@ -38,6 +38,27 @@ namespace gloop {
 
 struct DeviceContext;
 
+template<typename Policy>
+struct DeviceLoopSpecialData;
+
+template<>
+struct DeviceLoopSpecialData<Shared> {
+#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
+    uint32_t m_scratchIndex1;
+    uint32_t m_scratchIndex2;
+    UninitializedDeviceCallbackStorage m_scratch1;
+    UninitializedDeviceCallbackStorage m_scratch2;
+#endif
+};
+
+template<>
+struct DeviceLoopSpecialData<Global> {
+    void* m_nextCallback;
+    request::Payload* m_nextPayload;
+    uint2 m_logicalGridDim;
+    uint2 m_logicalBlockIdx;
+};
+
 template<typename Policy = Shared>
 class DeviceLoop {
 public:
@@ -89,6 +110,11 @@ private:
     inline __device__ void resume();
     inline __device__ int suspend();
 
+    inline __device__ void* allocateSharedSlotIfNecessary(uint32_t position);
+    inline __device__ void deallocateSharedSlotIfNecessary(uint32_t pos);
+    inline __device__ void initializeSharedSlots();
+    inline __device__ void suspendSharedSlots(PerBlockContext*);
+
     GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots(uint32_t position);
     GLOOP_ALWAYS_INLINE __device__ PerBlockContext* context() const;
     GLOOP_ALWAYS_INLINE __device__ OnePage* pages() const;
@@ -106,10 +132,6 @@ private:
     request::Payload* m_payloads;
     OnePage* m_pages;
 
-    // FIXME: Global case only.
-    DeviceCallback* m_nextCallback;
-    request::Payload* m_nextPayload;
-
     KernelContext* m_kernel;
     uint64_t m_killClock;
     uint64_t m_start;
@@ -117,15 +139,7 @@ private:
     DeviceCallback* m_slots;
     DeviceLoopControl m_control;
 
-    uint2 m_logicalGridDim;
-    uint2 m_logicalBlockIdx;
-
-#if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
-    uint32_t m_scratchIndex1;
-    uint32_t m_scratchIndex2;
-    UninitializedDeviceCallbackStorage m_scratch1;
-    UninitializedDeviceCallbackStorage m_scratch2;
-#endif
+    DeviceLoopSpecialData<Policy> m_special;
 };
 static_assert(std::is_trivially_destructible<DeviceLoop<Global>>::value, "DeviceLoop is trivially destructible");
 static_assert(std::is_trivially_destructible<DeviceLoop<Shared>>::value, "DeviceLoop is trivially destructible");
