@@ -38,20 +38,20 @@ enum LambdaId {
     Close2
 };
 
-__device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize);
+__device__ void perform_copy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize);
 
 struct Close2Data {
     LambdaId id;
 };
 
-__device__ void close2(gloop::DeviceLoop* loop, Close2Data* data);
+__device__ void close2(gloop::DeviceLoop<>* loop, Close2Data* data);
 
 struct Close1Data {
     LambdaId id;
     int zfd1;
 };
 
-__device__ void close1(gloop::DeviceLoop* loop, Close1Data* data);
+__device__ void close1(gloop::DeviceLoop<>* loop, Close1Data* data);
 
 struct Write1Data {
     LambdaId id;
@@ -64,7 +64,7 @@ struct Write1Data {
     size_t written;
 };
 
-__device__ void write1(gloop::DeviceLoop* loop, Write1Data* data);
+__device__ void write1(gloop::DeviceLoop<>* loop, Write1Data* data);
 
 struct Read1Data {
     LambdaId id;
@@ -77,7 +77,7 @@ struct Read1Data {
     size_t read;
 };
 
-__device__ void read1(gloop::DeviceLoop* loop, Read1Data* data);
+__device__ void read1(gloop::DeviceLoop<>* loop, Read1Data* data);
 
 struct Fstat1Data {
     LambdaId id;
@@ -87,7 +87,7 @@ struct Fstat1Data {
     size_t filesize;
 };
 
-__device__ void fstat1(gloop::DeviceLoop* loop, Fstat1Data* data);
+__device__ void fstat1(gloop::DeviceLoop<>* loop, Fstat1Data* data);
 
 struct Open2Data {
     LambdaId id;
@@ -96,7 +96,7 @@ struct Open2Data {
     int zfd1;
 };
 
-__device__ void open2(gloop::DeviceLoop* loop, Open2Data* data);
+__device__ void open2(gloop::DeviceLoop<>* loop, Open2Data* data);
 
 struct Open1Data {
     LambdaId id;
@@ -105,7 +105,7 @@ struct Open1Data {
     int zfd;
 };
 
-__device__ void open1(gloop::DeviceLoop* loop, Open1Data* data);
+__device__ void open1(gloop::DeviceLoop<>* loop, Open1Data* data);
 
 inline __device__ void store(Open1Data& data, int fd)
 {

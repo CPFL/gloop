@@ -739,7 +739,7 @@ struct Driver {
 };
 
 __device__ void perform(
-    gloop::DeviceLoop* loop,
+    gloop::DeviceLoop<>* loop,
     Driver* driver,
     void* match_coords,
     char* aQueries,
@@ -749,7 +749,7 @@ __device__ void perform(
     const int numQueries,
     const int min_match_len)
 {
-    int qryid = __umul24(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
+    int qryid = __umul24(loop->logicalBlockIdx().x, blockDim.x) + threadIdx.x;
     int disabled = qryid >= numQueries;
     XPRINTF("> qryid: %d\n", qryid);
 
@@ -918,7 +918,7 @@ __device__ void perform(
         }
 
         if (gloop::loop::postTaskIfNecessary(loop,
-            [=] (gloop::DeviceLoop* loop) {
+            [=] (gloop::DeviceLoop<>* loop) {
                 perform(loop, driver, match_coords, aQueries, ref, queryAddrs, queryLengths, numQueries, min_match_len);
             }
         )) {
@@ -947,7 +947,7 @@ __device__ void perform(
 // __device__ void
 __device__ void
 mummergpuKernel(
-    gloop::DeviceLoop* loop,
+    gloop::DeviceLoop<>* loop,
     void* match_coords,
     char* aQueries,
     char* ref,
@@ -970,14 +970,14 @@ mummergpuKernel(
     driver->mustmatch[threadIdx.x] = 0;
     driver->qry_match_len[threadIdx.x] = 0;
 
-    int qryid = __umul24(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
+    int qryid = __umul24(loop->logicalBlockIdx().x, blockDim.x) + threadIdx.x;
     XPRINTF("> qryid: %d\n", qryid);
 
     if (qryid == 0) {
         PRINTNODES(0, 200);
     }
 
-    gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
+    gloop::loop::postTask(loop, [=] (gloop::DeviceLoop<>* loop) {
         perform(loop, driver, match_coords, aQueries, ref, queryAddrs, queryLengths, numQueries, min_match_len);
     });
 }
@@ -995,7 +995,7 @@ mummergpuRCKernel(MatchCoord* match_coords,
     const int min_match_len)
 {
     /*
-   int qryid = __umul24(gloop::logicalBlockIdx.x,blockDim.x) + threadIdx.x;
+   int qryid = __umul24(loop->logicalBlockIdx().x,blockDim.x) + threadIdx.x;
    if (qryid >= numQueries) { return; }
 
    int qlen = queryLengths[qryid];
@@ -1164,7 +1164,7 @@ mummergpuRCKernel(MatchCoord* match_coords,
 
 __device__ void
 printKernel(
-    gloop::DeviceLoop* loop,
+    gloop::DeviceLoop<>* loop,
     MatchInfo* matches,
     int totalMatches,
     Alignment* alignments,
@@ -1177,7 +1177,7 @@ printKernel(
     const int page_shadow_right,
     const int min_match_length)
 {
-    int matchid = __umul24(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
+    int matchid = __umul24(loop->logicalBlockIdx().x, blockDim.x) + threadIdx.x;
     if (matchid >= totalMatches) {
         return;
     }

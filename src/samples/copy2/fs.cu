@@ -14,7 +14,7 @@
 #include <gloop/gloop.h>
 #include <gloop/benchmark.h>
 
-__device__ void gpuMain(gloop::DeviceLoop* loop, char* src, char* dst);
+__device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, char* dst);
 
 #define MAIN_FS_FILE
 
@@ -129,7 +129,7 @@ int main( int argc, char** argv)
         gloop::Benchmark benchmark;
         benchmark.begin();
         {
-            hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
+            hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, char* src, char* dst) {
                 gpuMain(loop, src, dst);
             }, d_filenames[0], d_filenames[1]);
         }

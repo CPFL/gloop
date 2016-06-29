@@ -122,7 +122,7 @@ int main(int argc, char** argv)
     std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(240));
 
     for (int t = 0; t < iteration; t++) {
-        hostLoop->launch(*hostContext, grid, block, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, float c0, float c1, float* A0, float* Anext, int nx, int ny, int nz) {
+        hostLoop->launch(*hostContext, grid, block, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, float c0, float c1, float* A0, float* Anext, int nx, int ny, int nz) {
             block2D_hybrid_coarsen_x(c0, c1, A0, Anext, nx, ny, nz);
         }, c0, c1, d_A0, d_Anext, nx, ny, nz);
         float* d_temp = d_A0;

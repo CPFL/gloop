@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <math.h>
 
-__device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst);
+__device__ void test_cpy(gloop::DeviceLoop<>* loop, char* src, char* dst);
 void init_device_app();
 void init_app();
 double post_app(double time, int trials);
@@ -155,7 +155,7 @@ int main( int argc, char** argv)
 
 
         // test_cpy<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>(d_filenames[0], d_filenames[1]);
-        gloop::launch<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>([=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
+        gloop::launch<<<nblocks,nthreads,0,gpuGlobals->streamMgr->kernelStream>>>([=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, char* src, char* dst) {
             test_cpy(loop, src, dst);
         }, d_filenames[0], d_filenames[1]);
 

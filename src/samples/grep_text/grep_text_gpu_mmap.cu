@@ -247,7 +247,7 @@ void __global__ grep_text(char* src, char* out, char* dbs)
 		if (words_per_chunk==0) 
 		{
 			words_per_chunk=1;
-			if (gloop::logicalBlockIdx.x>total_words) {
+			if (loop->logicalBlockIdx().x>total_words) {
 				words_per_chunk=0;
 			}
 		}
@@ -266,7 +266,7 @@ void __global__ grep_text(char* src, char* out, char* dbs)
 			
 		data_to_process=words_per_chunk*32;
 	
-		if (gloop::logicalBlockIdx.x==gloop::logicaclGridDim.x-1)  data_to_process=fstat(zfd_src)-data_to_process*gloop::logicalBlockIdx.x;
+		if (loop->logicalBlockIdx().x==gloop::logicaclGridDim.x-1)  data_to_process=fstat(zfd_src)-data_to_process*loop->logicalBlockIdx().x;
 		
 		input_tmp=(char*)malloc(data_to_process);
 		assert(input_tmp);
@@ -304,7 +304,7 @@ void __global__ grep_text(char* src, char* out, char* dbs)
 	int db_idx=-1;
 		
 	int to_read=min(data_to_process,(int)fstat(zfd_src));
-	int bytes_read=gread(zfd_src,gloop::logicalBlockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp);
+	int bytes_read=gread(zfd_src,loop->logicalBlockIdx().x*words_per_chunk*32,to_read,(uchar*)input_tmp);
 	if (bytes_read!=to_read) ERROR("FAILED to read input");
 	input_tmp_counts=to_read;
 	__shared__ int db_strlen;

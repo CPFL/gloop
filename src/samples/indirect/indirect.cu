@@ -41,14 +41,14 @@ __device__ void* hello2()
 
 __device__ uint64_t memory[28][sizeof(gloop::function<void*()>)];
 
-__device__ void throttle(gloop::DeviceLoop* loop, int _, int limit)
+__device__ void throttle(gloop::DeviceLoop<>* loop, int _, int limit)
 {
     typedef gloop::function<void*()> Callback;
     __shared__ Callback* globalFunction;
     __shared__ uint64_t now;
     BEGIN_SINGLE_THREAD
     {
-        globalFunction = new (memory[gloop::logicalBlockIdx.x]) Callback(&hello1);
+        globalFunction = new (memory[loop->logicalBlockIdx().x]) Callback(&hello1);
     }
     END_SINGLE_THREAD
     #pragma unroll 0
@@ -57,7 +57,7 @@ __device__ void throttle(gloop::DeviceLoop* loop, int _, int limit)
         BEGIN_SINGLE_THREAD
         {
             globalFunction->~Callback();
-            new (memory[gloop::logicalBlockIdx.x]) Callback([] {
+            new (memory[loop->logicalBlockIdx().x]) Callback([] {
                 return nullptr;
             });
             now = clock64();
@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
 
         gloop::Benchmark benchmark;
         benchmark.begin();
-        hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int trials) {
+        hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, int trials) {
             throttle(loop, 0, trials);
         }, trials);
         benchmark.end();

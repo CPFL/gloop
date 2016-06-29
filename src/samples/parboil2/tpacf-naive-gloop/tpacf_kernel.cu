@@ -60,7 +60,7 @@ void initBinB( struct pb_TimerSet *timers )
 }
 
 template<typename Callback>
-__device__ void iterateOverAllRandomPoints(gloop::DeviceLoop* loop, Context* ctx, unsigned int NUM_ELEMENTS, unsigned int i, unsigned int j, Callback callback)
+__device__ void iterateOverAllRandomPoints(gloop::DeviceLoop<>* loop, Context* ctx, unsigned int NUM_ELEMENTS, unsigned int i, unsigned int j, Callback callback)
 {
     // Iterate over all random points
     if (j < NUM_ELEMENTS) {
@@ -115,7 +115,7 @@ __device__ void iterateOverAllRandomPoints(gloop::DeviceLoop* loop, Context* ctx
             }
         }
 
-        gloop::loop::postTask(loop, [ctx, NUM_ELEMENTS, i, j, callback] (gloop::DeviceLoop* loop) {
+        gloop::loop::postTask(loop, [ctx, NUM_ELEMENTS, i, j, callback] (gloop::DeviceLoop<>* loop) {
             iterateOverAllRandomPoints(loop, ctx, NUM_ELEMENTS, i, j + BLOCK_SIZE, callback);
         });
         return;
@@ -124,7 +124,7 @@ __device__ void iterateOverAllRandomPoints(gloop::DeviceLoop* loop, Context* ctx
 }
 
 template<typename Callback>
-__device__ void iterateOverAllDataPoints(gloop::DeviceLoop* loop, Context* ctx, unsigned int NUM_ELEMENTS, unsigned int i, Callback callback)
+__device__ void iterateOverAllDataPoints(gloop::DeviceLoop<>* loop, Context* ctx, unsigned int NUM_ELEMENTS, unsigned int i, Callback callback)
 {
     // Iterate over all data points
     if (i < NUM_ELEMENTS) {
@@ -137,7 +137,7 @@ __device__ void iterateOverAllDataPoints(gloop::DeviceLoop* loop, Context* ctx, 
 
         __syncthreads();
 
-        iterateOverAllRandomPoints(loop, ctx, NUM_ELEMENTS, i, (ctx->do_self ? i+1 : 0), [ctx, NUM_ELEMENTS, i, callback] (gloop::DeviceLoop* loop) {
+        iterateOverAllRandomPoints(loop, ctx, NUM_ELEMENTS, i, (ctx->do_self ? i+1 : 0), [ctx, NUM_ELEMENTS, i, callback] (gloop::DeviceLoop<>* loop) {
             iterateOverAllDataPoints(loop, ctx, NUM_ELEMENTS, i + BLOCK_SIZE, callback);
         });
         return;
@@ -146,9 +146,9 @@ __device__ void iterateOverAllDataPoints(gloop::DeviceLoop* loop, Context* ctx, 
 }
 
 
-__device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all_z_data, int NUM_SETS, int NUM_ELEMENTS)
+__device__ void gen_hists(gloop::DeviceLoop<>* loop, hist_t* histograms, REAL* all_x_data, REAL* all_y_data, REAL* all_z_data, int NUM_SETS, int NUM_ELEMENTS)
 {
-    unsigned int bx = gloop::logicalBlockIdx.x;
+    unsigned int bx = loop->logicalBlockIdx().x;
     unsigned int tid = threadIdx.x;
     bool do_self = (bx < (NUM_SETS + 1));
 
@@ -208,9 +208,9 @@ __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all
     }
     END_SINGLE_THREAD
 
-    gloop::loop::postTask(loop, [ctx, NUM_ELEMENTS] (gloop::DeviceLoop* loop) {
-        iterateOverAllDataPoints(loop, ctx, NUM_ELEMENTS, 0, [ctx] (gloop::DeviceLoop* loop) {
-            gloop::loop::postTask(loop, [ctx] (gloop::DeviceLoop* loop) {
+    gloop::loop::postTask(loop, [ctx, NUM_ELEMENTS] (gloop::DeviceLoop<>* loop) {
+        iterateOverAllDataPoints(loop, ctx, NUM_ELEMENTS, 0, [ctx] (gloop::DeviceLoop<>* loop) {
+            gloop::loop::postTask(loop, [ctx] (gloop::DeviceLoop<>* loop) {
                 // coalesce the histograms in a block
                 unsigned int warp_index = threadIdx.x & ( (NUM_HISTOGRAMS>>1) - 1);
                 unsigned int bin_index = threadIdx.x / (NUM_HISTOGRAMS>>1);
@@ -231,7 +231,7 @@ __device__ void gen_hists(gloop::DeviceLoop* loop, hist_t* histograms, REAL* all
 
                 // Put the results back in the real histogram
                 // warp_hists[x][0] holds sum of all locations of bin x
-                hist_t* hist_base = ctx->histograms + NUM_BINS * gloop::logicalBlockIdx.x;
+                hist_t* hist_base = ctx->histograms + NUM_BINS * loop->logicalBlockIdx().x;
                 if(threadIdx.x < NUM_BINS) {
                     hist_base[threadIdx.x] = warp_hists[threadIdx.x][0];
                 }

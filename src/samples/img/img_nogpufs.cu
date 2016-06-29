@@ -54,13 +54,13 @@ void __global__ img_gpu_nofs(float* src, int src_len,
         
     int rows_to_process=rows_per_chunk;
 
-    if (gloop::logicalBlockIdx.x==gloop::logicalGridDim.x-1) rows_to_process=(total_rows - gloop::logicalBlockIdx.x*rows_per_chunk);
+    if (loop->logicalBlockIdx().x==gloop::logicalGridDim.x-1) rows_to_process=(total_rows - loop->logicalBlockIdx().x*rows_per_chunk);
     
 
     
     int out_count=sizeof(int)*3;
     int found=0;
-    int start=gloop::logicalBlockIdx.x*rows_per_chunk;
+    int start=loop->logicalBlockIdx().x*rows_per_chunk;
     int matched_count=0;
     for ( size_t _cursor=0;_cursor<db_len;_cursor+=(GREP_ROW_WIDTH<<2)){
         

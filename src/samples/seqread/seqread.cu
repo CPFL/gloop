@@ -27,11 +27,11 @@
 #include <gloop/device_memory.cuh>
 
 
-__device__ void perform_read(gloop::DeviceLoop* loop, uchar* scratch, int fd, size_t me, size_t filesize)
+__device__ void perform_read(gloop::DeviceLoop<>* loop, uchar* scratch, int fd, size_t me, size_t filesize)
 {
     if (me < filesize) {
         size_t toRead = min((size_t)GLOOP_SHARED_PAGE_SIZE, (size_t)(filesize - me));
-        gloop::fs::read(loop, fd, me, toRead, scratch, [=](gloop::DeviceLoop* loop, int read) {
+        gloop::fs::read(loop, fd, me, toRead, scratch, [=](gloop::DeviceLoop<>* loop, int read) {
             if (toRead != read) {
                 assert(NULL);
             }
@@ -41,11 +41,11 @@ __device__ void perform_read(gloop::DeviceLoop* loop, uchar* scratch, int fd, si
         return;
     }
 
-    gloop::fs::close(loop, fd, [=](gloop::DeviceLoop* loop, int err) {
+    gloop::fs::close(loop, fd, [=](gloop::DeviceLoop<>* loop, int err) {
     });
 }
 
-__device__ void entry(gloop::DeviceLoop* loop, char* filename)
+__device__ void entry(gloop::DeviceLoop<>* loop, char* filename)
 {
     __shared__ uchar* scratch;
 
@@ -56,9 +56,9 @@ __device__ void entry(gloop::DeviceLoop* loop, char* filename)
     }
     END_SINGLE_THREAD
 
-    gloop::fs::open(loop, filename, O_RDONLY, [=](gloop::DeviceLoop* loop, int fd) {
-        gloop::fs::fstat(loop, fd, [=](gloop::DeviceLoop* loop, int filesize) {
-            size_t me = gloop::logicalBlockIdx.x * GLOOP_SHARED_PAGE_SIZE;
+    gloop::fs::open(loop, filename, O_RDONLY, [=](gloop::DeviceLoop<>* loop, int fd) {
+        gloop::fs::fstat(loop, fd, [=](gloop::DeviceLoop<>* loop, int filesize) {
+            size_t me = loop->logicalBlockIdx().x * GLOOP_SHARED_PAGE_SIZE;
             perform_read(loop, scratch, fd, me, filesize);
         });
     });
@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
 
         gloop::Benchmark bench;
         bench.begin();
-        hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* filename) {
+        hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, char* filename) {
             entry(loop, filename);
         }, reinterpret_cast<char*>(memory->devicePointer()));
         bench.end();

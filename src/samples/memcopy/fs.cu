@@ -14,7 +14,7 @@
 #include <gloop/gloop.h>
 #include <gloop/benchmark.h>
 
-__device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst);
+__device__ void test_cpy(gloop::DeviceLoop<>* loop, char* src, char* dst);
 void init_device_app();
 void init_app();
 double post_app(double time, int trials);
@@ -140,7 +140,7 @@ int main( int argc, char** argv)
         gloop::Benchmark benchmark;
         benchmark.begin();
         {
-            hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, char* src, char* dst) {
+            hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, char* src, char* dst) {
                 test_cpy(loop, src, dst);
             }, d_filenames[0], d_filenames[1]);
         }

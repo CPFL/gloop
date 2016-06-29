@@ -295,7 +295,7 @@ void CUDA_interface(
 
     // gridding_GPU<<<grid2, block2>>>(sortedSampleSoA_d, binStartAddr_d, gridData_d, sampleDensity_d, beta);
     // printf("gridding_GPU threads:(%llu),blocks:(%llu)\n", gloop::sumOfBlocks(grid2), gloop::sumOfThreads(block2));
-    hostLoop.launch(hostContext, grid2, block2, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta) {
+    hostLoop.launch(hostContext, grid2, block2, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta) {
         gridding_GPU(loop, sortedSampleSoA_g, binStartAddr_g, gridData_g, sampleDensity_g, beta);
     }, sortedSampleSoA_d, binStartAddr_d, gridData_d, sampleDensity_d, beta);
 

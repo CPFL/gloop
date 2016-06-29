@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------200
 
 __device__ void kernel_gpu_cuda(
-    gloop::DeviceLoop* loop,
+    gloop::DeviceLoop<>* loop,
     par_str d_par_gpu,
     dim_str d_dim_gpu,
     box_str* d_box_gpu,
@@ -16,7 +16,7 @@ __device__ void kernel_gpu_cuda(
     //	THREAD PARAMETERS
     //--------------------------------------------------------------------------------------------------------------------------------------------------------------------------180
 
-    int bx = gloop::logicalBlockIdx.x; // get current horizontal block index (0-n)
+    int bx = loop->logicalBlockIdx().x; // get current horizontal block index (0-n)
     int tx = threadIdx.x; // get current horizontal thread index (0-n)
     // int ax = bx*NUMBER_THREADS+tx;
     // int wbx = bx;

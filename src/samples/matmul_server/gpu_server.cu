@@ -101,9 +101,9 @@ public:
     {
     }
 
-    __device__ void accept(gloop::DeviceLoop* loop)
+    __device__ void accept(gloop::DeviceLoop<>* loop)
     {
-        gloop::net::tcp::accept(loop, m_server, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
+        gloop::net::tcp::accept(loop, m_server, [=](gloop::DeviceLoop<>* loop, gloop::net::Socket* socket) {
             if (!socket) {
                 return;
             }
@@ -111,16 +111,16 @@ public:
         });
     }
 
-    __device__ void close(gloop::DeviceLoop* loop, gloop::net::Socket* socket)
+    __device__ void close(gloop::DeviceLoop<>* loop, gloop::net::Socket* socket)
     {
-        gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop* loop, int error) {
+        gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop<>* loop, int error) {
             this->accept(loop);
         });
     }
 
-    __device__ void handle(gloop::DeviceLoop* loop, gloop::net::Socket* socket)
+    __device__ void handle(gloop::DeviceLoop<>* loop, gloop::net::Socket* socket)
     {
-        gloop::net::tcp::receive(loop, socket, MATRIX_SIZE * sizeof(float) * 2, (uint8_t*)m_message, MSG_WAITALL, [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+        gloop::net::tcp::receive(loop, socket, MATRIX_SIZE * sizeof(float) * 2, (uint8_t*)m_message, MSG_WAITALL, [=](gloop::DeviceLoop<>* loop, ssize_t receiveCount) {
             if (receiveCount == 0) {
                 this->close(loop, socket);
                 return;
@@ -137,7 +137,7 @@ public:
                     matrixMulCUDA<SHARED_BLOCK_SIZE>(out, lhs, rhs, MATRIX_HW, MATRIX_HW, x, y);
                 }
             }
-            gloop::net::tcp::send(loop, socket, MATRIX_SIZE * sizeof(float), (uint8_t*)out, [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
+            gloop::net::tcp::send(loop, socket, MATRIX_SIZE * sizeof(float), (uint8_t*)out, [=](gloop::DeviceLoop<>* loop, ssize_t sentCount) {
                 if (sentCount == 0) {
                     this->close(loop, socket);
                     return;
@@ -154,7 +154,7 @@ private:
 
 __device__ gloop::net::Server* globalServer = nullptr;
 __device__ volatile gpunet::INIT_LOCK initLock;
-__device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
+__device__ void gpuMain(gloop::DeviceLoop<>* loop, struct sockaddr_in* addr)
 {
     __shared__ MatMulServer* matMulServer;
     __shared__ int toInit;
@@ -166,7 +166,7 @@ __device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
     }
     END_SINGLE_THREAD
     if (toInit == 1) {
-        gloop::net::tcp::bind(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Server* server) {
+        gloop::net::tcp::bind(loop, addr, [=](gloop::DeviceLoop<>* loop, gloop::net::Server* server) {
             assert(server);
             __shared__ MatMulServer* matMulServer;
             BEGIN_SINGLE_THREAD
@@ -207,7 +207,7 @@ int main(int argc, char** argv)
     gloop::Benchmark benchmark;
     benchmark.begin();
     {
-        hostLoop->launch(*hostContext, blocks, THREADS_PER_TB, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, struct sockaddr* address) {
+        hostLoop->launch(*hostContext, blocks, THREADS_PER_TB, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, struct sockaddr* address) {
             gpuMain(loop, (struct sockaddr_in*)address);
         }, dev_addr);
     }

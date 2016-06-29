@@ -1346,7 +1346,7 @@ void runPrintKernel(MatchContext* ctx,
 
     fprintf(stderr, "printKernel threads:(%d),blocks(%d)\n", dimBlock.x, dimGrid.x);
     ctx->hostLoop->launch(*ctx->hostContext, dim3(60), dimGrid, dimBlock, [] __device__(
-                                                                    gloop::DeviceLoop * loop,
+                                                                    gloop::DeviceLoop<> * loop,
                                                                     MatchInfo * matches,
                                                                     int totalMatches,
                                                                     Alignment* alignments,
@@ -1873,7 +1873,7 @@ void matchOnGPU(MatchContext* ctx, bool doRC)
     } else {
         fprintf(stderr, "mummergpuKernel threads:(%d),blocks(%d)\n", dimBlock.x, dimGrid.x);
         ctx->hostLoop->launch(*ctx->hostContext, /* FIXME */ dim3(30), dimGrid, dimBlock, [] __device__(
-                                                                                              gloop::DeviceLoop * loop,
+                                                                                              gloop::DeviceLoop<> * loop,
                                                                                               void* match_coords,
                                                                                               char* queries,
                                                                                               char* ref,

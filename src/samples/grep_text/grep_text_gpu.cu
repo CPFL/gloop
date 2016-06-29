@@ -214,9 +214,9 @@ __device__ char* get_next(struct context& ctx, char* str, char** next, int* db_s
 #define ROW_SIZE (THREADS*32)
 
 __device__ int global_output;
-__device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context ctx, char* next_db, int zfd_db, size_t _cursor, size_t db_size, int db_strlen);
+__device__ void process_one_chunk_in_db(gloop::DeviceLoop<>* loop, struct context ctx, char* next_db, int zfd_db, size_t _cursor, size_t db_size, int db_strlen);
 
-__device__ bool perform_matching(gloop::DeviceLoop* loop, struct context ctx, int input_block, int corpus_size, int db_strlen, int db_size, char* next_db, int zfd_db, int next_cursor)
+__device__ bool perform_matching(gloop::DeviceLoop<>* loop, struct context ctx, int input_block, int corpus_size, int db_strlen, int db_size, char* next_db, int zfd_db, int next_cursor)
 {
     ///////////////////// NOW WE ARE DEALING WITH THE INPUT
     //
@@ -231,7 +231,7 @@ __device__ bool perform_matching(gloop::DeviceLoop* loop, struct context ctx, in
         int res= match_string(input+threadIdx.x*33,ctx.corpus,corpus_size,&word_size);
 
         if (!__syncthreads_or(res!=LEN_ZERO && res )) {
-            gloop::loop::postTask(loop, [=](gloop::DeviceLoop* loop) {
+            gloop::loop::postTask(loop, [=](gloop::DeviceLoop<>* loop) {
                 if (perform_matching(loop, ctx, input_block+INPUT_PREFETCH_SIZE, corpus_size, db_strlen, db_size, next_db, zfd_db, next_cursor)) {
                     process_one_chunk_in_db(loop, ctx, next_db, zfd_db, next_cursor, db_size, db_strlen);
                 }
@@ -261,7 +261,7 @@ __device__ bool perform_matching(gloop::DeviceLoop* loop, struct context ctx, in
             if (threadIdx.x==0) old_offset=atomicAdd(&global_output, *ctx.output_count);
             __syncthreads();
 
-            gloop::fs::write(loop, ctx.zfd_o, old_offset, *ctx.output_count,(uchar*) ctx.output_buffer, [=](gloop::DeviceLoop* loop, int written_size) {
+            gloop::fs::write(loop, ctx.zfd_o, old_offset, *ctx.output_count,(uchar*) ctx.output_buffer, [=](gloop::DeviceLoop<>* loop, int written_size) {
                 if (written_size != *ctx.output_count) GPU_ERROR("Write to output failed");
 
                 __syncthreads();
@@ -277,7 +277,7 @@ __device__ bool perform_matching(gloop::DeviceLoop* loop, struct context ctx, in
             });
             return false;
         }
-        gloop::loop::postTask(loop, [=](gloop::DeviceLoop* loop) {
+        gloop::loop::postTask(loop, [=](gloop::DeviceLoop<>* loop) {
             __syncthreads();
 
             /// how many did we find
@@ -295,9 +295,9 @@ __device__ bool perform_matching(gloop::DeviceLoop* loop, struct context ctx, in
     return true;
 }
 
-__device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char* previous_db);
+__device__ void process_one_db(gloop::DeviceLoop<>* loop, struct context ctx, char* previous_db);
 
-__device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context ctx, char* next_db, int zfd_db, size_t _cursor, size_t db_size, int db_strlen) {
+__device__ void process_one_chunk_in_db(gloop::DeviceLoop<>* loop, struct context ctx, char* next_db, int zfd_db, size_t _cursor, size_t db_size, int db_strlen) {
     if (_cursor < db_size) {
         bool last_iter=db_size-_cursor<(CORPUS_PREFETCH_SIZE+32);
         int db_left=last_iter?db_size-_cursor: CORPUS_PREFETCH_SIZE+32;
@@ -308,7 +308,7 @@ __device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context 
             __threadfence_block();
         }
         END_SINGLE_THREAD
-        gloop::fs::read(loop, zfd_db,_cursor,db_left,(uchar*)ctx.corpus, [=](gloop::DeviceLoop* loop, int bytes_read) {
+        gloop::fs::read(loop, zfd_db,_cursor,db_left,(uchar*)ctx.corpus, [=](gloop::DeviceLoop<>* loop, int bytes_read) {
             if(bytes_read!=db_left) GPU_ERROR("Failed to read DB file");
             // take care of the stitches
             int overlap=0;
@@ -326,7 +326,7 @@ __device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context 
         });
         return;
     }
-    gloop::fs::close(loop, zfd_db, [=](gloop::DeviceLoop* loop, int err) {
+    gloop::fs::close(loop, zfd_db, [=](gloop::DeviceLoop<>* loop, int err) {
         BEGIN_SINGLE_THREAD
         *ctx.output_count=0;
         END_SINGLE_THREAD
@@ -334,15 +334,15 @@ __device__ void process_one_chunk_in_db(gloop::DeviceLoop* loop, struct context 
     });
 }
 
-__device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char* previous_db)
+__device__ void process_one_db(gloop::DeviceLoop<>* loop, struct context ctx, char* previous_db)
 {
     char* next_db;
     __shared__ int db_strlen;
 
     if (char* current_db = get_next(ctx, previous_db, &next_db, &db_strlen)) {
-        gloop::fs::open(loop, current_db,O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_db) {
+        gloop::fs::open(loop, current_db,O_RDONLY, [=](gloop::DeviceLoop<>* loop, int zfd_db) {
             if (zfd_db<0) GPU_ERROR("Failed to open DB file");
-            gloop::fs::fstat(loop, zfd_db, [=](gloop::DeviceLoop* loop, int db_size) {
+            gloop::fs::fstat(loop, zfd_db, [=](gloop::DeviceLoop<>* loop, int db_size) {
                 process_one_chunk_in_db(loop, ctx, next_db, zfd_db, 0, db_size, db_strlen);
             });
         });
@@ -351,9 +351,9 @@ __device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char
 
     //we are done.
     //write the output and finish
-    gloop::fs::close(loop, ctx.zfd_src, [=](gloop::DeviceLoop* loop, int err) {
-        gloop::fs::close(loop, ctx.zfd_dbs, [=](gloop::DeviceLoop* loop, int err) {
-            gloop::fs::close(loop, ctx.zfd_o, [=](gloop::DeviceLoop* loop, int err) {
+    gloop::fs::close(loop, ctx.zfd_src, [=](gloop::DeviceLoop<>* loop, int err) {
+        gloop::fs::close(loop, ctx.zfd_dbs, [=](gloop::DeviceLoop<>* loop, int err) {
+            gloop::fs::close(loop, ctx.zfd_o, [=](gloop::DeviceLoop<>* loop, int err) {
                 BEGIN_SINGLE_THREAD
                 {
                     free(ctx.input_tmp);
@@ -369,18 +369,18 @@ __device__ void process_one_db(gloop::DeviceLoop* loop, struct context ctx, char
     });
 }
 
-void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* dbs)
+void __device__ grep_text(gloop::DeviceLoop<>* loop, char* src, char* out, char* dbs)
 {
-    gloop::fs::open(loop, dbs,O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_dbs) {
+    gloop::fs::open(loop, dbs,O_RDONLY, [=](gloop::DeviceLoop<>* loop, int zfd_dbs) {
         if (zfd_dbs<0) GPU_ERROR("Failed to open output");
 
-        gloop::fs::open(loop, out,O_RDWR|O_CREAT, [=](gloop::DeviceLoop* loop, int zfd_o) {
+        gloop::fs::open(loop, out,O_RDWR|O_CREAT, [=](gloop::DeviceLoop<>* loop, int zfd_o) {
             if (zfd_o<0) GPU_ERROR("Failed to open output");
 
-            gloop::fs::open(loop, src,O_RDONLY, [=](gloop::DeviceLoop* loop, int zfd_src) {
+            gloop::fs::open(loop, src,O_RDONLY, [=](gloop::DeviceLoop<>* loop, int zfd_src) {
                 if (zfd_src<0) GPU_ERROR("Failed to open input");
 
-                gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop* loop, int src_size) {
+                gloop::fs::fstat(loop, zfd_src, [=](gloop::DeviceLoop<>* loop, int src_size) {
                     int total_words=src_size/32;
 
                     if (total_words==0) GPU_ERROR("empty input");
@@ -389,14 +389,14 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
 
                     if (words_per_chunk==0) {
                         words_per_chunk=1;
-                        if (gloop::logicalBlockIdx.x>total_words) {
+                        if (loop->logicalBlockIdx().x>total_words) {
                             words_per_chunk=0;
                         }
                     }
 
                     if (words_per_chunk==0) {
-                        gloop::fs::close(loop, zfd_o, [=](gloop::DeviceLoop* loop, int err) {
-                            gloop::fs::close(loop, zfd_src, [=](gloop::DeviceLoop* loop, int err) {
+                        gloop::fs::close(loop, zfd_o, [=](gloop::DeviceLoop<>* loop, int err) {
+                            gloop::fs::close(loop, zfd_src, [=](gloop::DeviceLoop<>* loop, int err) {
                             });
                         });
                         return;
@@ -404,8 +404,8 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
 
                     int data_to_process=words_per_chunk*32;
 
-                    if (gloop::logicalBlockIdx.x==gloop::logicalGridDim.x-1)
-                        data_to_process=src_size-data_to_process*gloop::logicalBlockIdx.x;
+                    if (loop->logicalBlockIdx().x==gloop::logicalGridDim.x-1)
+                        data_to_process=src_size-data_to_process*loop->logicalBlockIdx().x;
 
                     __shared__ char* db_files;
                     __shared__ char* input_tmp;
@@ -443,13 +443,13 @@ void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* d
                     }
                     END_SINGLE_THREAD
 
-                    gloop::fs::fstat(loop, zfd_dbs, [=](gloop::DeviceLoop* loop, size_t dbs_size) {
-                        gloop::fs::read(loop, zfd_dbs,0,dbs_size,(uchar*)db_files, [=](gloop::DeviceLoop* loop, size_t db_bytes_read) {
+                    gloop::fs::fstat(loop, zfd_dbs, [=](gloop::DeviceLoop<>* loop, size_t dbs_size) {
+                        gloop::fs::read(loop, zfd_dbs,0,dbs_size,(uchar*)db_files, [=](gloop::DeviceLoop<>* loop, size_t db_bytes_read) {
                             if(db_bytes_read!=dbs_size) GPU_ERROR("Failed to read dbs");
                             db_files[db_bytes_read]='\0';
 
                             int to_read=min(data_to_process,(int)src_size);
-                            gloop::fs::read(loop, zfd_src,gloop::logicalBlockIdx.x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](gloop::DeviceLoop* loop, size_t bytes_read) {
+                            gloop::fs::read(loop, zfd_src,loop->logicalBlockIdx().x*words_per_chunk*32,to_read,(uchar*)input_tmp, [=](gloop::DeviceLoop<>* loop, size_t bytes_read) {
                                 if (bytes_read!=to_read) GPU_ERROR("FAILED to read input");
                                 struct context ctx {
                                     zfd_src,

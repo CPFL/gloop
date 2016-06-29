@@ -574,7 +574,7 @@ void runTest(int argc, char** argv)
         // unlink(fn);
         double time_before=_timestamp();
         {
-            hostLoop->launch(*hostContext, grid, threads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int wA, int wB, int perBlockX, int perBlockY, char n) {
+            hostLoop->launch(*hostContext, grid, threads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, int wA, int wB, int perBlockX, int perBlockY, char n) {
                 matrixMul<32>(loop, wA, wB, perBlockX, perBlockY, n);
             }, uiWA, uiWB,perBlockX,perBlockY,'0'+zzz);
         }

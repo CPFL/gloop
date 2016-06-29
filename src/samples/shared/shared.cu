@@ -21,15 +21,17 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef IMG_CU_H_
-#define IMG_CU_H_
 
-#define GREP_ROW_WIDTH (4*1024)
+#include <gloop/gloop.h>
+#include <gloop/benchmark.h>
 
-void __device__ img_gpu(
-        gloop::DeviceLoop<>* loop,
-        char* src, int src_row_len, int num_db_files, float match_threshold, int start_offset,
-        char* out, char* out2, char* out3, char* out4, char *out5, char* out6, char* out7);
-
-
-#endif  // IMG_CU_H_
+#if 0
+__device__ void shared2(gloop::DeviceLoop* loop, unsigned int* ok)
+{
+    __shared__ unsigned int buf[2048];
+    unsigned int* hello = buf;
+    gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
+        shared(loop, hello);
+    });
+}
+#endif

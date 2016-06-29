@@ -25,21 +25,21 @@
 #include <gloop/gloop.h>
 #include <gloop/benchmark.h>
 
-__device__ void throttle(gloop::DeviceLoop* loop, int count, int limit)
+__device__ void throttle(gloop::DeviceLoop<gloop::Global>* loop, int count, int limit)
 {
     if (count != limit) {
-        gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
+        gloop::loop::postTask(loop, [=] (gloop::DeviceLoop<gloop::Global>* loop) {
             throttle(loop, count + 1, limit);
         });
     }
 }
 
 #if 0
-__device__ void shared(gloop::DeviceLoop* loop, int count, int limit, unsigned int* ok)
+__device__ void shared(gloop::DeviceLoop<>* loop, int count, int limit, unsigned int* ok)
 {
     unsigned int* hello = buf;
     if (count != limit) {
-        gloop::loop::postTask(loop, [=] (gloop::DeviceLoop* loop) {
+        gloop::loop::postTask(loop, [=] (gloop::DeviceLoop<>* loop) {
             shared(loop, count + 1, limit, hello);
         });
     }
@@ -74,17 +74,17 @@ int main(int argc, char** argv) {
 
         gloop::Benchmark benchmark;
         benchmark.begin();
-        hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int trials) {
+        hostLoop->launch<gloop::Global>(*hostContext, blocks, dim3(nthreads), [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<gloop::Global>* loop, int trials) {
             throttle(loop, 0, trials);
         }, trials);
 
 #if 0
-        hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int trials) {
+        hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<gloop::Global>* loop, int trials) {
             shared(loop, 0, trials, nullptr);
         }, trials);
 #endif
 
-        hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int trials) {
+        hostLoop->launch<gloop::Global>(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<gloop::Global>* loop, int trials) {
             throttle(loop, 0, trials);
         }, trials);
 

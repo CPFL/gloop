@@ -25,10 +25,10 @@
 #include <gloop/gloop.h>
 #include <gloop/benchmark.h>
 
-__device__ void throttle(gloop::DeviceLoop* loop, int count, int limit)
+__device__ void throttle(gloop::DeviceLoop<>* loop, int count, int limit)
 {
     for (; count != limit; count += 1) {
-        if (gloop::loop::postTaskIfNecessary(loop, [=] (gloop::DeviceLoop* loop) {
+        if (gloop::loop::postTaskIfNecessary(loop, [=] (gloop::DeviceLoop<>* loop) {
                 throttle(loop, count + 1, limit);
             }))
             return;
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 
         gloop::Benchmark benchmark;
         benchmark.begin();
-        hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, int trials) {
+        hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, int trials) {
             throttle(loop, 0, trials);
         }, trials);
         benchmark.end();

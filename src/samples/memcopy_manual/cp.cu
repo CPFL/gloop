@@ -4,13 +4,13 @@
 #include "gloop.h"
 __device__ int OK;
 
-__device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize);
+__device__ void perform_copy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize);
 
-__device__ void close2(gloop::DeviceLoop* loop, Close2Data* data)
+__device__ void close2(gloop::DeviceLoop<>* loop, Close2Data* data)
 {
 }
 
-__device__ void close1(gloop::DeviceLoop* loop, Close1Data* data)
+__device__ void close1(gloop::DeviceLoop<>* loop, Close1Data* data)
 {
     int zfd1 = data->zfd1;
     gloop::close(loop, zfd1, (struct Close2Data) {
@@ -18,7 +18,7 @@ __device__ void close1(gloop::DeviceLoop* loop, Close1Data* data)
     });
 }
 
-__device__ void write1(gloop::DeviceLoop* loop, Write1Data* data)
+__device__ void write1(gloop::DeviceLoop<>* loop, Write1Data* data)
 {
     uchar* scratch = data->scratch;
     int zfd = data->zfd;
@@ -33,7 +33,7 @@ __device__ void write1(gloop::DeviceLoop* loop, Write1Data* data)
     perform_copy(loop, scratch, zfd, zfd1, me + FS_BLOCKSIZE * gloop::logicalGridDim.x, filesize);
 }
 
-__device__ void read1(gloop::DeviceLoop* loop, Read1Data* data)
+__device__ void read1(gloop::DeviceLoop<>* loop, Read1Data* data)
 {
     uchar* scratch = data->scratch;
     int zfd = data->zfd;
@@ -58,7 +58,7 @@ __device__ void read1(gloop::DeviceLoop* loop, Read1Data* data)
     });
 }
 
-__device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize)
+__device__ void perform_copy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd, int zfd1, size_t me, size_t filesize)
 {
     if (me < filesize) {
         size_t toRead = min((size_t)FS_BLOCKSIZE, (size_t)(filesize-me));
@@ -80,17 +80,17 @@ __device__ void perform_copy(gloop::DeviceLoop* loop, uchar* scratch, int zfd, i
     });
 }
 
-__device__ void fstat1(gloop::DeviceLoop* loop, Fstat1Data* data)
+__device__ void fstat1(gloop::DeviceLoop<>* loop, Fstat1Data* data)
 {
     uchar* scratch = data->scratch;
     int zfd = data->zfd;
     int zfd1 = data->zfd1;
     size_t filesize = data->filesize;
-    size_t me = gloop::logicalBlockIdx.x * FS_BLOCKSIZE;
+    size_t me = loop->logicalBlockIdx().x * FS_BLOCKSIZE;
     perform_copy(loop, scratch, zfd, zfd1, me, filesize);
 }
 
-__device__ void open2(gloop::DeviceLoop* loop, Open2Data* data)
+__device__ void open2(gloop::DeviceLoop<>* loop, Open2Data* data)
 {
     uchar* scratch = data->scratch;
     int zfd = data->zfd;
@@ -104,7 +104,7 @@ __device__ void open2(gloop::DeviceLoop* loop, Open2Data* data)
     });
 }
 
-__device__ void open1(gloop::DeviceLoop* loop, Open1Data* data)
+__device__ void open1(gloop::DeviceLoop<>* loop, Open1Data* data)
 {
     uchar* scratch = data->scratch;
     char* dst = data->dst;
@@ -118,7 +118,7 @@ __device__ void open1(gloop::DeviceLoop* loop, Open1Data* data)
 }
 
 __device__ LAST_SEMAPHORE sync_sem;
-__device__ void test_cpy(gloop::DeviceLoop* loop, char* src, char* dst)
+__device__ void test_cpy(gloop::DeviceLoop<>* loop, char* src, char* dst)
 {
     __shared__ uchar* scratch;
     BEGIN_SINGLE_THREAD

@@ -1039,7 +1039,7 @@ mummergpuRCKernel(MatchCoord* match_coords,
     const int min_match_len)
 {
     /*
-   int qryid = __umul24(gloop::logicalBlockIdx.x,blockDim.x) + threadIdx.x;
+   int qryid = __umul24(loop->logicalBlockIdx().x,blockDim.x) + threadIdx.x;
    if (qryid >= numQueries) { return; }
 
    int qlen = queryLengths[qryid];

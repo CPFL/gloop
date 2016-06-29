@@ -13,15 +13,15 @@
 
 /******************************************************************************/
 
-__device__ void performStreamCollide_kernel(gloop::DeviceLoop* loop, float* srcGrid, float* dstGrid)
+__device__ void performStreamCollide_kernel(gloop::DeviceLoop<>* loop, float* srcGrid, float* dstGrid)
 {
     //Using some predefined macros here.  Consider this the declaration
     //  and initialization of the variables SWEEP_X, SWEEP_Y and SWEEP_Z
 
     SWEEP_VAR
     SWEEP_X = threadIdx.x;
-    SWEEP_Y = gloop::logicalBlockIdx.x;
-    SWEEP_Z = gloop::logicalBlockIdx.y;
+    SWEEP_Y = loop->logicalBlockIdx().x;
+    SWEEP_Z = loop->logicalBlockIdx().y;
 
     float temp_swp, tempC, tempN, tempS, tempE, tempW, tempT, tempB;
     float tempNE, tempNW, tempSE, tempSW, tempNT, tempNB, tempST ;
@@ -162,7 +162,7 @@ __device__ void performStreamCollide_kernel(gloop::DeviceLoop* loop, float* srcG
     // Next!
 #if 0
     if (count != timestep) {
-        gloop::global::synchronize(loop, [=] (gloop::DeviceLoop* loop) {
+        gloop::global::synchronize(loop, [=] (gloop::DeviceLoop<>* loop) {
             performStreamCollide_kernel(loop, dstGrid, srcGrid, count, timestep);
         });
     }

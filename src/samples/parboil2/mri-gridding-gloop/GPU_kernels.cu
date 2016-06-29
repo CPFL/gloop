@@ -105,7 +105,7 @@ __device__ float kernel_value(float v)
 }
 
 template<typename Callback>
-__device__ void perform(gloop::DeviceLoop* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float beta, int x0, int y0, int z0, int z, int zH, int xL, int xH, int yL, int yH, float2 pt, float2 pt1, float2 pt2, float2 pt3, float density, float density1, float density2, float density3, Callback callback)
+__device__ void perform(gloop::DeviceLoop<>* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float beta, int x0, int y0, int z0, int z, int zH, int xL, int xH, int yL, int yH, float2 pt, float2 pt1, float2 pt2, float2 pt3, float density, float density1, float density2, float density3, Callback callback)
 {
     const int flatIdx = threadIdx.z * blockDim.y * blockDim.x + threadIdx.y * blockDim.x + threadIdx.x;
 
@@ -192,7 +192,7 @@ __device__ void perform(gloop::DeviceLoop* loop, sampleArrayStruct sortedSampleS
             }
         }
 
-        if (gloop::loop::postTaskIfNecessary(loop, [=] (gloop::DeviceLoop* loop) {
+        if (gloop::loop::postTaskIfNecessary(loop, [=] (gloop::DeviceLoop<>* loop) {
                 perform(loop, sortedSampleSoA_g, binStartAddr_g, beta, x0, y0, z0, z + 1, zH, xL, xH, yL, yH, pt, pt1, pt2, pt3, density, density1, density2, density3, callback);
             })) {
             return;
@@ -202,12 +202,12 @@ __device__ void perform(gloop::DeviceLoop* loop, sampleArrayStruct sortedSampleS
     callback(loop, x0, y0, z0, pt, pt1, pt2, pt3, density, density1, density2, density3);
 }
 
-__device__ void gridding_GPU(gloop::DeviceLoop* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta)
+__device__ void gridding_GPU(gloop::DeviceLoop<>* loop, sampleArrayStruct sortedSampleSoA_g, unsigned int* binStartAddr_g, float2* gridData_g, float* sampleDensity_g, float beta)
 {
     // figure out starting point of the tile
-    const int z0 = (4 * blockDim.z) * (gloop::logicalBlockIdx.y / (gridSize_c[1] / blockDim.y));
-    const int y0 = blockDim.y * (gloop::logicalBlockIdx.y % (gridSize_c[1] / blockDim.y));
-    const int x0 = gloop::logicalBlockIdx.x * blockDim.x;
+    const int z0 = (4 * blockDim.z) * (loop->logicalBlockIdx().y / (gridSize_c[1] / blockDim.y));
+    const int y0 = blockDim.y * (loop->logicalBlockIdx().y % (gridSize_c[1] / blockDim.y));
+    const int x0 = loop->logicalBlockIdx().x * blockDim.x;
 
     const int xl = x0 - ceil(cutoff_c);
     const int xL = (xl < 0) ? 0 : xl;
@@ -244,7 +244,7 @@ __device__ void gridding_GPU(gloop::DeviceLoop* loop, sampleArrayStruct sortedSa
     pt3.y = 0.0;
     float density3 = 0.0;
 
-    perform(loop, sortedSampleSoA_g, binStartAddr_g, beta, x0, y0, z0, zL, zH, xL, xH, yL, yH, pt, pt1, pt2, pt3, density, density1, density2, density3, [=] (gloop::DeviceLoop* loop, int x0, int y0, int z0, float2 pt, float2 pt1, float2 pt2, float2 pt3, float density, float density1, float density2, float density3) {
+    perform(loop, sortedSampleSoA_g, binStartAddr_g, beta, x0, y0, z0, zL, zH, xL, xH, yL, yH, pt, pt1, pt2, pt3, density, density1, density2, density3, [=] (gloop::DeviceLoop<>* loop, int x0, int y0, int z0, float2 pt, float2 pt1, float2 pt2, float2 pt3, float density, float density1, float density2, float density3) {
         const int X = x0 + threadIdx.x;
         const int Y = y0 + threadIdx.y;
         const int Z = z0 + threadIdx.z;

@@ -39,20 +39,20 @@
 
 __device__ unsigned char g_message[512][MSG_SIZE];
 
-__device__ void close(gloop::DeviceLoop* loop, gloop::net::Socket* socket)
+__device__ void close(gloop::DeviceLoop<>* loop, gloop::net::Socket* socket)
 {
-    gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop* loop, int error) { });
+    gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop<>* loop, int error) { });
 }
 
-__device__ void perform(gloop::DeviceLoop* loop, gloop::net::Socket* socket, int iteration)
+__device__ void perform(gloop::DeviceLoop<>* loop, gloop::net::Socket* socket, int iteration)
 {
     if (iteration != ITERATION) {
-        gloop::net::tcp::send(loop, socket, BUF_SIZE, g_message[gloop::logicalBlockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t sentCount) {
+        gloop::net::tcp::send(loop, socket, BUF_SIZE, g_message[loop->logicalBlockIdx().x], [=](gloop::DeviceLoop<>* loop, ssize_t sentCount) {
             if (sentCount == 0) {
                 close(loop, socket);
                 return;
             }
-            gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[gloop::logicalBlockIdx.x], [=](gloop::DeviceLoop* loop, ssize_t receiveCount) {
+            gloop::net::tcp::receive(loop, socket, BUF_SIZE, g_message[loop->logicalBlockIdx().x], [=](gloop::DeviceLoop<>* loop, ssize_t receiveCount) {
                 if (receiveCount == 0) {
                     close(loop, socket);
                     return;
@@ -65,9 +65,9 @@ __device__ void perform(gloop::DeviceLoop* loop, gloop::net::Socket* socket, int
     close(loop, socket);
 }
 
-__device__ void gpuMain(gloop::DeviceLoop* loop, struct sockaddr_in* addr)
+__device__ void gpuMain(gloop::DeviceLoop<>* loop, struct sockaddr_in* addr)
 {
-    gloop::net::tcp::connect(loop, addr, [=](gloop::DeviceLoop* loop, gloop::net::Socket* socket) {
+    gloop::net::tcp::connect(loop, addr, [=](gloop::DeviceLoop<>* loop, gloop::net::Socket* socket) {
         if (!socket) {
             GLOOP_ERROR("Socket failed.");
             return;
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
     gloop::Benchmark benchmark;
     benchmark.begin();
     {
-        hostLoop->launch(*hostContext, blocks, THREADS_PER_TB, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop* loop, struct sockaddr* address) {
+        hostLoop->launch(*hostContext, blocks, THREADS_PER_TB, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, struct sockaddr* address) {
             gpuMain(loop, (struct sockaddr_in*)address);
         }, dev_addr);
     }

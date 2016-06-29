@@ -28,7 +28,7 @@
 #include <fcntl.h>
 #include <string.h>
 
-void __device__ grep_text(gloop::DeviceLoop* loop, char* src, char* out, char* dbs);
+void __device__ grep_text(gloop::DeviceLoop<>* loop, char* src, char* out, char* dbs);
 void init_device_app();
 void init_app();
 
@@ -92,7 +92,7 @@ int main( int argc, char** argv)
         }
         gloop::Benchmark benchmark;
         benchmark.begin();
-        hostLoop->launch(*hostContext, blocks, nthreads, [] __device__ (gloop::DeviceLoop* loop, char* src, char* out, char* dbs) {
+        hostLoop->launch(*hostContext, blocks, nthreads, [] __device__ (gloop::DeviceLoop<>* loop, char* src, char* out, char* dbs) {
             grep_text(loop, src, out, dbs);
         }, d_filenames[0], d_filenames[1], d_filenames[2]);
         benchmark.end();

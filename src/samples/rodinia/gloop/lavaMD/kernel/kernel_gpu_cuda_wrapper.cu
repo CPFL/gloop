@@ -195,7 +195,7 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
 
     // launch kernel - all boxes
     hostLoop->launch(*hostContext, blocks, threads, [] __device__(
-        gloop::DeviceLoop* loop,
+        gloop::DeviceLoop<>* loop,
         par_str d_par_gpu,
         dim_str d_dim_gpu,
         box_str* d_box_gpu,
