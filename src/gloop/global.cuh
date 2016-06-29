@@ -32,7 +32,7 @@ namespace gloop {
 namespace global {
 
 // Perform global synchronization.
-template<typename Lambda>
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto synchronize(DeviceLoop* loop, Lambda callback) -> void
 {
     __threadfence();

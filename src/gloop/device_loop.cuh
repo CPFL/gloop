@@ -38,8 +38,12 @@ namespace gloop {
 
 struct DeviceContext;
 
+template<typename Policy = Shared>
 class DeviceLoop {
 public:
+    typedef gloop::OneShotFunction<void(DeviceLoop<Policy>*, volatile request::Request*)> DeviceCallback;
+    static_assert(sizeof(DeviceCallback) == sizeof(UninitializedDeviceCallbackStorage), "DeviceCallback size check.");
+
     friend struct RPC;
     enum ResumeTag { Resume };
     inline __device__ int initialize(const DeviceContext&, ResumeTag);
@@ -56,21 +60,20 @@ public:
 
     inline __device__ int drain();
 
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    // GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() -> uint2 const { return m_control.logicalBlockIdx; }
-    // GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxX() -> unsigned const { return m_control.logicalBlockIdx.x; }
-    // GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdxY() -> unsigned const { return m_control.logicalBlockIdx.y; }
+    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() const -> const uint2&;
 
-    // GLOOP_ALWAYS_INLINE __device__ auto logicalGridDim() -> uint2 const { return m_control.logicalGridDim; }
-    // GLOOP_ALWAYS_INLINE __device__ auto logicalGridDimX() -> unsigned const { return m_control.logicalGridDim.x; }
-    // GLOOP_ALWAYS_INLINE __device__ auto logicalGridDimY() -> unsigned const { return m_control.logicalGridDim.y; }
+    GLOOP_ALWAYS_INLINE __device__ auto logicalGridDim() const -> const uint2&;
 
     GLOOP_ALWAYS_INLINE __device__ unsigned logicalBlocksCount() const { return m_control.logicalBlocksCount; }
-#endif
 
     GLOOP_ALWAYS_INLINE __device__ int shouldPostTask();
 
 private:
+    GLOOP_ALWAYS_INLINE __device__ auto logicalBlockIdx() -> uint2&;
+
+    GLOOP_ALWAYS_INLINE __device__ auto logicalGridDim() -> uint2&;
+
+
     inline __device__ void initializeImpl(const DeviceContext&);
 
     template<typename Lambda>
@@ -114,6 +117,9 @@ private:
     DeviceCallback* m_slots;
     DeviceLoopControl m_control;
 
+    uint2 m_logicalGridDim;
+    uint2 m_logicalBlockIdx;
+
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     uint32_t m_scratchIndex1;
     uint32_t m_scratchIndex2;
@@ -121,7 +127,8 @@ private:
     UninitializedDeviceCallbackStorage m_scratch2;
 #endif
 };
-static_assert(std::is_trivially_destructible<DeviceLoop>::value, "DeviceLoop is trivially destructible");
+static_assert(std::is_trivially_destructible<DeviceLoop<Global>>::value, "DeviceLoop is trivially destructible");
+static_assert(std::is_trivially_destructible<DeviceLoop<Shared>>::value, "DeviceLoop is trivially destructible");
 
 extern __device__ __shared__ uint2 logicalGridDim;
 extern __device__ __shared__ uint2 logicalBlockIdx;

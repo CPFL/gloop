@@ -29,12 +29,12 @@
 #include "device_callback.cuh"
 namespace gloop {
 
-enum DeviceLoopAllocationPolicyGlobalTag {
-    Global,
+// DeviceLoop policy.
+enum class Global {
+    Policy,
 };
-
-enum DeviceLoopAllocationPolicySharedTag {
-    Shared,
+enum class Shared {
+    Policy,
 };
 
 struct OnePage {

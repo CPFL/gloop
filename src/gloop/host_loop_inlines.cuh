@@ -32,6 +32,18 @@ namespace gloop {
 template<typename DeviceLambda, class... Args>
 void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
+    launch<Shared>(hostContext, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+}
+
+template<typename DeviceLambda, class... Args>
+void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
+{
+    launch<Shared>(hostContext, physicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+}
+
+template<typename Policy, typename DeviceLambda, class... Args>
+void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+{
     dim3 physicalBlocks = hostContext.maxPhysicalBlocks();
     uint64_t physicalBlocksNumber = physicalBlocks.x * physicalBlocks.y;
     uint64_t logicalBlocksNumber = logicalBlocks.x * logicalBlocks.y;
@@ -41,10 +53,10 @@ void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads
         // Validate the number.
         physicalBlocks = dim3(logicalBlocksNumber);
     }
-    launch(hostContext, physicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+    launch<Policy>(hostContext, physicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
-template<typename DeviceLambda, class... Args>
+template<typename Policy, typename DeviceLambda, class... Args>
 void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
 {
 //     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
@@ -68,14 +80,14 @@ void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logica
                 std::lock_guard<KernelLock> lock(m_kernelLock);
                 // GLOOP_DATA_LOG("acquire for launch\n");
                 prepareForLaunch(hostContext);
-                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(Shared, /* isInitialExecution */ 1, hostContext.deviceContext(), callback, args...);
+                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(Policy::Policy, /* isInitialExecution */ 1, hostContext.deviceContext(), callback, args...);
                 cudaError_t error = cudaGetLastError();
                 GLOOP_CUDA_SAFE(error);
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
             }
 
             if (hostContext.pending()) {
-                resume(hostContext, threads, callback, args...);
+                resume<Policy>(hostContext, threads, callback, args...);
                 return;
             }
             derefKernel();
@@ -86,7 +98,7 @@ void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logica
     hostContext.epilogue();
 }
 
-template<typename DeviceLambda, typename... Args>
+template<typename Policy, typename DeviceLambda, typename... Args>
 void HostLoop::resume(HostContext& hostContext, dim3 threads, DeviceLambda callback, Args... args)
 {
     // GLOOP_DEBUG("resume\n");
@@ -104,7 +116,7 @@ void HostLoop::resume(HostContext& hostContext, dim3 threads, DeviceLambda callb
             prepareForLaunch(hostContext);
 
             {
-                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(Shared, /* isInitialExecution */ 0, hostContext.deviceContext(), callback, args...);
+                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(Policy::Policy, /* isInitialExecution */ 0, hostContext.deviceContext(), callback, args...);
                 cudaError_t error = cudaGetLastError();
                 GLOOP_CUDA_SAFE(error);
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
@@ -126,7 +138,7 @@ void HostLoop::resume(HostContext& hostContext, dim3 threads, DeviceLambda callb
             }
         }
         if (acquireLockSoon) {
-            resume(hostContext, threads, callback, args...);
+            resume<Policy>(hostContext, threads, callback, args...);
             return;
         }
         derefKernel();

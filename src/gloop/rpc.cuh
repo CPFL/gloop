@@ -33,7 +33,6 @@
 
 namespace gloop {
 
-class DeviceLoop;
 class HostContext;
 
 struct RPC {

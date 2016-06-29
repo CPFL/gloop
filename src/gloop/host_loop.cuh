@@ -59,10 +59,18 @@ public:
 
     static std::unique_ptr<HostLoop> create(int deviceNumber, uint64_t costPerBit = 1);
 
+    // Default shared policy launch interfaces.
     template<typename DeviceLambda, class... Args>
     inline __host__ void launch(HostContext& context, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args);
 
     template<typename DeviceLambda, class... Args>
+    inline __host__ void launch(HostContext& context, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args);
+
+    // Generic interfaces.
+    template<typename Policy, typename DeviceLambda, class... Args>
+    inline __host__ void launch(HostContext& context, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args);
+
+    template<typename Policy, typename DeviceLambda, class... Args>
     inline __host__ void launch(HostContext& context, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args);
 
     class KernelLock {
@@ -108,7 +116,7 @@ private:
 
     void send(Command);
 
-    template<typename DeviceLambda, typename... Args>
+    template<typename Policy, typename DeviceLambda, typename... Args>
     inline void resume(HostContext&, dim3 threads, DeviceLambda callback, Args... args);
 
     inline void lockLaunch();

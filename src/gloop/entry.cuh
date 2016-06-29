@@ -30,24 +30,10 @@
 
 namespace gloop {
 
-template<typename DeviceLambda, class... Args>
-inline __global__ void resume(DeviceLoopAllocationPolicyGlobalTag, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
+template<typename DeviceLoop, typename DeviceLambda, class... Args>
+inline __device__ void mainLoop(DeviceLoop* loop, int callbackKicked, const DeviceLambda& callback, Args&&... args)
 {
-    int callbackKicked = 0;
     int suspended = 0;
-    DeviceLoop* loop = reinterpret_cast<DeviceLoop*>(context.deviceLoopStorage + GLOOP_BID());
-    {
-        BEGIN_SINGLE_THREAD
-        {
-            new (loop) DeviceLoop();
-            if (isInitialExecution) {
-                loop->initialize(context);
-            } else {
-                callbackKicked = loop->initialize(context, DeviceLoop::Resume);
-            }
-        }
-        END_SINGLE_THREAD
-    }
     {
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
         if (loop->logicalBlocksCount() == 0)
@@ -72,40 +58,40 @@ inline __global__ void resume(DeviceLoopAllocationPolicyGlobalTag, int isInitial
 }
 
 template<typename DeviceLambda, class... Args>
-inline __global__ void resume(DeviceLoopAllocationPolicySharedTag, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
+inline __global__ void resume(Global, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
-    __shared__ DeviceLoop sharedDeviceLoop;
+    int callbackKicked = 0;
+    DeviceLoop<Global>* loop = reinterpret_cast<DeviceLoop<Global>*>(context.deviceLoopStorage + GLOOP_BID());
+    {
+        BEGIN_SINGLE_THREAD
+        {
+            new (loop) DeviceLoop<Global>();
+            if (isInitialExecution) {
+                loop->initialize(context);
+            } else {
+                callbackKicked = loop->initialize(context, DeviceLoop<Global>::Resume);
+            }
+        }
+        END_SINGLE_THREAD
+    }
+    return mainLoop(loop, callbackKicked, callback, std::forward<Args&&>(args)...);
+}
+
+template<typename DeviceLambda, class... Args>
+inline __global__ void resume(Shared, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
+{
+    __shared__ DeviceLoop<Shared> sharedDeviceLoop;
     int callbackKicked = 0;
     BEGIN_SINGLE_THREAD
     {
         if (isInitialExecution) {
             sharedDeviceLoop.initialize(context);
         } else {
-            callbackKicked = sharedDeviceLoop.initialize(context, DeviceLoop::Resume);
+            callbackKicked = sharedDeviceLoop.initialize(context, DeviceLoop<Shared>::Resume);
         }
     }
     END_SINGLE_THREAD
-
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    if (sharedDeviceLoop.logicalBlocksCount() == 0)
-        return;
-#endif
-
-    int suspended = 0;
-    if (__syncthreads_or(callbackKicked)) {
-        suspended = sharedDeviceLoop.drain();
-    }
-
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    while (!suspended) {
-#endif
-        {
-            callback(&sharedDeviceLoop, args...);
-            suspended = sharedDeviceLoop.drain();
-        }
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    }
-#endif
+    return mainLoop(&sharedDeviceLoop, callbackKicked, callback, std::forward<Args&&>(args)...);
 }
 
 }  // namespace gloop

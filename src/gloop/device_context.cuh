@@ -30,7 +30,7 @@
 #include "device_loop.cuh"
 namespace gloop {
 
-typedef std::aligned_storage<sizeof(DeviceLoop), alignof(DeviceLoop)>::type UninitializedDeviceLoopStorage;
+typedef std::aligned_storage<sizeof(DeviceLoop<Global>), alignof(DeviceLoop<Global>)>::type UninitializedDeviceLoopStorage;
 
 struct DeviceContext {
     PerBlockContext* context;
