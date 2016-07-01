@@ -93,8 +93,8 @@ float4* runMergeSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
             cudaBindTexture(0, tex, d_origList, channelDesc, listsize * sizeof(float));
         }
 
-        hostLoop.launch<gloop::Global>(hostContext, dim3(360), grid, threads, [] __device__ (gloop::DeviceLoop<gloop::Global>* loop, float4* result, int nrElems, int threadsPerDiv) {
-            mergeSortPassKernel(loop, result, nrElems, threadsPerDiv);
+        hostLoop.launch<gloop::Shared>(hostContext, grid, threads, [] __device__ (gloop::DeviceLoop<gloop::Shared>* loop, float4* result, int nrElems, int threadsPerDiv) {
+            mergeSortPassInitialKernel(loop, result, nrElems, threadsPerDiv);
         }, d_resultList, nrElems, threadsPerDiv);
 
         nrElems *= 2;
