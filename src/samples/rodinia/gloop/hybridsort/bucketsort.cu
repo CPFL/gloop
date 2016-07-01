@@ -9,6 +9,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "bucketsort.cuh"
 #include "helper_cuda.h"
+#include "histogram1024.cuh"
 #include <GL/glew.h>
 #include <GL/glut.h>
 #include <cuda_gl_interop.h>
@@ -17,9 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <gloop/gloop.h>
-// includes, kernels
-#include "bucketsort_kernel.cu"
-#include "histogram1024.cuh"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Forward declarations
@@ -118,7 +116,7 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     int blocks = ((listsize - 1) / (threads.x * BUCKET_BAND)) + 1;
     dim3 grid(blocks, 1);
     // Find the new indice for all elements
-    bucketcount(hostLoop, hostContext, grid, threads, d_input, d_indice, d_prefixoffsets, listsize);
+    bucketcountGPU(hostLoop, hostContext, grid, threads, d_input, d_indice, d_prefixoffsets, listsize);
 ///////////////////////////////////////////////////////////////////////////
 // Prefix scan offsets and align each division to float4 (required by
 // mergesort)
@@ -129,7 +127,7 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     threads.x = 128;
 #endif
     grid.x = DIVISIONS / threads.x;
-    bucketprefixoffset<<<grid, threads>>>(d_prefixoffsets, d_offsets, blocks);
+    bucketprefixoffsetGPU(hostLoop, hostContext, grid, threads, d_prefixoffsets, d_offsets, blocks);
 
     // copy the sizes from device to host
     {
@@ -168,7 +166,7 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     threads.x = BUCKET_THREAD_N;
     blocks = ((listsize - 1) / (threads.x * BUCKET_BAND)) + 1;
     grid.x = blocks;
-    bucketsort<<<grid, threads>>>(d_input, d_indice, d_output, listsize, d_prefixoffsets, l_offsets);
+    bucketsortGPU(hostLoop, hostContext, grid, threads, d_input, d_indice, d_output, listsize, d_prefixoffsets, l_offsets);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

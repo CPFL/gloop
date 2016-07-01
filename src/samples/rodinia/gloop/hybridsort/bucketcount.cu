@@ -48,8 +48,7 @@ static __device__ int addOffset(volatile unsigned int* s_offset, unsigned int da
     return (count & 0x07FFFFFFU) - 1;
 }
 
-static __device__ void
-bucketcountKernel(gloop::DeviceLoop<gloop::Global>* loop, float* input, int* indice, unsigned int* d_prefixoffsets, int size)
+static __device__ void bucketcountKernel(gloop::DeviceLoop<gloop::Global>* loop, float* input, int* indice, unsigned int* d_prefixoffsets, int size)
 {
     volatile __shared__ unsigned int s_offset[BUCKET_BLOCK_MEMORY];
     const unsigned int threadTag = threadIdx.x << (32 - BUCKET_WARP_LOG_SIZE);
@@ -85,7 +84,7 @@ bucketcountKernel(gloop::DeviceLoop<gloop::Global>* loop, float* input, int* ind
         d_prefixoffsets[prefixBase + i] = s_offset[i] & 0x07FFFFFFU;
 }
 
-void bucketcount(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 grid, dim3 threads, float* input, int* indice, unsigned int* d_prefixoffsets, int size)
+void bucketcountGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 grid, dim3 threads, float* input, int* indice, unsigned int* d_prefixoffsets, int size)
 {
     hostLoop.launch<gloop::Global>(hostContext, dim3(360), grid, threads, [] __device__ (gloop::DeviceLoop<gloop::Global>* loop, float* input, int* indice, unsigned int* d_prefixoffsets, int size) {
         bucketcountKernel(loop, input, indice, d_prefixoffsets, size);

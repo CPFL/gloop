@@ -118,7 +118,7 @@ int main(int argc, char** argv)
 
     cout << "Sorting on GPU..." << flush;
     std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(360));
+    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(480));
     // GPU Sort
     for (int i = 0; i < TEST; i++)
         cudaSort(*hostLoop, *hostContext, cpu_idata, datamin, datamax, gpu_odata, numElements);

@@ -18,10 +18,10 @@
 
 void init_bucketsort(int listsize);
 void finish_bucketsort();
-void bucketSort(gloop::HostLoop&, gloop::HostContext&, float* d_input, float* d_output, int listsize,
-    int* sizes, int* nullElements, float minimum, float maximum,
-    unsigned int* origOffsets);
-void bucketcount(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 blocks, dim3 threads, float* input, int* indice, unsigned int* d_prefixoffsets, int size);
+void bucketSort(gloop::HostLoop&, gloop::HostContext&, float* d_input, float* d_output, int listsize, int* sizes, int* nullElements, float minimum, float maximum, unsigned int* origOffsets);
+void bucketcountGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 blocks, dim3 threads, float* input, int* indice, unsigned int* d_prefixoffsets, int size);
+void bucketprefixoffsetGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 blocks, dim3 threads, unsigned int* d_prefixoffsets, unsigned int* d_offsets, int aBlocks);
+void bucketsortGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 blocks, dim3 threads, float* input, int* indice, float* output, int size, unsigned int* d_prefixoffsets, unsigned int* l_offsets);
 
 extern texture<float, 1, cudaReadModeElementType> texPivot;
 
