@@ -66,14 +66,14 @@ public:
     inline __host__ void launch(HostContext& context, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args);
 
     template<typename DeviceLambda, class... Args>
-    inline __host__ void launch(HostContext& context, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args);
+    inline __host__ void launch(HostContext& context, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args);
 
     // Generic interfaces.
     template<typename Policy, typename DeviceLambda, class... Args>
     inline __host__ void launch(HostContext& context, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args);
 
     template<typename Policy, typename DeviceLambda, class... Args>
-    inline __host__ void launch(HostContext& context, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args);
+    inline __host__ void launch(HostContext& context, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args);
 
     class KernelLock {
     GLOOP_NONCOPYABLE(KernelLock);
@@ -117,6 +117,9 @@ private:
 
 
     void send(Command);
+
+    template<typename Policy, typename DeviceLambda, class... Args>
+    inline __host__ void launchInternal(HostContext& context, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args);
 
     template<typename Policy, typename DeviceLambda, typename... Args>
     inline void resume(HostContext&, dim3 threads, DeviceLambda callback, Args... args);

@@ -30,34 +30,46 @@
 namespace gloop {
 
 template<typename DeviceLambda, class... Args>
+void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+{
+    launch<Shared>(hostContext, physicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+}
+
+template<typename DeviceLambda, class... Args>
 void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
     launch<Shared>(hostContext, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
-template<typename DeviceLambda, class... Args>
-void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
-{
-    launch<Shared>(hostContext, physicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
-}
-
 template<typename Policy, typename DeviceLambda, class... Args>
 void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
+    launch<Policy>(hostContext, logicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+}
+
+template<typename Policy, typename DeviceLambda, class... Args>
+void HostLoop::launch(HostContext& hostContext, dim3 preferredPhysicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+{
     dim3 physicalBlocks = hostContext.maxPhysicalBlocks();
     uint64_t physicalBlocksNumber = physicalBlocks.x * physicalBlocks.y;
+    uint64_t preferredPhysicalBlocksNumber = preferredPhysicalBlocks.x * preferredPhysicalBlocks.y;
     uint64_t logicalBlocksNumber = logicalBlocks.x * logicalBlocks.y;
-    if (logicalBlocksNumber <= physicalBlocksNumber) {
+    if (physicalBlocksNumber <= preferredPhysicalBlocksNumber) {
+        preferredPhysicalBlocksNumber = physicalBlocksNumber;
+        physicalBlocks = dim3(physicalBlocksNumber);
+    }
+
+    if (logicalBlocksNumber <= preferredPhysicalBlocksNumber) {
         // FIXME: Should fix it, but it's easy.
         assert(logicalBlocksNumber <= UINT32_MAX);
         // Validate the number.
         physicalBlocks = dim3(logicalBlocksNumber);
     }
-    launch<Policy>(hostContext, physicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+    return launchInternal<Policy>(hostContext, physicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
 template<typename Policy, typename DeviceLambda, class... Args>
-void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
+void HostLoop::launchInternal(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
 {
 //     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
 //     benchmark->begin();
