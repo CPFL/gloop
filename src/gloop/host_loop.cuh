@@ -57,6 +57,8 @@ public:
 
     uint64_t killClock() const { return m_deviceProperties.clockRate * GLOOP_KILL_TIME / 1000; }
 
+    cudaStream_t pgraph() const { return m_pgraph; }
+
     static std::unique_ptr<HostLoop> create(int deviceNumber, uint64_t costPerBit = 1);
 
     // Default shared policy launch interfaces.
