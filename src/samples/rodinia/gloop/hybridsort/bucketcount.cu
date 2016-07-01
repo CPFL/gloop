@@ -52,11 +52,6 @@ static __device__ void
 bucketcountKernel(gloop::DeviceLoop<gloop::Global>* loop, float* input, int* indice, unsigned int* d_prefixoffsets, int size)
 {
     volatile __shared__ unsigned int s_offset[BUCKET_BLOCK_MEMORY];
-//     __shared__ volatile unsigned int* s_offset;
-//     BEGIN_SINGLE_THREAD
-//         s_offset = new unsigned int[BUCKET_BLOCK_MEMORY];
-//     END_SINGLE_THREAD
-
     const unsigned int threadTag = threadIdx.x << (32 - BUCKET_WARP_LOG_SIZE);
     const int warpBase = (threadIdx.x >> BUCKET_WARP_LOG_SIZE) * DIVISIONS;
     const int numThreads = blockDim.x * loop->logicalGridDim().x;
@@ -88,11 +83,6 @@ bucketcountKernel(gloop::DeviceLoop<gloop::Global>* loop, float* input, int* ind
 
     for (int i = threadIdx.x; i < BUCKET_BLOCK_MEMORY; i += blockDim.x)
         d_prefixoffsets[prefixBase + i] = s_offset[i] & 0x07FFFFFFU;
-
-
-//     BEGIN_SINGLE_THREAD
-//         delete [] s_offset;
-//     END_SINGLE_THREAD
 }
 
 void bucketcount(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 grid, dim3 threads, float* input, int* indice, unsigned int* d_prefixoffsets, int size)
