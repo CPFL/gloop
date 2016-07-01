@@ -21,28 +21,44 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#pragma once
 
-#include <gloop/gloop.h>
-#include "bucketsort.cuh"
-
-static __global__ void bucketprefixoffsetKernel(unsigned int* d_prefixoffsets, unsigned int* d_offsets, int blocks)
+inline __device__ float4 sortElem(float4 r)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int size = blocks * BUCKET_BLOCK_MEMORY;
-    int sum = 0;
+    float4 nr;
 
-    for (int i = tid; i < size; i += DIVISIONS) {
-        int x = d_prefixoffsets[i];
-        d_prefixoffsets[i] = sum;
-        sum += x;
-    }
+    nr.x = (r.x > r.y) ? r.y : r.x;
+    nr.y = (r.y > r.x) ? r.y : r.x;
+    nr.z = (r.z > r.w) ? r.w : r.z;
+    nr.w = (r.w > r.z) ? r.w : r.z;
 
-    d_offsets[tid] = sum;
+    r.x = (nr.x > nr.z) ? nr.z : nr.x;
+    r.y = (nr.y > nr.w) ? nr.w : nr.y;
+    r.z = (nr.z > nr.x) ? nr.z : nr.x;
+    r.w = (nr.w > nr.y) ? nr.w : nr.y;
+
+    nr.x = r.x;
+    nr.y = (r.y > r.z) ? r.z : r.y;
+    nr.z = (r.z > r.y) ? r.z : r.y;
+    nr.w = r.w;
+    return nr;
 }
 
-void bucketprefixoffsetGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 blocks, dim3 threads, unsigned int* d_prefixoffsets, unsigned int* d_offsets, int aBlocks)
+inline __device__ float4 getLowest(float4 a, float4 b)
 {
-    std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
-    bucketprefixoffsetKernel<<<blocks, threads, 0, hostLoop.pgraph()>>>(d_prefixoffsets, d_offsets, aBlocks);
-    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(hostLoop.pgraph()));
+    //float4 na;
+    a.x = (a.x < b.w) ? a.x : b.w;
+    a.y = (a.y < b.z) ? a.y : b.z;
+    a.z = (a.z < b.y) ? a.z : b.y;
+    a.w = (a.w < b.x) ? a.w : b.x;
+    return a;
+}
+
+inline __device__ float4 getHighest(float4 a, float4 b)
+{
+    b.x = (a.w >= b.x) ? a.w : b.x;
+    b.y = (a.z >= b.y) ? a.z : b.y;
+    b.z = (a.y >= b.z) ? a.y : b.z;
+    b.w = (a.x >= b.w) ? a.x : b.w;
+    return b;
 }

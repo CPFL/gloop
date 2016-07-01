@@ -58,7 +58,7 @@ float4* runMergeSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         cudaBindTexture(0, tex, d_origList, channelDesc, listsize * sizeof(float));
     }
-    mergeSortFirst<<<grid, threads>>>(d_resultList, listsize);
+    mergeSortFirst(hostLoop, hostContext, grid, threads, d_resultList, listsize);
 
     ////////////////////////////////////////////////////////////////////////////
     // Then, go level by level
@@ -92,7 +92,11 @@ float4* runMergeSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
             cudaBindTexture(0, tex, d_origList, channelDesc, listsize * sizeof(float));
         }
-        mergeSortPass<<<grid, threads>>>(d_resultList, nrElems, threadsPerDiv);
+
+        hostLoop.launch<gloop::Global>(hostContext, dim3(360), grid, threads, [] __device__ (gloop::DeviceLoop<gloop::Global>* loop, float4* result, int nrElems, int threadsPerDiv) {
+            mergeSortPassKernel(loop, result, nrElems, threadsPerDiv);
+        }, d_resultList, nrElems, threadsPerDiv);
+
         nrElems *= 2;
         floatsperthread = (nrElems * 4);
         if (threadsPerDiv == 1)
@@ -108,7 +112,7 @@ float4* runMergeSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
 #endif
     grid.x = ((largestSize % threads.x) == 0) ? largestSize / threads.x : (largestSize / threads.x) + 1;
     grid.y = divisions;
-    mergepack<<<grid, threads>>>((float*)d_resultList, (float*)d_origList);
+    mergepack(hostLoop, hostContext, grid, threads, (float*)d_resultList, (float*)d_origList);
 
     free(startaddr);
     return d_origList;

@@ -22,27 +22,11 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <gloop/gloop.h>
-#include "bucketsort.cuh"
+#include "mergesort.cuh"
 
-static __global__ void bucketprefixoffsetKernel(unsigned int* d_prefixoffsets, unsigned int* d_offsets, int blocks)
-{
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int size = blocks * BUCKET_BLOCK_MEMORY;
-    int sum = 0;
-
-    for (int i = tid; i < size; i += DIVISIONS) {
-        int x = d_prefixoffsets[i];
-        d_prefixoffsets[i] = sum;
-        sum += x;
-    }
-
-    d_offsets[tid] = sum;
-}
-
-void bucketprefixoffsetGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 blocks, dim3 threads, unsigned int* d_prefixoffsets, unsigned int* d_offsets, int aBlocks)
-{
-    std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
-    bucketprefixoffsetKernel<<<blocks, threads, 0, hostLoop.pgraph()>>>(d_prefixoffsets, d_offsets, aBlocks);
-    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(hostLoop.pgraph()));
-}
+// declare texture reference for 1D float texture
+texture<float4, 1, cudaReadModeElementType> tex;
+texture<float, 1, cudaReadModeElementType> txt;
+__constant__ int constStartAddr[DIVISIONS + 1];
+__constant__ int finalStartAddr[DIVISIONS + 1];
+__constant__ int nullElems[DIVISIONS];

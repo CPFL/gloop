@@ -21,28 +21,22 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include "mergesort_inlines.cuh"
+#include "mergesort.cuh"
 
-#include <gloop/gloop.h>
-#include "bucketsort.cuh"
-
-static __global__ void bucketprefixoffsetKernel(unsigned int* d_prefixoffsets, unsigned int* d_offsets, int blocks)
+static __global__ void mergepackKernel(float* orig, float* result)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int size = blocks * BUCKET_BLOCK_MEMORY;
-    int sum = 0;
+    int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+    int division = blockIdx.y;
 
-    for (int i = tid; i < size; i += DIVISIONS) {
-        int x = d_prefixoffsets[i];
-        d_prefixoffsets[i] = sum;
-        sum += x;
-    }
-
-    d_offsets[tid] = sum;
+    if ((finalStartAddr[division] + idx) >= finalStartAddr[division + 1])
+        return;
+    result[finalStartAddr[division] + idx] = orig[constStartAddr[division] * 4 + nullElems[division] + idx];
 }
 
-void bucketprefixoffsetGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 blocks, dim3 threads, unsigned int* d_prefixoffsets, unsigned int* d_offsets, int aBlocks)
+void mergepack(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 grid, dim3 threads, float* d_resultList, float* d_origList)
 {
     std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
-    bucketprefixoffsetKernel<<<blocks, threads, 0, hostLoop.pgraph()>>>(d_prefixoffsets, d_offsets, aBlocks);
+    mergepackKernel<<<grid, threads, 0, hostLoop.pgraph()>>>(d_resultList, d_origList);
     GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(hostLoop.pgraph()));
 }

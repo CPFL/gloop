@@ -21,28 +21,25 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
 #include <gloop/gloop.h>
-#include "bucketsort.cuh"
+#include "mergesort.cuh"
+#include "mergesort_inlines.cuh"
 
-static __global__ void bucketprefixoffsetKernel(unsigned int* d_prefixoffsets, unsigned int* d_offsets, int blocks)
+static __global__ void mergeSortFirstKernel(float4* result, int listsize)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int size = blocks * BUCKET_BLOCK_MEMORY;
-    int sum = 0;
-
-    for (int i = tid; i < size; i += DIVISIONS) {
-        int x = d_prefixoffsets[i];
-        d_prefixoffsets[i] = sum;
-        sum += x;
+    // Block index
+    int bx = blockIdx.x;
+    // Thread index
+    //int tx = threadIdx.x;
+    if (bx * blockDim.x + threadIdx.x < listsize / 4) {
+        float4 r = tex1Dfetch(tex, (int)(bx * blockDim.x + threadIdx.x));
+        result[bx * blockDim.x + threadIdx.x] = sortElem(r);
     }
-
-    d_offsets[tid] = sum;
 }
 
-void bucketprefixoffsetGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 blocks, dim3 threads, unsigned int* d_prefixoffsets, unsigned int* d_offsets, int aBlocks)
+void mergeSortFirst(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 grid, dim3 threads, float4* result, int listsize)
 {
     std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
-    bucketprefixoffsetKernel<<<blocks, threads, 0, hostLoop.pgraph()>>>(d_prefixoffsets, d_offsets, aBlocks);
+    mergeSortFirstKernel<<<grid, threads, 0, hostLoop.pgraph()>>>(result, listsize);
     GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(hostLoop.pgraph()));
 }
