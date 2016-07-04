@@ -23,7 +23,7 @@ struct MergeSortContext {
 };
 
 // FIXME: Shared!
-typedef gloop::Global LoopType;
+typedef gloop::Shared LoopType;
 
 static __device__ void destroyContext(gloop::DeviceLoop<LoopType>* loop, MergeSortContext* context)
 {
