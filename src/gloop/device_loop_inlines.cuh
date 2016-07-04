@@ -50,14 +50,14 @@ GLOOP_ALWAYS_INLINE __device__ request::Payload* RPC::request(DeviceLoop* loop)
 }
 
 template<typename Policy>
-__device__ uint32_t DeviceLoop<Policy>::position(OnePage* page)
+inline __device__ uint32_t DeviceLoop<Policy>::position(OnePage* page)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return page - pages();
 }
 
 template<typename Policy>
-__device__ bool DeviceLoop<Policy>::isValidPosition(uint32_t position)
+inline __device__ bool DeviceLoop<Policy>::isValidPosition(uint32_t position)
 {
     return position < GLOOP_SHARED_SLOT_SIZE;
 }
@@ -85,14 +85,21 @@ GLOOP_ALWAYS_INLINE __device__ auto DeviceLoop<Global>::slots(uint32_t position)
 }
 
 template<typename Policy>
-__device__ auto DeviceLoop<Policy>::context() const -> PerBlockContext*
+inline __device__ auto DeviceLoop<Policy>::context() -> PerBlockContext*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    return m_context;
+    return m_deviceContext->context + GLOOP_BID();
 }
 
 template<typename Policy>
-__device__ auto DeviceLoop<Policy>::pages() const -> OnePage*
+inline __device__ auto DeviceLoop<Policy>::hostContext() -> PerBlockHostContext*
+{
+    GLOOP_ASSERT_SINGLE_THREAD();
+    return m_deviceContext->hostContext + GLOOP_BID();
+}
+
+template<typename Policy>
+inline __device__ auto DeviceLoop<Policy>::pages() const -> OnePage*
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return m_pages;
@@ -100,7 +107,7 @@ __device__ auto DeviceLoop<Policy>::pages() const -> OnePage*
 
 template<typename Policy>
 template<typename Lambda>
-__device__ void DeviceLoop<Policy>::allocOnePage(Lambda&& lambda)
+inline __device__ void DeviceLoop<Policy>::allocOnePage(Lambda&& lambda)
 {
     __shared__ void* page;
     BEGIN_SINGLE_THREAD
@@ -126,7 +133,7 @@ __device__ void DeviceLoop<Policy>::allocOnePage(Lambda&& lambda)
 
 template<typename Policy>
 template<typename Lambda>
-__device__ void DeviceLoop<Policy>::enqueueLater(Lambda&& lambda)
+inline __device__ void DeviceLoop<Policy>::enqueueLater(Lambda&& lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = enqueueSleep(std::forward<Lambda&&>(lambda));
@@ -135,7 +142,7 @@ __device__ void DeviceLoop<Policy>::enqueueLater(Lambda&& lambda)
 
 template<typename Policy>
 template<typename Lambda>
-__device__ uint32_t DeviceLoop<Policy>::enqueueSleep(Lambda&& lambda)
+inline __device__ uint32_t DeviceLoop<Policy>::enqueueSleep(Lambda&& lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = allocate(std::forward<Lambda&&>(lambda));
@@ -146,7 +153,7 @@ __device__ uint32_t DeviceLoop<Policy>::enqueueSleep(Lambda&& lambda)
 
 template<typename Policy>
 template<typename Lambda>
-__device__ RPC DeviceLoop<Policy>::enqueueRPC(Lambda&& lambda)
+inline __device__ RPC DeviceLoop<Policy>::enqueueRPC(Lambda&& lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = allocate(std::forward<Lambda&&>(lambda));
@@ -178,7 +185,7 @@ inline __device__ void* DeviceLoop<Shared>::allocateSharedSlotIfNecessary(uint32
 
 template<typename Policy>
 template<typename Lambda>
-__device__ uint32_t DeviceLoop<Policy>::allocate(Lambda&& lambda)
+inline __device__ uint32_t DeviceLoop<Policy>::allocate(Lambda&& lambda)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     int pos = __ffs(m_control.freeSlots) - 1;
@@ -194,7 +201,7 @@ __device__ uint32_t DeviceLoop<Policy>::allocate(Lambda&& lambda)
 }
 
 template<typename Policy>
-__device__ auto DeviceLoop<Policy>::dequeue() -> uint32_t
+inline __device__ auto DeviceLoop<Policy>::dequeue() -> uint32_t
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
@@ -265,7 +272,7 @@ inline __device__ void DeviceLoop<Shared>::deallocateSharedSlotIfNecessary(uint3
 }
 
 template<typename Policy>
-__device__ void DeviceLoop<Policy>::deallocate(uint32_t pos)
+inline __device__ void DeviceLoop<Policy>::deallocate(uint32_t pos)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     // printf("pos:(%u)\n", (unsigned)pos);
@@ -276,7 +283,7 @@ __device__ void DeviceLoop<Policy>::deallocate(uint32_t pos)
 }
 
 template<typename Policy>
-__device__ int DeviceLoop<Policy>::shouldPostTask()
+inline __device__ int DeviceLoop<Policy>::shouldPostTask()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     return (clock64() - m_start) > m_killClock;
@@ -427,7 +434,7 @@ inline __device__ void DeviceLoop<Shared>::suspendSharedSlots(PerBlockContext* b
 }
 
 template<typename Policy>
-__device__ int DeviceLoop<Policy>::suspend()
+inline __device__ int DeviceLoop<Policy>::suspend()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     if (m_control.freeSlots != DeviceLoopControl::allFilledFreeSlots()) {
@@ -436,9 +443,10 @@ __device__ int DeviceLoop<Policy>::suspend()
         blockContext->control = m_control;
         blockContext->logicalBlockIdx = logicalBlockIdxInternal();
         blockContext->logicalGridDim = logicalGridDimInternal();
-        m_hostContext->freeSlots = m_control.freeSlots;
-        m_hostContext->sleepSlots = m_control.sleepSlots;
-        m_hostContext->wakeupSlots = m_control.wakeupSlots;
+        PerBlockHostContext* hContext = hostContext();
+        hContext->freeSlots = m_control.freeSlots;
+        hContext->sleepSlots = m_control.sleepSlots;
+        hContext->wakeupSlots = m_control.wakeupSlots;
 
         suspendSharedSlots(blockContext);
 
@@ -468,9 +476,10 @@ __device__ int DeviceLoop<Policy>::suspend()
                 blockContext->control = m_control;
                 blockContext->logicalBlockIdx = logicalBlockIdxInternal();
                 blockContext->logicalGridDim = logicalGridDimInternal();
-                m_hostContext->freeSlots = DeviceLoopControl::allFilledFreeSlots();
-                m_hostContext->sleepSlots = 0;
-                m_hostContext->wakeupSlots = 0;
+                PerBlockHostContext* hContext = hostContext();
+                hContext->freeSlots = DeviceLoopControl::allFilledFreeSlots();
+                hContext->sleepSlots = 0;
+                hContext->wakeupSlots = 0;
 
                 // Request the resume.
                 atomicAdd(&m_kernel->pending, 1);
@@ -489,9 +498,10 @@ __device__ int DeviceLoop<Policy>::suspend()
     blockContext->control = m_control;
     blockContext->logicalBlockIdx = logicalBlockIdxInternal();
     blockContext->logicalGridDim = logicalGridDimInternal();
-    m_hostContext->freeSlots = DeviceLoopControl::allFilledFreeSlots();
-    m_hostContext->sleepSlots = 0;
-    m_hostContext->wakeupSlots = 0;
+    PerBlockHostContext* hContext = hostContext();
+    hContext->freeSlots = DeviceLoopControl::allFilledFreeSlots();
+    hContext->sleepSlots = 0;
+    hContext->wakeupSlots = 0;
 
     // Finish the whole kernel.
     return /* stop the loop */ 1;
@@ -512,12 +522,11 @@ inline __device__ void DeviceLoop<Shared>::initializeSharedSlots()
 }
 
 template<typename Policy>
-__device__ void DeviceLoop<Policy>::initializeImpl(const DeviceContext& deviceContext)
+inline __device__ void DeviceLoop<Policy>::initializeImpl(const DeviceContext& deviceContext)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
-    m_context = deviceContext.context + GLOOP_BID();
-    m_hostContext = deviceContext.hostContext + GLOOP_BID();
+    m_deviceContext = &deviceContext;
     m_codes = deviceContext.codes + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
     m_payloads = deviceContext.payloads + (GLOOP_BID() * GLOOP_SHARED_SLOT_SIZE);
     m_pages = deviceContext.pages + (GLOOP_BID() * GLOOP_SHARED_PAGE_COUNT);
@@ -534,7 +543,7 @@ __device__ void DeviceLoop<Policy>::initializeImpl(const DeviceContext& deviceCo
 }
 
 template<typename Policy>
-__device__ void DeviceLoop<Policy>::initialize(const DeviceContext& deviceContext)
+inline __device__ void DeviceLoop<Policy>::initialize(const DeviceContext& deviceContext)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);
@@ -547,7 +556,7 @@ __device__ void DeviceLoop<Policy>::initialize(const DeviceContext& deviceContex
 }
 
 template<typename Policy>
-__device__ int DeviceLoop<Policy>::initialize(const DeviceContext& deviceContext, ResumeTag)
+inline __device__ int DeviceLoop<Policy>::initialize(const DeviceContext& deviceContext, ResumeTag)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);
@@ -560,7 +569,7 @@ __device__ int DeviceLoop<Policy>::initialize(const DeviceContext& deviceContext
 }
 
 template<typename Policy>
-__device__ void DeviceLoop<Policy>::resume()
+inline __device__ void DeviceLoop<Policy>::resume()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     // __threadfence_system();  // FIXME
@@ -576,7 +585,7 @@ __device__ void DeviceLoop<Policy>::resume()
 }
 
 template<typename Policy>
-__device__ void DeviceLoop<Policy>::freeOnePage(void* aPage)
+inline __device__ void DeviceLoop<Policy>::freeOnePage(void* aPage)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
     uint32_t pos = position(static_cast<OnePage*>(aPage));

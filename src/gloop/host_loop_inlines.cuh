@@ -30,25 +30,25 @@
 namespace gloop {
 
 template<typename DeviceLambda, class... Args>
-void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+inline void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
     launch<Shared>(hostContext, physicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
 template<typename DeviceLambda, class... Args>
-void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+inline void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
     launch<Shared>(hostContext, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
 template<typename Policy, typename DeviceLambda, class... Args>
-void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+inline void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
     launch<Policy>(hostContext, logicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
 template<typename Policy, typename DeviceLambda, class... Args>
-void HostLoop::launch(HostContext& hostContext, dim3 preferredPhysicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+inline void HostLoop::launch(HostContext& hostContext, dim3 preferredPhysicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
     dim3 physicalBlocks = hostContext.maxPhysicalBlocks();
     uint64_t physicalBlocksNumber = physicalBlocks.x * physicalBlocks.y;
@@ -69,7 +69,7 @@ void HostLoop::launch(HostContext& hostContext, dim3 preferredPhysicalBlocks, di
 }
 
 template<typename Policy, typename DeviceLambda, class... Args>
-void HostLoop::launchInternal(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
+inline void HostLoop::launchInternal(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
 {
 //     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
 //     benchmark->begin();

@@ -84,6 +84,8 @@
     #define GLOOP_NEVER_INLINE inline __attribute__((__noinline__))
 #endif
 
+#define GLOOP_VISIBILITY_HIDDEN __attribute__((visibility("hidden")))
+
 #define GLOOP_TID() (threadIdx.x + threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y)
 #define GLOOP_TMAX() (blockDim.x * blockDim.y * blockDim.z)
 #define GLOOP_BID() (blockIdx.x + blockIdx.y * gridDim.x)

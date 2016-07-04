@@ -31,7 +31,7 @@
 namespace gloop {
 
 template<typename DeviceLoop, typename DeviceLambda, class... Args>
-inline __device__ void mainLoop(DeviceLoop* loop, int isInitialExecution, DeviceContext&& context, const DeviceLambda& callback, Args&&... args)
+inline __device__ void mainLoop(DeviceLoop* loop, int isInitialExecution, DeviceContext& context, const DeviceLambda& callback, Args&&... args)
 {
     int callbackKicked = 0;
     BEGIN_SINGLE_THREAD
@@ -71,14 +71,14 @@ template<typename DeviceLambda, class... Args>
 inline __global__ void resume(Global, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     DeviceLoop<Global>* loop = reinterpret_cast<DeviceLoop<Global>*>(context.deviceLoopStorage + GLOOP_BID());
-    return mainLoop(loop, isInitialExecution, std::move(context), callback, std::forward<Args&&>(args)...);
+    return mainLoop(loop, isInitialExecution, context, callback, std::forward<Args&&>(args)...);
 }
 
 template<typename DeviceLambda, class... Args>
 inline __global__ void resume(Shared, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     __shared__ DeviceLoop<Shared> sharedDeviceLoop;
-    return mainLoop(&sharedDeviceLoop, isInitialExecution, std::move(context), callback, std::forward<Args&&>(args)...);
+    return mainLoop(&sharedDeviceLoop, isInitialExecution, context, callback, std::forward<Args&&>(args)...);
 }
 
 }  // namespace gloop

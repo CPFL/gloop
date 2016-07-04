@@ -71,6 +71,7 @@ struct DeviceLoopControl {
         }
         logicalBlocksCount = count;
 #endif
+        scratch = nullptr;
     }
 
     uint32_t freePages;
@@ -83,6 +84,7 @@ struct DeviceLoopControl {
     uint32_t logicalBlocksCount;
     uint32_t currentLogicalBlockCount;
 #endif
+    void* scratch;
 };
 
 // FIXME: Merge PerBlockContext and DeviceLoopStorage.

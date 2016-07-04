@@ -87,7 +87,11 @@ public:
 
     GLOOP_ALWAYS_INLINE __device__ unsigned logicalBlocksCount() const { return m_control.logicalBlocksCount; }
 
+    GLOOP_ALWAYS_INLINE __device__ int isLastLogicalBlock() const { return m_control.logicalBlocksCount == 1; }
+
     GLOOP_ALWAYS_INLINE __device__ int shouldPostTask();
+
+    GLOOP_ALWAYS_INLINE __device__ void*& scratch() { return m_control.scratch; }
 
 private:
     GLOOP_ALWAYS_INLINE __device__ uint2& logicalBlockIdxInternal();
@@ -116,7 +120,8 @@ private:
     inline __device__ void suspendSharedSlots(PerBlockContext*);
 
     GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots(uint32_t position);
-    GLOOP_ALWAYS_INLINE __device__ PerBlockContext* context() const;
+    GLOOP_ALWAYS_INLINE __device__ PerBlockContext* context();
+    GLOOP_ALWAYS_INLINE __device__ PerBlockHostContext* hostContext();
     GLOOP_ALWAYS_INLINE __device__ OnePage* pages() const;
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(OnePage*);
 
@@ -124,8 +129,7 @@ private:
     __device__ static constexpr uint32_t invalidPosition() { return UINT32_MAX; }
     GLOOP_ALWAYS_INLINE __device__ static bool isValidPosition(uint32_t position);
 
-    PerBlockContext* m_context;
-    PerBlockHostContext* m_hostContext;
+    const DeviceContext* m_deviceContext;
 
     // SoA.
     int32_t* m_codes;
