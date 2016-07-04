@@ -242,7 +242,7 @@ void __global__ grep_text(char* src, char* out, char* dbs)
 		if (total_words==0) ERROR("empty input");
 
 		
-		words_per_chunk=total_words/gloop::logicalGridDim.x;
+		words_per_chunk=total_words/loop->logicalGridDim().x;
 
 		if (words_per_chunk==0) 
 		{

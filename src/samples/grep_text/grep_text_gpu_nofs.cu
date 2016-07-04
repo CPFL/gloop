@@ -138,7 +138,7 @@ void __global__ grep_text_nofiles(char* src, int total_words, char* out, char* d
 
 	int data_to_process=0;
 
-	int words_per_chunk=total_words/gloop::logicalGridDim.x;
+	int words_per_chunk=total_words/loop->logicalGridDim().x;
 
 	if (words_per_chunk==0) 
 	{
@@ -150,7 +150,7 @@ void __global__ grep_text_nofiles(char* src, int total_words, char* out, char* d
 		
 			
 
-	if (loop->logicalBlockIdx().x==gloop::logicalGridDim.x-1){
+	if (loop->logicalBlockIdx().x==loop->logicalGridDim().x-1){
 		data_to_process=32*(total_words-words_per_chunk*loop->logicalBlockIdx().x);
 	}else{
 		data_to_process=32*words_per_chunk;

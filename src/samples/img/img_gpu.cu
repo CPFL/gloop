@@ -262,13 +262,13 @@ void __device__ img_gpu(
                 total_rows=(in_size/src_row_len)>>2;
 
                 int rows_per_chunk;
-                rows_per_chunk=total_rows/gloop::logicalGridDim.x;
+                rows_per_chunk=total_rows/loop->logicalGridDim().x;
                 if (rows_per_chunk==0) rows_per_chunk=1;
 
                 int rows_to_process;
                 rows_to_process=rows_per_chunk;
 
-                if (loop->logicalBlockIdx().x==gloop::logicalGridDim.x-1)
+                if (loop->logicalBlockIdx().x==loop->logicalGridDim().x-1)
                     rows_to_process=(total_rows - loop->logicalBlockIdx().x*rows_per_chunk);
 
                 __shared__ int toInit;

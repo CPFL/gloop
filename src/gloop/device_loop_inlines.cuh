@@ -597,55 +597,29 @@ inline __device__ void DeviceLoop<Policy>::freeOnePage(void* aPage)
     }
 }
 
-template<>
-GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Global>::logicalBlockIdx() const
+template<typename Policy>
+GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Policy>::logicalBlockIdx() const
 {
-    return m_special.m_logicalBlockIdx;
+    return m_logicalBlockIdx;
 }
 
-template<>
-GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Global>::logicalGridDim() const
+template<typename Policy>
+GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Policy>::logicalGridDim() const
 {
-    return m_special.m_logicalGridDim;
+    return m_logicalGridDim;
 }
 
-template<>
-GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Global>::logicalBlockIdxInternal()
+template<typename Policy>
+GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Policy>::logicalBlockIdxInternal()
 {
-    return m_special.m_logicalBlockIdx;
+    return m_logicalBlockIdx;
 }
 
-template<>
-GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Global>::logicalGridDimInternal()
+template<typename Policy>
+GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Policy>::logicalGridDimInternal()
 {
-    return m_special.m_logicalGridDim;
+    return m_logicalGridDim;
 }
-
-template<>
-GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Shared>::logicalBlockIdx() const
-{
-    return gloop::logicalBlockIdx;
-}
-
-template<>
-GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Shared>::logicalGridDim() const
-{
-    return gloop::logicalGridDim;
-}
-
-template<>
-GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Shared>::logicalBlockIdxInternal()
-{
-    return gloop::logicalBlockIdx;
-}
-
-template<>
-GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Shared>::logicalGridDimInternal()
-{
-    return gloop::logicalGridDim;
-}
-
-
 
 }  // namespace gloop
 #endif  // GLOOP_DEVICE_LOOP_INLINES_CU_H_

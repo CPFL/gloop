@@ -385,7 +385,7 @@ void __device__ grep_text(gloop::DeviceLoop<>* loop, char* src, char* out, char*
 
                     if (total_words==0) GPU_ERROR("empty input");
 
-                    int words_per_chunk=total_words/gloop::logicalGridDim.x;
+                    int words_per_chunk=total_words/loop->logicalGridDim().x;
 
                     if (words_per_chunk==0) {
                         words_per_chunk=1;
@@ -404,7 +404,7 @@ void __device__ grep_text(gloop::DeviceLoop<>* loop, char* src, char* out, char*
 
                     int data_to_process=words_per_chunk*32;
 
-                    if (loop->logicalBlockIdx().x==gloop::logicalGridDim.x-1)
+                    if (loop->logicalBlockIdx().x==loop->logicalGridDim().x-1)
                         data_to_process=src_size-data_to_process*loop->logicalBlockIdx().x;
 
                     __shared__ char* db_files;

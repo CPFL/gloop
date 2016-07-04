@@ -36,7 +36,7 @@ __device__ void perform_read(gloop::DeviceLoop<>* loop, uchar* scratch, int fd, 
                 assert(NULL);
             }
 
-            perform_read(loop, scratch, fd, me + GLOOP_SHARED_PAGE_SIZE * gloop::logicalGridDim.x, filesize);
+            perform_read(loop, scratch, fd, me + GLOOP_SHARED_PAGE_SIZE * loop->logicalGridDim().x, filesize);
         });
         return;
     }

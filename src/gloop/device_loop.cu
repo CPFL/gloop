@@ -25,8 +25,6 @@
 namespace gloop {
 
 // Initialize a device loop per thread block.
-__device__ __shared__ uint2 logicalGridDim;
-__device__ __shared__ uint2 logicalBlockIdx;
 __device__ volatile uint32_t* signal;
 
 }  // namespace gloop

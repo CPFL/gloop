@@ -55,8 +55,6 @@ template<>
 struct DeviceLoopSpecialData<Global> {
     void* m_nextCallback;
     request::Payload* m_nextPayload;
-    uint2 m_logicalGridDim;
-    uint2 m_logicalBlockIdx;
 };
 
 template<typename Policy = Shared>
@@ -143,13 +141,14 @@ private:
     DeviceCallback* m_slots;
     DeviceLoopControl m_control;
 
+    uint2 m_logicalGridDim;
+    uint2 m_logicalBlockIdx;
+
     DeviceLoopSpecialData<Policy> m_special;
 };
 static_assert(std::is_trivially_destructible<DeviceLoop<Global>>::value, "DeviceLoop is trivially destructible");
 static_assert(std::is_trivially_destructible<DeviceLoop<Shared>>::value, "DeviceLoop is trivially destructible");
 
-extern __device__ __shared__ uint2 logicalGridDim;
-extern __device__ __shared__ uint2 logicalBlockIdx;
 extern __device__ volatile uint32_t* signal;
 
 }  // namespace gloop

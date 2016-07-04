@@ -29,7 +29,7 @@ __forceinline__ __device__ void performCopyMiddle(gloop::DeviceLoop<>* loop, Pai
             }
             END_SINGLE_THREAD
             if (goTo) {
-                performCopyMiddle(loop, pairedBuffers, zfd, zfd1, me, me + GLOOP_SHARED_PAGE_SIZE * gloop::logicalGridDim.x, filesize, toRead, readBuffer ^ 1);
+                performCopyMiddle(loop, pairedBuffers, zfd, zfd1, me, me + GLOOP_SHARED_PAGE_SIZE * loop->logicalGridDim().x, filesize, toRead, readBuffer ^ 1);
             }
         };
 
@@ -77,7 +77,7 @@ __device__ void performCopyFirst(gloop::DeviceLoop<>* loop, PairedBuffers paired
             if (toRead != read) {
                 assert(NULL);
             }
-            performCopyMiddle(loop, pairedBuffers, zfd, zfd1, me, me + GLOOP_SHARED_PAGE_SIZE * gloop::logicalGridDim.x, filesize, toRead, 0);
+            performCopyMiddle(loop, pairedBuffers, zfd, zfd1, me, me + GLOOP_SHARED_PAGE_SIZE * loop->logicalGridDim().x, filesize, toRead, 0);
         });
         return;
     }

@@ -81,7 +81,7 @@ static __device__ void histogram1024Kernel(gloop::DeviceLoop<>* loop, unsigned i
     //Current global thread index
     const int globalTid = IMUL(loop->logicalBlockIdx().x, blockDim.x) + threadIdx.x;
     //Total number of threads in the compute grid
-    const int numThreads = IMUL(blockDim.x, gloop::logicalGridDim.x);
+    const int numThreads = IMUL(blockDim.x, loop->logicalGridDim().x);
     //WARP_LOG_SIZE higher bits of counter values are tagged
     //by lower WARP_LOG_SIZE threadID bits
     // Will correctly issue warning when compiling for debug (x<<32-0)
