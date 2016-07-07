@@ -65,6 +65,8 @@
 #define BLOCK_MEMORY (WARP_N * BIN_COUNT)
 #define IMUL(a, b) __mul24(a, b)
 
+typedef gloop::Shared LoopType;
+
 static __device__ void addData1024(volatile unsigned int* s_WarpHist, unsigned int data, unsigned int threadTag)
 {
     unsigned int count;
@@ -75,9 +77,8 @@ static __device__ void addData1024(volatile unsigned int* s_WarpHist, unsigned i
     } while (s_WarpHist[data] != count);
 }
 
-static __device__ void histogram1024Kernel(gloop::DeviceLoop<>* loop, unsigned int* d_Result, float* d_Data, float minimum, float maximum, int dataN)
+static __device__ void performHistogram(gloop::DeviceLoop<LoopType>* loop, unsigned int* d_Result, float* d_Data, float minimum, float maximum, int dataN, int cursor)
 {
-
     //Current global thread index
     const int globalTid = IMUL(loop->logicalBlockIdx().x, blockDim.x) + threadIdx.x;
     //Total number of threads in the compute grid
@@ -100,9 +101,33 @@ static __device__ void histogram1024Kernel(gloop::DeviceLoop<>* loop, unsigned i
     //Cycle through the entire data set, update subhistograms for each warp
     //Since threads in warps always execute the same instruction,
     //we are safe with the addPixel trick
-    for (int pos = globalTid; pos < dataN; pos += numThreads) {
-        unsigned int data4 = ((d_Data[pos] - minimum) / (maximum - minimum)) * BIN_COUNT;
-        addData1024(s_Hist + warpBase, data4 & 0x3FFU, threadTag);
+
+    for (int pos = globalTid + cursor * numThreads;; pos += numThreads, ++cursor) {
+
+        int result = pos < dataN;
+        if (result) {
+            unsigned int data4 = ((d_Data[pos] - minimum) / (maximum - minimum)) * BIN_COUNT;
+            addData1024(s_Hist + warpBase, data4 & 0x3FFU, threadTag);
+        }
+
+        if (__syncthreads_and(!result)) {
+            break;
+        }
+
+        if (gloop::loop::postTaskIfNecessary(loop,
+            [=] (gloop::DeviceLoop<LoopType>* loop) {
+                performHistogram(loop, d_Result, d_Data, minimum, maximum, dataN, cursor + 1);
+            })) {
+            //Merge per-warp histograms into per-block and write to global memory
+            for (int pos = threadIdx.x; pos < BIN_COUNT; pos += blockDim.x) {
+                unsigned int sum = 0;
+
+                for (int base = 0; base < BLOCK_MEMORY; base += BIN_COUNT)
+                    sum += s_Hist[base + pos] & 0x07FFFFFFU;
+                atomicAdd(d_Result + pos, sum);
+            }
+            return;
+        }
     }
 
     __syncthreads();
@@ -151,24 +176,17 @@ void histogram1024GPU(
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         checkCudaErrors(cudaMemset(d_Result1024, 0, HISTOGRAM_SIZE));
     }
-    hostLoop.launch(hostContext, dim3(BLOCK_N), dim3(THREAD_N), [] __device__(
-        gloop::DeviceLoop<>* loop,
+
+    hostLoop.launch<LoopType>(hostContext, dim3(BLOCK_N), dim3(THREAD_N), [] __device__(
+        gloop::DeviceLoop<LoopType>* loop,
         unsigned int* d_Result,
         float* d_Data,
         float minimum,
         float maximum,
         int dataN
         ) {
-        histogram1024Kernel(loop, d_Result, d_Data, minimum, maximum, dataN);
+        performHistogram(loop, d_Result, d_Data, minimum, maximum, dataN, 0);
     }, d_Result1024, d_Data, minimum, maximum, dataN);
-#if 0
-    histogram1024Kernel<<<BLOCK_N, THREAD_N>>>(
-        d_Result1024,
-        d_Data,
-        minimum,
-        maximum,
-        dataN);
-#endif
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         checkCudaErrors(cudaMemcpy(h_Result, d_Result1024, HISTOGRAM_SIZE, cudaMemcpyDeviceToHost));
