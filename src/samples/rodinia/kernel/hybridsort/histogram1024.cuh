@@ -25,13 +25,10 @@
 #define HISTOGRAM1024_CU_H_
 
 #include "helper_cuda.h"
-#include <gloop/gloop.h>
 
 void initHistogram1024(void);
 void closeHistogram1024(void);
 void histogram1024GPU(
-    gloop::HostLoop& hostLoop,
-    gloop::HostContext& hostContext,
     unsigned int* h_Result,
     float* d_Data,
     float minimum,

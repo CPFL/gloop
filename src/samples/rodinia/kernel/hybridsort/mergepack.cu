@@ -34,9 +34,7 @@ static __global__ void mergepackKernel(float* orig, float* result)
     result[finalStartAddr[division] + idx] = orig[constStartAddr[division] * 4 + nullElems[division] + idx];
 }
 
-void mergepack(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 grid, dim3 threads, float* d_resultList, float* d_origList)
+void mergepack(dim3 grid, dim3 threads, float* d_resultList, float* d_origList)
 {
-    std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
-    mergepackKernel<<<grid, threads, 0, hostLoop.pgraph()>>>(d_resultList, d_origList);
-    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(hostLoop.pgraph()));
+    mergepackKernel<<<grid, threads>>>(d_resultList, d_origList);
 }
