@@ -1,4 +1,4 @@
-add_executable(hybridsort-gloop
+add_executable(hybridsort-kernel
     main.cu
     bucketsort.cu
     bucketsort_kernel.cu
@@ -10,5 +10,5 @@ add_executable(hybridsort-gloop
     mergesort_statics.cu
     histogram1024.cu
 )
-set_target_properties(hybridsort PROPERTIES LINKER_LANGUAGE CUDA)
-target_link_libraries(hybridsort ${GLOOP_CUDA_RUNTIME_LIBS})
+set_target_properties(hybridsort-kernel PROPERTIES LINKER_LANGUAGE CUDA)
+target_link_libraries(hybridsort-kernel gloop ${GLOOP_CUDA_RUNTIME_LIBS})

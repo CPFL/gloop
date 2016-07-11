@@ -48,7 +48,7 @@ static __device__ int addOffset(volatile unsigned int* s_offset, unsigned int da
     return (count & 0x07FFFFFFU) - 1;
 }
 
-static __device__ void bucketcountKernel(float* input, int* indice, unsigned int* d_prefixoffsets, int size)
+static __global__ void bucketcountKernel(float* input, int* indice, unsigned int* d_prefixoffsets, int size)
 {
     volatile __shared__ unsigned int s_offset[BUCKET_BLOCK_MEMORY];
     const unsigned int threadTag = threadIdx.x << (32 - BUCKET_WARP_LOG_SIZE);
@@ -84,8 +84,7 @@ static __device__ void bucketcountKernel(float* input, int* indice, unsigned int
         d_prefixoffsets[prefixBase + i] = s_offset[i] & 0x07FFFFFFU;
 }
 
-void bucketcountGPU(dim3 grid, dim3 threads, float* input, int* indice, unsigned int* d_prefixoffsets, int size)
+void bucketcountGPU(Context*, dim3 grid, dim3 threads, float* input, int* indice, unsigned int* d_prefixoffsets, int size)
 {
-    // FIXME: Iteration!
     bucketcountKernel<<<grid, threads>>>(input, indice, d_prefixoffsets, size);
 }

@@ -37,9 +37,7 @@ static __global__ void mergeSortFirstKernel(float4* result, int listsize)
     }
 }
 
-void mergeSortFirst(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 grid, dim3 threads, float4* result, int listsize)
+void mergeSortFirst(Context* ctx, dim3 grid, dim3 threads, float4* result, int listsize)
 {
-    std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
-    mergeSortFirstKernel<<<grid, threads, 0, hostLoop.pgraph()>>>(result, listsize);
-    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(hostLoop.pgraph()));
+    mergeSortFirstKernel<<<grid, threads>>>(result, listsize);
 }

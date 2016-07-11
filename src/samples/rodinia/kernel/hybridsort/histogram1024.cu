@@ -34,6 +34,7 @@
  */
 
 #include "histogram1024.cuh"
+#include <gloop/gloop.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // This is nvidias histogram256 SDK example modded to do a 1024 point
@@ -75,9 +76,8 @@ static __device__ void addData1024(volatile unsigned int* s_WarpHist, unsigned i
     } while (s_WarpHist[data] != count);
 }
 
-static __device__ void histogram1024Kernel(unsigned int* d_Result, float* d_Data, float minimum, float maximum, int dataN)
+static __global__ void performHistogram(unsigned int* d_Result, float* d_Data, float minimum, float maximum, int dataN, int cursor)
 {
-
     //Current global thread index
     const int globalTid = IMUL(blockIdx.x, blockDim.x) + threadIdx.x;
     //Total number of threads in the compute grid
@@ -100,19 +100,26 @@ static __device__ void histogram1024Kernel(unsigned int* d_Result, float* d_Data
     //Cycle through the entire data set, update subhistograms for each warp
     //Since threads in warps always execute the same instruction,
     //we are safe with the addPixel trick
-    for (int pos = globalTid; pos < dataN; pos += numThreads) {
-        unsigned int data4 = ((d_Data[pos] - minimum) / (maximum - minimum)) * BIN_COUNT;
-        addData1024(s_Hist + warpBase, data4 & 0x3FFU, threadTag);
-    }
 
-    __syncthreads();
-    //Merge per-warp histograms into per-block and write to global memory
-    for (int pos = threadIdx.x; pos < BIN_COUNT; pos += blockDim.x) {
-        unsigned int sum = 0;
+    int pos = globalTid + cursor * numThreads;
+    {
+        int result = pos < dataN;
+        if (result) {
+            unsigned int data4 = ((d_Data[pos] - minimum) / (maximum - minimum)) * BIN_COUNT;
+            addData1024(s_Hist + warpBase, data4 & 0x3FFU, threadTag);
+        }
 
-        for (int base = 0; base < BLOCK_MEMORY; base += BIN_COUNT)
-            sum += s_Hist[base + pos] & 0x07FFFFFFU;
-        atomicAdd(d_Result + pos, sum);
+        __syncthreads();
+
+        //Merge per-warp histograms into per-block and write to global memory
+        for (int pos = threadIdx.x; pos < BIN_COUNT; pos += blockDim.x) {
+            unsigned int sum = 0;
+
+            for (int base = 0; base < BLOCK_MEMORY; base += BIN_COUNT)
+                sum += s_Hist[base + pos] & 0x07FFFFFFU;
+            atomicAdd(d_Result + pos, sum);
+        }
+        return;
     }
 }
 
@@ -139,22 +146,26 @@ void closeHistogram1024(void)
 
 //histogram1024 CPU front-end
 void histogram1024GPU(
+    Context* ctx,
     unsigned int* h_Result,
     float* d_Data,
     float minimum,
     float maximum,
     int dataN)
 {
-    checkCudaErrors(cudaMemset(d_Result1024, 0, HISTOGRAM_SIZE));
-    // FIXME
-    histogram1024Kernel<<<BLOCK_N, THREAD_N>>>(d_Result, d_Data, minimum, maximum, dataN);
-#if 0
-    histogram1024Kernel<<<BLOCK_N, THREAD_N>>>(
-        d_Result1024,
-        d_Data,
-        minimum,
-        maximum,
-        dataN);
-#endif
-    checkCudaErrors(cudaMemcpy(h_Result, d_Result1024, HISTOGRAM_SIZE, cudaMemcpyDeviceToHost));
+    {
+        checkCudaErrors(cudaMemset(d_Result1024, 0, HISTOGRAM_SIZE));
+    }
+
+    int times = dataN / (BLOCK_N * THREAD_N);
+    if ((times * (BLOCK_N * THREAD_N)) < dataN) {
+        times += 1;
+    }
+    for (int i = 0; i < times; ++i) {
+        performHistogram<<<dim3(BLOCK_N), dim3(THREAD_N)>>>(d_Result1024, d_Data, minimum, maximum, dataN, i);
+    }
+
+    {
+        checkCudaErrors(cudaMemcpy(h_Result, d_Result1024, HISTOGRAM_SIZE, cudaMemcpyDeviceToHost));
+    }
 }

@@ -80,7 +80,7 @@ void finish_bucketsort()
 // Given the input array of floats and the min and max of the distribution,
 // sort the elements into float4 aligned buckets of roughly equal size
 ////////////////////////////////////////////////////////////////////////////////
-void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, float* d_input, float* d_output, int listsize,
+void bucketSort(Context* ctx, float* d_input, float* d_output, int listsize,
     int* sizes, int* nullElements, float minimum, float maximum,
     unsigned int* origOffsets)
 {
@@ -88,10 +88,9 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     // First pass - Create 1024 bin histogram
     ////////////////////////////////////////////////////////////////////////////
     {
-        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         checkCudaErrors(cudaMemset((void*)d_offsets, 0, histosize * sizeof(int)));
     }
-    histogram1024GPU(hostLoop, hostContext, h_offsets, d_input, minimum, maximum, listsize);
+    histogram1024GPU(ctx, h_offsets, d_input, minimum, maximum, listsize);
 
     for (int i = 0; i < histosize; i++)
         historesult[i] = (float)h_offsets[i];
@@ -106,7 +105,6 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     // Count the bucket sizes in new divisions
     ///////////////////////////////////////////////////////////////////////////
     {
-        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         checkCudaErrors(cudaMemcpy(l_pivotpoints, pivotPoints, (DIVISIONS) * sizeof(int), cudaMemcpyHostToDevice));
         checkCudaErrors(cudaMemset((void*)d_offsets, 0, DIVISIONS * sizeof(int)));
         checkCudaErrors(cudaBindTexture(0, texPivot, l_pivotpoints, DIVISIONS * sizeof(int)));
@@ -116,7 +114,7 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     int blocks = ((listsize - 1) / (threads.x * BUCKET_BAND)) + 1;
     dim3 grid(blocks, 1);
     // Find the new indice for all elements
-    bucketcountGPU(hostLoop, hostContext, grid, threads, d_input, d_indice, d_prefixoffsets, listsize);
+    bucketcountGPU(ctx, grid, threads, d_input, d_indice, d_prefixoffsets, listsize);
 ///////////////////////////////////////////////////////////////////////////
 // Prefix scan offsets and align each division to float4 (required by
 // mergesort)
@@ -127,11 +125,10 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     threads.x = 128;
 #endif
     grid.x = DIVISIONS / threads.x;
-    bucketprefixoffsetGPU(hostLoop, hostContext, grid, threads, d_prefixoffsets, d_offsets, blocks);
+    bucketprefixoffsetGPU(ctx, grid, threads, d_prefixoffsets, d_offsets, blocks);
 
     // copy the sizes from device to host
     {
-        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         cudaMemcpy(h_offsets, d_offsets, DIVISIONS * sizeof(int), cudaMemcpyDeviceToHost);
     }
 
@@ -159,14 +156,13 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     // Finally, sort the lot
     ///////////////////////////////////////////////////////////////////////////
     {
-        std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         cudaMemcpy(l_offsets, h_offsets, (DIVISIONS) * sizeof(int), cudaMemcpyHostToDevice);
         cudaMemset(d_output, 0x0, (listsize + (DIVISIONS * 4)) * sizeof(float));
     }
     threads.x = BUCKET_THREAD_N;
     blocks = ((listsize - 1) / (threads.x * BUCKET_BAND)) + 1;
     grid.x = blocks;
-    bucketsortGPU(hostLoop, hostContext, grid, threads, d_input, d_indice, d_output, listsize, d_prefixoffsets, l_offsets);
+    bucketsortGPU(ctx, grid, threads, d_input, d_indice, d_output, listsize, d_prefixoffsets, l_offsets);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

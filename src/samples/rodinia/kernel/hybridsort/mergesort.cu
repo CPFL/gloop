@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <gloop/sync_read_write.h>
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
 ////////////////////////////////////////////////////////////////////////////////
@@ -22,19 +23,17 @@ struct MergeSortContext {
     int disabled;
 };
 
-static __device__ void destroyContext(gloop::DeviceLoop<LoopType>* loop, MergeSortContext* context)
+static __device__ void destroyContext(Context ctx, MergeSortContext* context)
 {
     BEGIN_SINGLE_THREAD
     {
-        if (loop->isLastLogicalBlock()) {
-            delete [] context;
-        }
+        delete [] context;
+        ctx.device->contexts[blockIdx.x] = nullptr;
     }
     END_SINGLE_THREAD
 }
 
-GLOOP_VISIBILITY_HIDDEN
-static __device__ void mergeSortPassKernel(gloop::DeviceLoop<LoopType>* loop, MergeSortContext* context, float4* result, int nrElems, int threadsPerDiv, int outidx, int Astart, int Bstart, int tid, int division, int aidx, int bidx, float4 a, float4 b, int disabled)
+static __device__ void mergeSortPassKernel(Context ctx, MergeSortContext* context, float4* result, int nrElems, int threadsPerDiv, int outidx, int Astart, int Bstart, int tid, int division, int aidx, int bidx, float4 a, float4 b, int disabled)
 {
     float4* resStart = result + Astart;
     while (true) //aidx < nrElems/2)// || (bidx < nrElems/2  && (Bstart + bidx < constEndAddr[division])))
@@ -86,46 +85,59 @@ static __device__ void mergeSortPassKernel(gloop::DeviceLoop<LoopType>* loop, Me
         if (__syncthreads_and(!elemsLeftInA && !elemsLeftInB))
             break;
 
-        if (gloop::loop::postTaskIfNecessary(loop, [context, result, nrElems, threadsPerDiv, outidx] (gloop::DeviceLoop<LoopType>* loop) {
-            int tid = (loop->logicalBlockIdx().x * blockDim.x) + threadIdx.x;
-            int division = tid / threadsPerDiv;
-            int int_tid = tid - division * threadsPerDiv;
-            int disabled = context[threadIdx.x].disabled;
-            int Astart = 0;
-            int Bstart = 0;
-            if (!disabled) {
-                Astart = constStartAddr[division] + int_tid * nrElems;
-                Bstart = Astart + nrElems / 2;
-            }
-            mergeSortPassKernel(context, result, nrElems, threadsPerDiv, outidx, Astart, Bstart, tid, division, context[threadIdx.x].aidx, context[threadIdx.x].bidx, context[threadIdx.x].a, context[threadIdx.x].b, disabled);
-        })) {
-            context[threadIdx.x].aidx = aidx;
-            context[threadIdx.x].bidx = bidx;
-            context[threadIdx.x].a = a;
-            context[threadIdx.x].b = b;
-            context[threadIdx.x].disabled = disabled;
-            return;
-        }
+        context[threadIdx.x].aidx = aidx;
+        context[threadIdx.x].bidx = bidx;
+        context[threadIdx.x].a = a;
+        context[threadIdx.x].b = b;
+        context[threadIdx.x].disabled = disabled;
+        gloop::syncWrite<unsigned int>(ctx.continuing, 1);
+        return;
     }
 
     if (!disabled) {
         resStart[outidx++] = b;
     }
-    destroyContext(context);
+    destroyContext(ctx, context);
 }
 
-GLOOP_VISIBILITY_HIDDEN
-static __device__ void mergeSortPassInitialKernel(float4* result, int nrElems, int threadsPerDiv)
+static __global__ void mergeSortPassSecondKernel(Context ctx, float4* result, int nrElems, int threadsPerDiv, int outidx)
 {
-    // FIXME
+    __shared__ MergeSortContext* context;
     BEGIN_SINGLE_THREAD
     {
-        if (!loop->scratch()) {
-            loop->scratch() = (void*)new MergeSortContext[blockDim.x];
-        }
+        context = ctx.device->contexts[blockIdx.x];
     }
     END_SINGLE_THREAD
-    MergeSortContext* context = (MergeSortContext*)(loop->scratch());
+
+    if (context == nullptr)
+        return;
+
+    int tid = (blockIdx.x * blockDim.x) + threadIdx.x;
+    int division = tid / threadsPerDiv;
+    int int_tid = tid - division * threadsPerDiv;
+    int disabled = context[threadIdx.x].disabled;
+    int Astart = 0;
+    int Bstart = 0;
+    if (!disabled) {
+        Astart = constStartAddr[division] + int_tid * nrElems;
+        Bstart = Astart + nrElems / 2;
+    }
+    mergeSortPassKernel(ctx, context, result, nrElems, threadsPerDiv, outidx, Astart, Bstart, tid, division, context[threadIdx.x].aidx, context[threadIdx.x].bidx, context[threadIdx.x].a, context[threadIdx.x].b, disabled);
+}
+
+static __global__ void mergeSortPassInitialKernel(Context ctx, float4* result, int nrElems, int threadsPerDiv)
+{
+    __shared__ MergeSortContext* context;
+#if 1
+    BEGIN_SINGLE_THREAD
+    {
+        context = ctx.device->contexts[blockIdx.x] = new MergeSortContext[blockDim.x];
+        GPU_ASSERT(context);
+    }
+    END_SINGLE_THREAD
+#endif
+    if (context == nullptr)
+        return;
 
     int tid = (blockIdx.x * blockDim.x) + threadIdx.x;
     // The division to work on
@@ -161,13 +173,13 @@ static __device__ void mergeSortPassInitialKernel(float4* result, int nrElems, i
         }
     }
 
-    mergeSortPassKernel(context, result, nrElems, threadsPerDiv, 0, Astart, Bstart, tid, division, 0, 0, a, b, disabled);
+    mergeSortPassKernel(ctx, context, result, nrElems, threadsPerDiv, 0, Astart, Bstart, tid, division, 0, 0, a, b, disabled);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // The mergesort algorithm
 ////////////////////////////////////////////////////////////////////////////////
-float4* runMergeSort(int listsize, int divisions,
+float4* runMergeSort(Context* ctx, gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, int listsize, int divisions,
     float4* d_origList, float4* d_resultList,
     int* sizes, int* nullElements,
     unsigned int* origOffsets)
@@ -206,7 +218,7 @@ float4* runMergeSort(int listsize, int divisions,
     {
         cudaBindTexture(0, tex, d_origList, channelDesc, listsize * sizeof(float));
     }
-    mergeSortFirst(grid, threads, d_resultList, listsize);
+    mergeSortFirst(ctx, grid, threads, d_resultList, listsize);
 
     ////////////////////////////////////////////////////////////////////////////
     // Then, go level by level
@@ -239,8 +251,16 @@ float4* runMergeSort(int listsize, int divisions,
             cudaBindTexture(0, tex, d_origList, channelDesc, listsize * sizeof(float));
         }
 
+        gloop::syncWrite<unsigned int>(ctx->continuing, 0);
+        mergeSortPassInitialKernel<<<grid, threads>>>(*ctx, d_resultList, nrElems, threadsPerDiv);
+        cudaThreadSynchronize();
+
 #if 1
-        mergeSortPassInitialKernel<<<grid, threads>>>(d_resultList, nrElems, threadsPerDiv);
+        for (int i = 0; gloop::readNoCache<unsigned int>(ctx->continuing); ++i) {
+            gloop::syncWrite<unsigned int>(ctx->continuing, 0);
+            mergeSortPassSecondKernel<<<grid, threads>>>(*ctx, d_resultList, nrElems, threadsPerDiv, i);
+            cudaThreadSynchronize();
+        }
 #endif
 
         nrElems *= 2;
@@ -258,7 +278,7 @@ float4* runMergeSort(int listsize, int divisions,
 #endif
     grid.x = ((largestSize % threads.x) == 0) ? largestSize / threads.x : (largestSize / threads.x) + 1;
     grid.y = divisions;
-    mergepack(grid, threads, (float*)d_resultList, (float*)d_origList);
+    mergepack(ctx, grid, threads, (float*)d_resultList, (float*)d_origList);
 
     free(startaddr);
     return d_origList;

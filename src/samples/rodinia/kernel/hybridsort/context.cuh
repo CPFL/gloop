@@ -21,20 +21,20 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "mergesort_inlines.cuh"
-#include "mergesort.cuh"
+#ifndef CONTEXT_CU_H_
+#define CONTEXT_CU_H_
 
-static __global__ void mergepackKernel(float* orig, float* result)
-{
-    int idx = (blockIdx.x * blockDim.x) + threadIdx.x;
-    int division = blockIdx.y;
+// #define MAX_BLOCK_SIZE 131074
+#define MAX_BLOCK_SIZE 160000
+struct MergeSortContext;
 
-    if ((finalStartAddr[division] + idx) >= finalStartAddr[division + 1])
-        return;
-    result[finalStartAddr[division] + idx] = orig[constStartAddr[division] * 4 + nullElems[division] + idx];
-}
+struct DeviceContext {
+    MergeSortContext* contexts[MAX_BLOCK_SIZE];
+};
 
-void mergepack(Context*, dim3 grid, dim3 threads, float* d_resultList, float* d_origList)
-{
-    mergepackKernel<<<grid, threads>>>(d_resultList, d_origList);
-}
+struct Context {
+    DeviceContext* device;
+    volatile unsigned int* continuing;
+};
+
+#endif  // CONTEXT_CU_H_

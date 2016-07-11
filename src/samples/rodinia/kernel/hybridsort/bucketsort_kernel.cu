@@ -25,16 +25,14 @@
 #include <gloop/gloop.h>
 #include "bucketsort.cuh"
 
-typedef gloop::Global LoopType;
-
-static __device__ void bucketsortKernel(gloop::DeviceLoop<LoopType>* loop, float* input, int* indice, float* output, int size, unsigned int* d_prefixoffsets, unsigned int* l_offsets)
+static __global__ void bucketsortKernel(float* input, int* indice, float* output, int size, unsigned int* d_prefixoffsets, unsigned int* l_offsets)
 {
     volatile __shared__ unsigned int s_offset[BUCKET_BLOCK_MEMORY];
 
-    int bid = loop->logicalBlockIdx().x;
+    int bid = blockIdx.x;
     int prefixBase = bid * BUCKET_BLOCK_MEMORY;
     const int warpBase = (threadIdx.x >> BUCKET_WARP_LOG_SIZE) * DIVISIONS;
-    const int numThreads = blockDim.x * loop->logicalGridDim().x;
+    const int numThreads = blockDim.x * gridDim.x;
     for (int i = threadIdx.x; i < BUCKET_BLOCK_MEMORY; i += blockDim.x)
         s_offset[i] = l_offsets[i & (DIVISIONS - 1)] + d_prefixoffsets[prefixBase + i];
 
@@ -50,9 +48,7 @@ static __device__ void bucketsortKernel(gloop::DeviceLoop<LoopType>* loop, float
     }
 }
 
-void bucketsortGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 blocks, dim3 threads, float* input, int* indice, float* output, int size, unsigned int* d_prefixoffsets, unsigned int* l_offsets)
+void bucketsortGPU(Context*, dim3 blocks, dim3 threads, float* input, int* indice, float* output, int size, unsigned int* d_prefixoffsets, unsigned int* l_offsets)
 {
-    hostLoop.launch<LoopType>(hostContext, dim3(90), blocks, threads, [] __device__ (gloop::DeviceLoop<LoopType>* loop, float* input, int* indice, float* output, int size, unsigned int* d_prefixoffsets, unsigned int* l_offsets) {
-        bucketsortKernel(loop, input, indice, output, size, d_prefixoffsets, l_offsets);
-    }, input, indice, output, size, d_prefixoffsets, l_offsets);
+    bucketsortKernel<<<blocks, threads>>>(input, indice, output, size, d_prefixoffsets, l_offsets);
 }
