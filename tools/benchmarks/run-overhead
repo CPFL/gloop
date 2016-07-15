@@ -1,9 +1,11 @@
 #!/usr/bin/ruby
 # -*- coding: utf-8 -*-
 
-def runBenchmark command
-    puts command
-    system command
+$devNull = File.open(File::NULL, "w")
+
+def runBenchmark args
+    STDERR.puts args.join(" ")
+    system args.join(" ")
 end
 
 class Test
@@ -13,7 +15,7 @@ class Test
 
     def execute
         args = @args.collect {|arg| arg.gsub("\n", "") }
-        runBenchmark(args.join(" "))
+        runBenchmark(args)
     end
 end
 
@@ -147,6 +149,7 @@ EOS
     ),
     CUDATest.new("hybridsort", "release/src/samples/rodinia/cuda/hybridsort/hybridsort", "r"),
     CUDATest.new("lavaMD", "release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d 30"),
+    CUDATest.new("mummergpu", "release/src/samples/rodinia/cuda/mummergpu/mummergpu", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
 
 $kernelSplitTests = [
@@ -257,6 +260,7 @@ $kernelSplitTests = [
 EOS
     ),
     KernelSplitTest.new("hybridsort-kernel", "release/src/samples/rodinia/kernel/hybridsort/hybridsort-kernel", "r"),
+    KernelSplitTest.new("mummergpu-kernel", "release/src/samples/rodinia/kernel/mummergpu/mummergpu-kernel", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
 
 $gloopTests = [
@@ -368,6 +372,7 @@ EOS
     ),
     GLoopTest.new("hybridsort-gloop", "release/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r"),
     GLoopTest.new("lavaMD-gloop", "release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d 30"),
+    GLoopTest.new("mummergpu-gloop", "release/src/samples/rodinia/gloop/mummergpu/mummergpu-gloop", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
 
 
@@ -376,9 +381,9 @@ def main
         test.execute
     }
 
-    # $kernelSplitTests.each {|test|
-    #     test.execute
-    # }
+    $kernelSplitTests.each {|test|
+        test.execute
+    }
 
     $gloopTests.each {|test|
         test.execute
