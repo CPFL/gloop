@@ -45,9 +45,10 @@ std::unique_ptr<HostContext> HostContext::create(HostLoop& hostLoop, dim3 physic
 HostContext::HostContext(HostLoop& hostLoop, dim3 physicalBlocks, uint32_t pageCount)
     : m_hostLoop(hostLoop)
     , m_maxPhysicalBlocks(physicalBlocks)
-    , m_physicalBlocks(physicalBlocks)
+    , m_physicalBlocks(sumOfBlocks(physicalBlocks))
     , m_pageCount(pageCount)
 {
+    fprintf(stderr, "physical blocks %u\n", sumOfBlocks(physicalBlocks));
 }
 
 HostContext::~HostContext()
@@ -130,7 +131,7 @@ bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
 #if !defined(GLOOP_ENABLE_ELASTIC_KERNELS)
 #error "Elastic kernels are needed to enable I/O boosting."
 #endif
-    uint64_t blocks = sumOfBlocks(m_physicalBlocks);
+    uint64_t blocks = m_physicalBlocks;
     for (uint64_t i = 0; i < blocks; ++i) {
         PerBlockHostContext hostContext = m_hostContext[i];
 
@@ -218,14 +219,14 @@ void HostContext::pollerMain()
 void HostContext::prologue(dim3 logicalBlocks, dim3 physicalBlocks)
 {
     assert((physicalBlocks.x * physicalBlocks.y) <= (m_maxPhysicalBlocks.x * m_maxPhysicalBlocks.y));
-    m_physicalBlocks = physicalBlocks;
+    m_physicalBlocks = sumOfBlocks(physicalBlocks);
     m_logicalBlocks = logicalBlocks;
     m_context.logicalBlocks = m_logicalBlocks;
 }
 
 void HostContext::epilogue()
 {
-    m_physicalBlocks = dim3();
+    m_physicalBlocks = 1;
     m_logicalBlocks = dim3();
 }
 

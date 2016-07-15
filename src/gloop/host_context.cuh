@@ -55,7 +55,7 @@ public:
     __host__ DeviceContext deviceContext() { return m_context; }
 
     dim3 maxPhysicalBlocks() const { return m_maxPhysicalBlocks; }
-    dim3 physicalBlocks() const { return m_physicalBlocks; }
+    dim3 physicalBlocks() const { return dim3(m_physicalBlocks); }
 
     template<typename Callback>
     __host__ bool tryPeekRequest(Callback callback);
@@ -112,7 +112,7 @@ private:
     request::Payload* m_payloads;
     dim3 m_logicalBlocks { };
     dim3 m_maxPhysicalBlocks { };
-    dim3 m_physicalBlocks { };
+    std::atomic<uint64_t> m_physicalBlocks { 0 };
     uint32_t m_pageCount { };
     std::vector<RPC> m_exitRequired;
     std::unordered_set<std::shared_ptr<MmapResult>> m_unmapRequests;
@@ -138,10 +138,11 @@ GLOOP_ALWAYS_INLINE __host__ request::Payload* RPC::request(HostContext& hostCon
 template<typename Callback>
 inline void HostContext::forEachRPC(Callback callback)
 {
-    uint64_t blocks = sumOfBlocks(m_physicalBlocks);
+    uint64_t blocks = m_physicalBlocks;
     for (uint64_t i = 0; i < blocks; ++i) {
         for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
-            RPC rpc { i * GLOOP_SHARED_SLOT_SIZE + j };
+            const RPC rpc { i * GLOOP_SHARED_SLOT_SIZE + j };
+            // fprintf(stderr, "target position %llu\n", rpc.position);
             callback(rpc);
         }
     }
