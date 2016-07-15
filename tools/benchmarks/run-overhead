@@ -146,6 +146,7 @@ $cudaTests = [
 EOS
     ),
     CUDATest.new("hybridsort", "release/src/samples/rodinia/cuda/hybridsort/hybridsort", "r"),
+    CUDATest.new("lavaMD", "release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d 30"),
 ]
 
 $kernelSplitTests = [
@@ -366,6 +367,7 @@ $gloopTests = [
 EOS
     ),
     GLoopTest.new("hybridsort-gloop", "release/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r"),
+    GLoopTest.new("lavaMD-gloop", "release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d 30"),
 ]
 
 
@@ -374,13 +376,13 @@ def main
         test.execute
     }
 
-    # kernelSplitTests.each {|test|
+    # $kernelSplitTests.each {|test|
     #     test.execute
     # }
 
-    # gloopTests.each {|test|
-    #     test.execute
-    # }
+    $gloopTests.each {|test|
+        test.execute
+    }
 end
 
 main() if __FILE__ == $0

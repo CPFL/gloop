@@ -48,7 +48,7 @@ HostContext::HostContext(HostLoop& hostLoop, dim3 physicalBlocks, uint32_t pageC
     , m_physicalBlocks(sumOfBlocks(physicalBlocks))
     , m_pageCount(pageCount)
 {
-    fprintf(stderr, "physical blocks %u\n", sumOfBlocks(physicalBlocks));
+    // fprintf(stderr, "physical blocks %u\n", sumOfBlocks(physicalBlocks));
 }
 
 HostContext::~HostContext()
