@@ -750,9 +750,7 @@ __device__ void perform(
     const int min_match_len)
 {
     int qryid = __umul24(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
-    if (qryid >= numQueries) {
-        return;
-    }
+    int disabled = qryid >= numQueries;
     XPRINTF("> qryid: %d\n", qryid);
 
     if (qryid == 0) {
@@ -771,7 +769,7 @@ __device__ void perform(
     char* queries = aQueries;
     _MatchCoord* result;
     int last;
-    {
+    if (!disabled) {
         int qlen = queryLengths[qryid];
         int qryAddr = queryAddrs[qryid];
 
@@ -781,6 +779,8 @@ __device__ void perform(
         result += RESULT_SPAN * qrystart;
 
         last = qlen - min_match_len;
+    } else {
+        last = 0;
     }
 
     // OK, calculate the TB's most longest query.
@@ -794,7 +794,7 @@ __device__ void perform(
     __syncthreads();
 
     for (; qrystart <= longestQuery; qrystart++, result += RESULT_SPAN) {
-        if (qrystart <= last) {
+        if (!disabled && qrystart <= last) {
             //_PixelOfNode node;
             unsigned int node_start;
             unsigned int prev;
@@ -917,22 +917,6 @@ __device__ void perform(
             } while (0);
         }
 
-#if 0
-        driver->cur[threadIdx.x] = cur;
-        driver->mustmatch[threadIdx.x] = mustmatch;
-        driver->qry_match_len[threadIdx.x] = qry_match_len;
-        BEGIN_SINGLE_THREAD
-        {
-            driver->qrystart = qrystart + 1;
-        }
-        END_SINGLE_THREAD
-        gloop::loop::postTask(loop,
-            [=] (gloop::DeviceLoop* loop) {
-                perform(loop, driver, match_coords, aQueries, ref, queryAddrs, queryLengths, numQueries, min_match_len);
-            }
-        );
-        return;
-#else
         if (gloop::loop::postTaskIfNecessary(loop,
             [=] (gloop::DeviceLoop* loop) {
                 perform(loop, driver, match_coords, aQueries, ref, queryAddrs, queryLengths, numQueries, min_match_len);
@@ -948,7 +932,6 @@ __device__ void perform(
             END_SINGLE_THREAD
             return;
         }
-#endif
     }
 
     BEGIN_SINGLE_THREAD
@@ -988,9 +971,6 @@ mummergpuKernel(
     driver->qry_match_len[threadIdx.x] = 0;
 
     int qryid = __umul24(gloop::logicalBlockIdx.x, blockDim.x) + threadIdx.x;
-    if (qryid >= numQueries) {
-        return;
-    }
     XPRINTF("> qryid: %d\n", qryid);
 
     if (qryid == 0) {
