@@ -774,19 +774,7 @@ __device__ void perform(
     const int min_match_len)
 {
     int qryid = __umul24(blockIdx.x, blockDim.x) + threadIdx.x;
-    if (qryid >= numQueries) {
-        BEGIN_SINGLE_THREAD
-        {
-            if (!driver->done) {
-                driver->done = 1;
-                delete [] driver->cur;
-                delete [] driver->mustmatch;
-                delete [] driver->qry_match_len;
-            }
-        }
-        END_SINGLE_THREAD
-        return;
-    }
+    int disabled = qryid >= numQueries;
 
     //TextureAddress cur;
     unsigned int cur = driver->cur[threadIdx.x];
@@ -800,7 +788,7 @@ __device__ void perform(
     char* queries = aQueries;
     _MatchCoord* result;
     int last;
-    {
+    if (!disabled) {
         int qlen = queryLengths[qryid];
         int qryAddr = queryAddrs[qryid];
 
@@ -810,6 +798,8 @@ __device__ void perform(
         result += RESULT_SPAN * qrystart;
 
         last = qlen - min_match_len;
+    } else {
+        last = 0;
     }
 
     // OK, calculate the TB's most longest query.
@@ -823,7 +813,7 @@ __device__ void perform(
     __syncthreads();
 
     if (qrystart <= longestQuery) {
-        if (qrystart <= last) {
+        if (!disabled && qrystart <= last) {
             //_PixelOfNode node;
             unsigned int node_start;
             unsigned int prev;
