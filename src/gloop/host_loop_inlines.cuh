@@ -54,18 +54,12 @@ inline void HostLoop::launch(HostContext& hostContext, dim3 preferredPhysicalBlo
     uint64_t physicalBlocksNumber = physicalBlocks.x * physicalBlocks.y;
     uint64_t preferredPhysicalBlocksNumber = preferredPhysicalBlocks.x * preferredPhysicalBlocks.y;
     uint64_t logicalBlocksNumber = logicalBlocks.x * logicalBlocks.y;
-    if (physicalBlocksNumber <= preferredPhysicalBlocksNumber) {
-        preferredPhysicalBlocksNumber = physicalBlocksNumber;
-        physicalBlocks = dim3(physicalBlocksNumber);
-    }
+    uint64_t resultBlocksNumber = preferredPhysicalBlocksNumber;
 
-    if (logicalBlocksNumber <= preferredPhysicalBlocksNumber) {
-        // FIXME: Should fix it, but it's easy.
-        assert(logicalBlocksNumber <= UINT32_MAX);
-        // Validate the number.
-        physicalBlocks = dim3(logicalBlocksNumber);
-    }
-    return launchInternal<Policy>(hostContext, physicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+    resultBlocksNumber = std::min(physicalBlocksNumber, resultBlocksNumber);
+    resultBlocksNumber = std::min(logicalBlocksNumber, resultBlocksNumber);
+
+    return launchInternal<Policy>(hostContext, dim3(resultBlocksNumber), logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
 template<typename Policy, typename DeviceLambda, class... Args>
