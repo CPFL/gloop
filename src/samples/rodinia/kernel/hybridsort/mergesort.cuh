@@ -11,10 +11,10 @@ extern __constant__ int nullElems[DIVISIONS];
 
 void mergeSortFirst(Context*, dim3 grid, dim3 threads, float4* result, int listsize);
 void mergepack(Context*, dim3 grid, dim3 threads, float* d_resultList, float* d_origList);
-void mergeSortPass(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 grid, dim3 threads, float4* result, int nrElems, int threadsPerDiv);
+void mergeSortPass(dim3 grid, dim3 threads, float4* result, int nrElems, int threadsPerDiv);
 
 float4* runMergeSort(Context* ctx,
-    gloop::HostLoop&, gloop::HostContext&, int listsize, int divisions,
+    int listsize, int divisions,
     float4* d_origList, float4* d_resultList,
     int* sizes, int* nullElements,
     unsigned int* origOffsets);

@@ -179,7 +179,7 @@ static __global__ void mergeSortPassInitialKernel(Context ctx, float4* result, i
 ////////////////////////////////////////////////////////////////////////////////
 // The mergesort algorithm
 ////////////////////////////////////////////////////////////////////////////////
-float4* runMergeSort(Context* ctx, gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, int listsize, int divisions,
+float4* runMergeSort(Context* ctx, int listsize, int divisions,
     float4* d_origList, float4* d_resultList,
     int* sizes, int* nullElements,
     unsigned int* origOffsets)

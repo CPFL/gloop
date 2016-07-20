@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <gloop/gloop.h>
+#include <gloop/benchmark.h>
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,12 +118,18 @@ int main(int argc, char** argv)
     }
 
     cout << "Sorting on GPU..." << flush;
+    gloop::Benchmark benchmark;
+    benchmark.begin();
+
     std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
     std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(480));
     CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,512<<20));
     // GPU Sort
     for (int i = 0; i < TEST; i++)
         cudaSort(*hostLoop, *hostContext, cpu_idata, datamin, datamax, gpu_odata, numElements);
+
+    benchmark.end();
+    benchmark.report(stderr);
     cout << "done.\n";
 #ifdef VERIFY
     cout << "Sorting on CPU..." << flush;

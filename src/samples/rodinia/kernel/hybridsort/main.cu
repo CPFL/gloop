@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <gloop/gloop.h>
+#include <gloop/benchmark.h>
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +47,7 @@ inline int compare(const void* a, const void* b)
 ////////////////////////////////////////////////////////////////////////////////
 // Forward declaration
 ////////////////////////////////////////////////////////////////////////////////
-void cudaSort(Context* context, gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
+void cudaSort(Context* context,
         float* origList, float minimum, float maximum, float* resultList, int numElements);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +55,6 @@ void cudaSort(Context* context, gloop::HostLoop& hostLoop, gloop::HostContext& h
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv)
 {
-
     // Create timers for each sort
     sdkCreateTimer(&uploadTimer);
     sdkCreateTimer(&downloadTimer);
@@ -118,19 +118,23 @@ int main(int argc, char** argv)
     }
 
     cout << "Sorting on GPU..." << flush;
+    gloop::Benchmark benchmark;
+    benchmark.begin();
+
     Context context {
         nullptr,
         nullptr,
     };
-    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(480));
     CUDA_SAFE_CALL(cudaMalloc(&context.device, sizeof(DeviceContext)));
     CUDA_SAFE_CALL(cudaHostAlloc(&context.continuing, sizeof(int), cudaHostAllocMapped));
     *context.continuing = 0;
     CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,4<<30));
     // GPU Sort
     for (int i = 0; i < TEST; i++)
-        cudaSort(&context, *hostLoop, *hostContext, cpu_idata, datamin, datamax, gpu_odata, numElements);
+        cudaSort(&context, cpu_idata, datamin, datamax, gpu_odata, numElements);
+
+    benchmark.end();
+    benchmark.report(stderr);
     cout << "done.\n";
 #ifdef VERIFY
     cout << "Sorting on CPU..." << flush;
@@ -191,8 +195,7 @@ int main(int argc, char** argv)
     free(gpu_odata);
 }
 
-void cudaSort(Context* ctx, gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
-        float* origList, float minimum, float maximum, float* resultList, int numElements)
+void cudaSort(Context* ctx, float* origList, float minimum, float maximum, float* resultList, int numElements)
 {
     // Initialization and upload data
     float* d_input = NULL;
@@ -226,7 +229,7 @@ void cudaSort(Context* ctx, gloop::HostLoop& hostLoop, gloop::HostContext& hostC
     for (int i = 0; i < DIVISIONS; i++)
         newlistsize += sizes[i] * 4;
 
-    float4* mergeresult = runMergeSort(ctx, hostLoop, hostContext, newlistsize, DIVISIONS, d_origList, d_resultList, sizes, nullElements, origOffsets); //d_origList;
+    float4* mergeresult = runMergeSort(ctx, newlistsize, DIVISIONS, d_origList, d_resultList, sizes, nullElements, origOffsets); //d_origList;
     // cudaThreadSynchronize();
     sdkStopTimer(&mergeTimer);
     sdkStopTimer(&totalTimer);

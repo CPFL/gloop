@@ -11,6 +11,7 @@
 #include "helper_cuda.h"
 #include "helper_timer.h"
 #include <iostream>
+#include <gloop/benchmark.h>
 #include "bucketsort.cuh"
 #include "mergesort.cuh"
 using namespace std; 
@@ -113,9 +114,15 @@ main( int argc, char** argv)
 	}
 
 	cout << "Sorting on GPU..." << flush; 
+    gloop::Benchmark benchmark;
+    benchmark.begin();
+
 	// GPU Sort
 	for (int i = 0; i < TEST; i++) 
 		cudaSort(cpu_idata, datamin, datamax, gpu_odata, numElements);		
+
+    benchmark.end();
+    benchmark.report(stderr);
 	cout << "done.\n";
 #ifdef VERIFY
 	cout << "Sorting on CPU..." << flush; 
