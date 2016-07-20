@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <fstream>
 #include <stdint.h>
+#include <gloop/benchmark.h>
 
 #define int2 int32_t
 #define ulong4 uint32_t
@@ -119,6 +120,9 @@ int main(int argc, char* argv[])
 
    int err = 0;
 
+   gloop::Benchmark benchmark;
+   benchmark.begin();
+
    Reference ref;
    if ((err = createReference(OPT_reffilename, &ref)))
    {
@@ -163,6 +167,9 @@ int main(int argc, char* argv[])
 	  printStringForError(err);
 	  exit(err);
    }   
+
+   benchmark.end();
+   benchmark.report(stderr);
 }
 
 

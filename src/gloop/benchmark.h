@@ -52,6 +52,11 @@ public:
         std::cout << prefix << "result:us(" << ticks().count() << ")" << std::endl;
     }
 
+    void report(FILE* file, const std::string& prefix = "")
+    {
+        std::fprintf(file, "%sresult:us(%lld)\n", prefix.c_str(), (long long)ticks().count());
+    }
+
     inline Clock::time_point beginPoint() const { return m_begin; }
     inline Clock::time_point endPoint() const { return m_end; }
 
