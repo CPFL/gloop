@@ -3,8 +3,6 @@
 
 require 'open3'
 
-$devNull = File.open(File::NULL, "w")
-
 class Test
     def initialize(name)
         @name = name
