@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_REQUEST_H_
-#define GLOOP_REQUEST_H_
+
+#pragma once
+
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include "net_socket.h"
@@ -246,4 +247,3 @@ struct Payload {
 typedef Payload Request;
 
 } }  // namespace gloop::request
-#endif  // GLOOP_REQUEST_H_

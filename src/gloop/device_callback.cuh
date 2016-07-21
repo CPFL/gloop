@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_DEVICE_CALLBACK_CU_H_
-#define GLOOP_DEVICE_CALLBACK_CU_H_
+
+#pragma once
+
 #include "function.cuh"
 #include "one_shot_function.cuh"
 #include "request.h"
@@ -31,4 +32,3 @@ namespace gloop {
 typedef std::aligned_storage<sizeof(gloop::OneShotFunction<void(void*, volatile request::Request*)>), alignof(gloop::OneShotFunction<void(void*, volatile request::Request*)>)>::type UninitializedDeviceCallbackStorage;
 
 }  // namespace gloop
-#endif  // GLOOP_DEVICE_CALLBACK_CU_H_

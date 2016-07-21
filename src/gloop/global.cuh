@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_GLOBAL_CU_H_
-#define GLOOP_GLOBAL_CU_H_
+
+#pragma once
+
 #include <utility>
 #include "device_loop_inlines.cuh"
 // Global primitives can be used only when elastic kernel is enabled.
@@ -41,4 +42,3 @@ inline __device__ auto synchronize(DeviceLoop* loop, Lambda callback) -> void
 } }  // namespace gloop::global
 
 #endif
-#endif  // GLOOP_LAUNCH_CU_H_

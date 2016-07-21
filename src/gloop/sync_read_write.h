@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_SYNC_READ_WRITE_H_
-#define GLOOP_SYNC_READ_WRITE_H_
+
+#pragma once
+
 #include "utility.h"
 namespace gloop {
 
@@ -62,4 +63,3 @@ GLOOP_ALWAYS_INLINE void syncWrite(volatile T* pointer, T value)
 }
 
 }  // namespace gloop
-#endif  // GLOOP_SYNC_READ_WRITE_H_

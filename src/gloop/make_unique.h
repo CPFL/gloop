@@ -30,8 +30,9 @@
 // Source Licenses. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
-#ifndef GLOOP_MAKE_UNIQUE_H_
-#define GLOOP_MAKE_UNIQUE_H_
+
+#pragma once
+
 #include <memory>
 #include <type_traits>
 namespace gloop {
@@ -76,4 +77,3 @@ template<class _Tp, class... _Args>
     make_unique(_Args&&...) = delete;
 
 }  // namespace gloop
-#endif  // GLOOP_MAKE_UNIQUE_H_

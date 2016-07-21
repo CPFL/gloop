@@ -7,9 +7,7 @@
  * ASPLOS13, March 2013, Houston,USA
  */
 
-
-#ifndef GPUNET_UTIL_CU_H
-#define GPUNET_UTIL_CU_H
+#pragma once
 
 #include <stdint.h>
 
@@ -227,4 +225,3 @@ struct INIT_LOCK
 
 __device__ int getNewFileId();
 }
-#endif

@@ -7,9 +7,7 @@
 * ASPLOS13, March 2013, Houston,USA
 */
 
-
-#ifndef GPUNET_NET_CONSTANTS
-#define GPUNET_NET_CONSTANTS
+#pragma once
 
 #define IPC_MGR_EMPTY 0
 #define IPC_MGR_BUSY 1
@@ -33,5 +31,3 @@ typedef unsigned char uchar;
 
 #define GPU_LOCAL_FNAME_MAX_SIZE 64 /* max len of kernel name to launch */
 #define EKERN		(-4) // Kernel invocation error
-
-#endif

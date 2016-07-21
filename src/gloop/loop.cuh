@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_LOOP_CU_H_
-#define GLOOP_LOOP_CU_H_
+
+#pragma once
+
 #include <utility>
 #include "device_loop_inlines.cuh"
 namespace gloop {
@@ -75,4 +76,3 @@ inline __device__ auto postTaskIfNecessary(DeviceLoop* loop, Lambda callback) ->
 
 
 } }  // namespace gloop::loop
-#endif  // GLOOP_LOOP_CU_H_

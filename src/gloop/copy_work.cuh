@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_COPY_WORK_CU_H_
-#define GLOOP_COPY_WORK_CU_H_
+
+#pragma once
+
 #include "copy_worker.cuh"
 #include "host_memory.cuh"
 namespace gloop {
@@ -50,4 +51,3 @@ private:
 };
 
 }  // namespace gloop
-#endif  // GLOOP_COPY_WORK_CU_H_

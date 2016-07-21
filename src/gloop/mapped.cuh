@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_MAPPED_CU_H_
-#define GLOOP_MAPPED_CU_H_
+
+#pragma once
+
 #include <cuda_runtime.h>
 #include <cstdlib>
 #include <cstdio>
@@ -57,4 +58,3 @@ public:
 };
 
 }  // namespace gloop
-#endif  // GLOOP_MAPPED_CU_H_

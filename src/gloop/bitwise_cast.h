@@ -23,8 +23,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_BITWISE_CAST_H_
-#define GLOOP_BITWISE_CAST_H_
+
+#pragma once
+
 namespace gloop {
 
 template<typename ToType, typename FromType>
@@ -40,4 +41,3 @@ inline ToType bitwise_cast(FromType from)
 }
 
 }  // namespace gloop
-#endif  // GLOOP_BITWISE_CAST_H_

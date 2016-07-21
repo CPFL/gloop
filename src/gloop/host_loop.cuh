@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HOST_LOOP_H_
-#define GLOOP_HOST_LOOP_H_
+
+#pragma once
+
 #include <atomic>
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
@@ -171,4 +172,3 @@ private:
 };
 
 }  // namespace gloop
-#endif  // GLOOP_HOST_LOOP_H_

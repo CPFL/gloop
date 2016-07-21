@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_UTILITY_CU_H_
-#define GLOOP_UTILITY_CU_H_
+
+#pragma once
+
 #include <cstdint>
 #include "utility.h"
 
@@ -42,4 +43,3 @@ static inline unsigned long long sumOfBlocks(dim3 dim)
 }
 
 }  // namespace gloop
-#endif  // GLOOP_UTILITY_CU_H_

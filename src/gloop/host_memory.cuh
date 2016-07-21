@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef HOST_MEMORY_CU_H_
-#define HOST_MEMORY_CU_H_
+
+#pragma once
+
 #include <memory>
 #include "noncopyable.h"
 namespace gloop {
@@ -51,4 +52,3 @@ protected:
 };
 
 }  // namespace gloop
-#endif  // HOST_MEMORY_CU_H_

@@ -21,12 +21,11 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_NONCOPYABLE_H_
-#define GLOOP_NONCOPYABLE_H_
+
+#pragma once
+
 
 #define GLOOP_NONCOPYABLE(ClassName) \
 private: \
     ClassName(ClassName const&) = delete; \
     ClassName& operator=(ClassName const&) = delete;
-
-#endif  // GLOOP_NONCOPYABLE_H_

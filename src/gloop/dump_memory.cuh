@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef DUMP_MEMORY_CU_H_
-#define DUMP_MEMORY_CU_H_
+
+#pragma once
+
 namespace gloop {
 
 __device__ void dumpMemoryInternal(const void* ptr, std::size_t size);
@@ -33,4 +34,3 @@ __device__ void dumpMemory(const T* ptr, std::size_t size)
 }
 
 }  // namespace gloop
-#endif  // DUMP_MEMORY_CU_H_

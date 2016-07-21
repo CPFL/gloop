@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_CODE_CU_H_
-#define GLOOP_CODE_CU_H_
+
+#pragma once
+
 #include <cstdint>
 namespace gloop {
 
@@ -73,4 +74,3 @@ inline bool IsOperationCode(Code code)
 }
 
 }  // namespace gloop
-#endif  // GLOOP_CODE_CU_H_

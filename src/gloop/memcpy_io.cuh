@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_MEMCPY_IO_CU_H_
-#define GLOOP_MEMCPY_IO_CU_H_
+
+#pragma once
+
 namespace gloop {
 
 __host__ __device__ static inline void* memcpyIO(volatile void* s1, volatile const void* s2, size_t n)
@@ -35,4 +36,3 @@ __host__ __device__ static inline void* memcpyIO(volatile void* s1, volatile con
 }
 
 }  // namespace gloop
-#endif  // GLOOP_MEMCPY_IO_CU_H_

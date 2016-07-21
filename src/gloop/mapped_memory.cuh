@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef MAPPED_MEMORY_CU_H_
-#define MAPPED_MEMORY_CU_H_
+
+#pragma once
+
 #include <memory>
 #include "host_memory.cuh"
 #include "noncopyable.h"
@@ -46,4 +47,3 @@ private:
 };
 
 }  // namespace gloop
-#endif  // MAPPED_MEMORY_CU_H_

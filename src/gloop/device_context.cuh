@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_DEVICE_CONTEXT_CU_H_
-#define GLOOP_DEVICE_CONTEXT_CU_H_
+
+#pragma once
+
 #include <cstdint>
 #include <type_traits>
 #include "config.h"
@@ -45,4 +46,3 @@ struct DeviceContext {
 };
 
 }  // namespace gloop
-#endif  // GLOOP_DEVICE_CONTEXT_CU_H_

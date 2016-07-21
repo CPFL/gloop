@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_DEVICE_DATA_CU_H_
-#define GLOOP_DEVICE_DATA_CU_H_
+
+#pragma once
+
 #include <cstdint>
 #include <type_traits>
 #include "config.h"
@@ -109,4 +110,3 @@ struct PerBlockHostContext {
 };
 
 }  // namespace gloop
-#endif  // GLOOP_DEVICE_DATA_CU_H_

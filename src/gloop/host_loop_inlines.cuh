@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HOST_LOOP_INLINES_CU_H_
-#define GLOOP_HOST_LOOP_INLINES_CU_H_
+
+#pragma once
+
 #include "host_context.cuh"
 #include "host_loop.cuh"
 #include "data_log.h"
@@ -185,4 +186,3 @@ void HostLoop::unlockLaunch(Command::ReleaseStatus releaseStatus)
 }
 
 }  // namespace gloop
-#endif  // GLOOP_HOST_LOOP_INLINES_CU_H_

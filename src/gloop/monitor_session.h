@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_MONITOR_SESSION_H_
-#define GLOOP_MONITOR_SESSION_H_
+
+#pragma once
+
 #include <atomic>
 #include <boost/asio.hpp>
 #include <boost/asio/high_resolution_timer.hpp>
@@ -120,4 +121,3 @@ private:
 };
 
 } }  // namsepace gloop::monitor
-#endif  // GLOOP_MONITOR_SESSION_H_

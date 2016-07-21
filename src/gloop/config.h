@@ -21,8 +21,8 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_CONFIG_H_
-#define GLOOP_CONFIG_H_
+
+#pragma once
 
 #include "generated_config.h"
 
@@ -52,4 +52,3 @@
 
 namespace gloop {
 }  // namespace gloop
-#endif  // GLOOP_CONFIG_H_

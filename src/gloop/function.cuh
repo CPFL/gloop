@@ -72,8 +72,8 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef GLOOP__NV_LIBCXX_FUNCTIONAL_H__
-#define GLOOP__NV_LIBCXX_FUNCTIONAL_H__
+#pragma once
+
 #include "config.h"
 
 #if __cplusplus < 201103L 
@@ -652,5 +652,3 @@ void swap(function<_R(_ArgTypes...)>& __fn1, function<_R(_ArgTypes...)>& __fn2)
 #undef __NV_NOEXCEPT
 #undef __NV_CONSTEXPR
 #undef __NV_ALIGNOF
-
-#endif // GLOOP__NV_LIBCXX_FUNCTIONAL_H__

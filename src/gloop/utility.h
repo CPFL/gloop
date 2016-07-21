@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_UTILITY_H_
-#define GLOOP_UTILITY_H_
+
+#pragma once
+
 #include <assert.h>
 
 #define GLOOP_CONCAT1(x, y) x##y
@@ -93,5 +94,3 @@
 
 // #define GLOOP_ERROR(str) do { __assert_fail(str,__FILE__,__LINE__,__func__); } while (0)
 #define GLOOP_ERROR(str) GLOOP_ASSERT(0)
-
-#endif  // GLOOP_UTILITY_H_

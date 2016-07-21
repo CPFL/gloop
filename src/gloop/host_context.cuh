@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HOST_CONTEXT_CU_H_
-#define GLOOP_HOST_CONTEXT_CU_H_
+
+#pragma once
+
 #include <boost/thread.hpp>
 #include <cuda.h>
 #include <memory>
@@ -165,4 +166,3 @@ inline bool HostContext::tryPeekRequest(Callback callback)
 }
 
 }  // namespace gloop
-#endif  // GLOOP_HOST_CONTEXT_CU_H_

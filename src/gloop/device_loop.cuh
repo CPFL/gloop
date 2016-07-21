@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_DEVICE_LOOP_H_
-#define GLOOP_DEVICE_LOOP_H_
+
+#pragma once
+
 #include <cstdint>
 #include <type_traits>
 #include "code.cuh"
@@ -152,4 +153,3 @@ static_assert(std::is_trivially_destructible<DeviceLoop<Shared>>::value, "Device
 extern __device__ volatile uint32_t* signal;
 
 }  // namespace gloop
-#endif  // GLOOP_DEVICE_LOOP_H_

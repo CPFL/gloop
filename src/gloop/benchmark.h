@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_BENCHMARK_H_
-#define GLOOP_BENCHMARK_H_
+
+#pragma once
+
 #include <chrono>
 #include <iostream>
 namespace gloop {
@@ -68,4 +69,3 @@ private:
 typedef Benchmark TimeWatch;
 
 }  // namespace gloop
-#endif  // GLOOP_BENCHMARK_H_

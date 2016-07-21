@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HASH_TUPLE_H_
-#define GLOOP_HASH_TUPLE_H_
+
+#pragma once
+
 #include <tuple>
 #include <functional>
 
@@ -79,4 +80,3 @@ struct hash<std::tuple<TT...>>
 };
 
 } }  // namespace gloop::hash_tuple
-#endif // GLOOP_HASH_TUPLE_H_

@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_MONITOR_SERVER_H_
-#define GLOOP_MONITOR_SERVER_H_
+
+#pragma once
+
 #include <atomic>
 #include <boost/asio.hpp>
 #include <boost/intrusive/list.hpp>
@@ -97,4 +98,3 @@ GLOOP_ALWAYS_INLINE bool Server::isAllowed(Session& session) const
 }
 
 } }  // namsepace gloop::monitor
-#endif  // GLOOP_MONITOR_SERVER_H_

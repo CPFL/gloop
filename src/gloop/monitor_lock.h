@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_MONITOR_LOCK_H_
-#define GLOOP_MONITOR_LOCK_H_
+
+#pragma once
+
 #include <boost/thread/mutex.hpp>
 #include "spinlock.h"
 namespace gloop {
@@ -33,4 +34,3 @@ typedef Spinlock Lock;
 typedef boost::mutex ServerLock;
 
 } }  // namespace gloop::monitor
-#endif  // GLOOP_MONITOR_LOCK_H_

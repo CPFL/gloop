@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_MONITOR_H_
-#define GLOOP_MONITOR_H_
+
+#pragma once
+
 #include <atomic>
 #include <boost/asio.hpp>
 #include <grpc++/grpc++.h>
@@ -56,4 +57,3 @@ private:
 };
 
 } }  // namsepace gloop::monitor
-#endif  // GLOOP_MONITOR_H_

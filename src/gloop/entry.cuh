@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_ENTRY_H_
-#define GLOOP_ENTRY_H_
+
+#pragma once
+
 #include <type_traits>
 #include <utility>
 #include "device_context.cuh"
@@ -82,4 +83,3 @@ inline __global__ void resume(Shared, int isInitialExecution, DeviceContext cont
 }
 
 }  // namespace gloop
-#endif  // GLOOP_ENTRY_H_

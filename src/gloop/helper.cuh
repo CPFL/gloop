@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_HELPER_CU_H_
-#define GLOOP_HELPER_CU_H_
+
+#pragma once
+
 namespace gloop {
 namespace helper {
 
@@ -33,4 +34,3 @@ inline __global__ void launch(const DeviceLambda& callback, Args... args)
 }
 
 } }  // namespace gloop::helper
-#endif  // GLOOP_HELPER_CU_H_

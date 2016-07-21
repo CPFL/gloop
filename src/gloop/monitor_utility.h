@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_MONITOR_UTILITY_H_
-#define GLOOP_MONITOR_UTILITY_H_
+
+#pragma once
+
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <memory>
@@ -37,4 +38,3 @@ std::unique_ptr<boost::interprocess::shared_memory_object> createMemory(const st
 
 
 } }  // namsepace gloop::monitor
-#endif  // GLOOP_MONITOR_UTILITY_H_

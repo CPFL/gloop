@@ -75,8 +75,8 @@
  * Users Notice.
  */
 
-#ifndef GLOOP__ONE_SHOT_FUNCTION_NV_LIBCXX_FUNCTIONAL_H__
-#define GLOOP__ONE_SHOT_FUNCTION_NV_LIBCXX_FUNCTIONAL_H__
+#pragma once
+
 #include "config.h"
 #include "utility.h"
 #include "utility/util.cu.h"
@@ -532,5 +532,3 @@ void swap(OneShotFunction<_R(_ArgTypes...)>& __fn1, OneShotFunction<_R(_ArgTypes
 }
 
 } // namespace gloop
-
-#endif // GLOOP__ONE_SHOT_FUNCTION_NV_LIBCXX_FUNCTIONAL_H__

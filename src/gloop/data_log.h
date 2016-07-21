@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_DATA_LOG_H_
-#define GLOOP_DATA_LOG_H_
+
+#pragma once
+
 #include <cstdio>
 
 #define GLOOP_RAW_FPRINTF(stream, fmt, args...) do {\
@@ -49,4 +50,3 @@
 namespace gloop {
 
 }  // namespae gloop
-#endif  // GLOOP_DATA_LOG_H_

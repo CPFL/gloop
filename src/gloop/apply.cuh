@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_APPLY_H_
-#define GLOOP_APPLY_H_
+
+#pragma once
+
 #include <thrust/tuple.h>
 #include <type_traits>
 #include <utility>
@@ -97,4 +98,3 @@ auto apply(Lambda lambda, thrust::tuple<Args...>&&  tup) -> typename std::result
 }
 
 }  // namespace gloop
-#endif  // GLOOP_APPLY_H_

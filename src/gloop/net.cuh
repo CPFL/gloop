@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_NET_CU_H_
-#define GLOOP_NET_CU_H_
+
+#pragma once
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <type_traits>
@@ -238,4 +239,3 @@ inline __device__ auto close(DeviceLoop* loop, Socket* socket, Lambda callback) 
 
 }  // namespace gloop::net::tcp
 } }  // namespace gloop::net
-#endif  // GLOOP_NET_CU_H_

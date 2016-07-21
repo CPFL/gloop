@@ -21,8 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef GLOOP_GLOOP_H_
-#define GLOOP_GLOOP_H_
+
+#pragma once
+
 #include "device_loop_inlines.cuh"
 #include "entry.cuh"
 #include "loop.cuh"
@@ -32,4 +33,3 @@
 #include "host_loop_inlines.cuh"
 #include "net.cuh"
 #include "utility/util.cu.h"
-#endif  // GLOOP_GLOOP_H_
