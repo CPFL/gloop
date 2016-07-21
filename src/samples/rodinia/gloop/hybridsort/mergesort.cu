@@ -23,8 +23,9 @@ struct MergeSortContext {
 };
 
 // FIXME: Shared!
-typedef gloop::Shared LoopType;
+typedef gloop::Global LoopType;
 
+GLOOP_VISIBILITY_HIDDEN
 static __device__ void destroyContext(gloop::DeviceLoop<LoopType>* loop, MergeSortContext* context)
 {
     BEGIN_SINGLE_THREAD
@@ -246,7 +247,7 @@ float4* runMergeSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
         }
 
 #if 1
-        hostLoop.launch<LoopType>(hostContext, dim3(135), grid, threads, [] __device__ (gloop::DeviceLoop<LoopType>* loop, float4* result, int nrElems, int threadsPerDiv) {
+        hostLoop.launchWithSharedMemory<LoopType>(hostContext, dim3(135), grid, threads, 0, [] __device__ (gloop::DeviceLoop<LoopType>* loop, float4* result, int nrElems, int threadsPerDiv) {
             mergeSortPassInitialKernel(loop, result, nrElems, threadsPerDiv);
         }, d_resultList, nrElems, threadsPerDiv);
 #endif

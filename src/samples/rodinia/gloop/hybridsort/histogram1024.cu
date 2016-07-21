@@ -65,8 +65,9 @@
 #define BLOCK_MEMORY (WARP_N * BIN_COUNT)
 #define IMUL(a, b) __mul24(a, b)
 
-typedef gloop::Shared LoopType;
+typedef gloop::Global LoopType;
 
+GLOOP_VISIBILITY_HIDDEN
 static __device__ void addData1024(volatile unsigned int* s_WarpHist, unsigned int data, unsigned int threadTag)
 {
     unsigned int count;
@@ -77,6 +78,7 @@ static __device__ void addData1024(volatile unsigned int* s_WarpHist, unsigned i
     } while (s_WarpHist[data] != count);
 }
 
+GLOOP_VISIBILITY_HIDDEN
 static __device__ void performHistogram(gloop::DeviceLoop<LoopType>* loop, unsigned int* d_Result, float* d_Data, float minimum, float maximum, int dataN, int cursor)
 {
     //Current global thread index
@@ -89,7 +91,7 @@ static __device__ void performHistogram(gloop::DeviceLoop<LoopType>* loop, unsig
     const unsigned int threadTag = threadIdx.x << (32 - WARP_LOG_SIZE);
     //Shared memory cache for each warp in current thread block
     //Declare as volatile to prevent incorrect compiler optimizations in addPixel()
-    volatile __shared__ unsigned int s_Hist[BLOCK_MEMORY];
+    extern volatile __shared__ unsigned int s_Hist[];
     //Current warp shared memory frame
     const int warpBase = IMUL(threadIdx.x >> WARP_LOG_SIZE, BIN_COUNT);
 
@@ -148,7 +150,7 @@ static __device__ void performHistogram(gloop::DeviceLoop<LoopType>* loop, unsig
 // Put all kernels together
 ////////////////////////////////////////////////////////////////////////////////
 //histogram1024kernel() results buffer
-unsigned int* d_Result1024;
+static unsigned int* d_Result1024;
 
 //Internal memory allocation
 void initHistogram1024(void)
@@ -177,7 +179,7 @@ void histogram1024GPU(
         checkCudaErrors(cudaMemset(d_Result1024, 0, HISTOGRAM_SIZE));
     }
 
-    hostLoop.launch<LoopType>(hostContext, dim3(BLOCK_N), dim3(THREAD_N), [] __device__(
+    hostLoop.launchWithSharedMemory<LoopType>(hostContext, dim3(BLOCK_N), dim3(BLOCK_N), dim3(THREAD_N), sizeof(unsigned int) * BLOCK_MEMORY, [] __device__(
         gloop::DeviceLoop<LoopType>* loop,
         unsigned int* d_Result,
         float* d_Data,

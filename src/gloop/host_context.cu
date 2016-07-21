@@ -216,18 +216,20 @@ void HostContext::pollerMain()
     }
 }
 
-void HostContext::prologue(dim3 logicalBlocks, dim3 physicalBlocks)
+void HostContext::prologue(dim3 logicalBlocks, dim3 physicalBlocks, size_t sharedMemorySize)
 {
     assert((physicalBlocks.x * physicalBlocks.y) <= (m_maxPhysicalBlocks.x * m_maxPhysicalBlocks.y));
     m_physicalBlocks = sumOfBlocks(physicalBlocks);
     m_logicalBlocks = logicalBlocks;
     m_context.logicalBlocks = m_logicalBlocks;
+    m_sharedMemorySize = sharedMemorySize;
 }
 
 void HostContext::epilogue()
 {
     m_physicalBlocks = 1;
     m_logicalBlocks = dim3();
+    m_sharedMemorySize = 0;
 }
 
 }  // namespace gloop

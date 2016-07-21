@@ -155,9 +155,11 @@ bool HostLoop::threadReady()
     return true;
 }
 
+#if 0
 __global__ void initializeHostLoop()
 {
 }
+#endif
 
 void HostLoop::initialize()
 {

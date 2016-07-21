@@ -56,6 +56,7 @@ public:
 
     dim3 maxPhysicalBlocks() const { return m_maxPhysicalBlocks; }
     dim3 physicalBlocks() const { return dim3(m_physicalBlocks); }
+    size_t sharedMemorySize() const { return m_sharedMemorySize; }
 
     template<typename Callback>
     __host__ bool tryPeekRequest(Callback callback);
@@ -86,7 +87,7 @@ public:
 
     bool isReadyForResume(const std::unique_lock<Mutex>&);
 
-    void prologue(dim3 logicalBlocks, dim3 physicalBlocks);
+    void prologue(dim3 logicalBlocks, dim3 physicalBlocks, size_t sharedMemorySize);
     void epilogue();
 
 private:
@@ -113,6 +114,7 @@ private:
     dim3 m_logicalBlocks { };
     dim3 m_maxPhysicalBlocks { };
     std::atomic<uint64_t> m_physicalBlocks { 0 };
+    size_t m_sharedMemorySize { 0 };
     uint32_t m_pageCount { };
     std::vector<RPC> m_exitRequired;
     std::unordered_set<std::shared_ptr<MmapResult>> m_unmapRequests;

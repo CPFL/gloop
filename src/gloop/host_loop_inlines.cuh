@@ -30,25 +30,37 @@
 namespace gloop {
 
 template<typename DeviceLambda, class... Args>
-inline void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+inline void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
-    launch<Shared>(hostContext, physicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+    launchWithSharedMemory<Shared>(hostContext, logicalBlocks, threads, 0, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
 template<typename DeviceLambda, class... Args>
-inline void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+inline void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
-    launch<Shared>(hostContext, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+    launchWithSharedMemory<Shared>(hostContext, physicalBlocks, logicalBlocks, threads, 0, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
 template<typename Policy, typename DeviceLambda, class... Args>
 inline void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
-    launch<Policy>(hostContext, logicalBlocks, logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+    launchWithSharedMemory<Policy>(hostContext, logicalBlocks, threads, 0, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
 template<typename Policy, typename DeviceLambda, class... Args>
-inline void HostLoop::launch(HostContext& hostContext, dim3 preferredPhysicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+inline void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
+{
+    launchWithSharedMemory<Policy>(hostContext, physicalBlocks, logicalBlocks, threads, 0, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+}
+
+template<typename Policy, typename DeviceLambda, class... Args>
+inline void HostLoop::launchWithSharedMemory(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, size_t sharedMemorySize, DeviceLambda&& callback, Args&&... args)
+{
+    launchWithSharedMemory<Policy>(hostContext, logicalBlocks, logicalBlocks, threads, sharedMemorySize, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+}
+
+template<typename Policy, typename DeviceLambda, class... Args>
+inline void HostLoop::launchWithSharedMemory(HostContext& hostContext, dim3 preferredPhysicalBlocks, dim3 logicalBlocks, dim3 threads, size_t sharedMemorySize, DeviceLambda&& callback, Args&&... args)
 {
     dim3 physicalBlocks = hostContext.maxPhysicalBlocks();
     uint64_t physicalBlocksNumber = physicalBlocks.x * physicalBlocks.y;
@@ -59,15 +71,15 @@ inline void HostLoop::launch(HostContext& hostContext, dim3 preferredPhysicalBlo
     resultBlocksNumber = std::min(physicalBlocksNumber, resultBlocksNumber);
     resultBlocksNumber = std::min(logicalBlocksNumber, resultBlocksNumber);
 
-    return launchInternal<Policy>(hostContext, dim3(resultBlocksNumber), logicalBlocks, threads, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
+    return launchInternal<Policy>(hostContext, dim3(resultBlocksNumber), logicalBlocks, threads, sharedMemorySize, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
 template<typename Policy, typename DeviceLambda, class... Args>
-inline void HostLoop::launchInternal(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda callback, Args... args)
+inline void HostLoop::launchInternal(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, size_t sharedMemorySize, DeviceLambda callback, Args... args)
 {
 //     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
 //     benchmark->begin();
-    hostContext.prologue(logicalBlocks, physicalBlocks);
+    hostContext.prologue(logicalBlocks, physicalBlocks, sharedMemorySize);
 
 #if 0
     {
@@ -86,7 +98,7 @@ inline void HostLoop::launchInternal(HostContext& hostContext, dim3 physicalBloc
                 std::lock_guard<KernelLock> lock(m_kernelLock);
                 // GLOOP_DATA_LOG("acquire for launch\n");
                 prepareForLaunch(hostContext);
-                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(Policy::Policy, /* isInitialExecution */ 1, hostContext.deviceContext(), callback, args...);
+                gloop::resume<<<hostContext.physicalBlocks(), threads, hostContext.sharedMemorySize(), m_pgraph>>>(Policy::Policy, /* isInitialExecution */ 1, hostContext.deviceContext(), callback, args...);
                 cudaError_t error = cudaGetLastError();
                 GLOOP_CUDA_SAFE(error);
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
@@ -122,7 +134,7 @@ void HostLoop::resume(HostContext& hostContext, dim3 threads, DeviceLambda callb
             prepareForLaunch(hostContext);
 
             {
-                gloop::resume<<<hostContext.physicalBlocks(), threads, 0, m_pgraph>>>(Policy::Policy, /* isInitialExecution */ 0, hostContext.deviceContext(), callback, args...);
+                gloop::resume<<<hostContext.physicalBlocks(), threads, hostContext.sharedMemorySize(), m_pgraph>>>(Policy::Policy, /* isInitialExecution */ 0, hostContext.deviceContext(), callback, args...);
                 cudaError_t error = cudaGetLastError();
                 GLOOP_CUDA_SAFE(error);
                 GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_pgraph));
