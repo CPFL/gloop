@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <gloop/benchmark.h>
 #include "args.h"
 
 #include "model.h"
@@ -88,6 +89,11 @@ main( int argc, char** argv)
 
   // from on use x, y, and z arrays, free h_all_data
   free(h_all_data);
+
+    // START!
+    gloop::Benchmark benchmark;
+    benchmark.begin();
+
   pb_SwitchToTimer( &timers, pb_TimerID_COPY );
 
   // allocate cuda memory to hold all points
@@ -126,6 +132,8 @@ main( int argc, char** argv)
   CUDA_ERRCK
   pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
   // **===-----------------------------------------------------------===**
+    benchmark.end();
+    benchmark.report(stderr);
 
   // references into output histograms
   hist_t *dd_hist = new_hists;

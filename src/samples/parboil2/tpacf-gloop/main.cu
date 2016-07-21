@@ -44,8 +44,6 @@ int main( int argc, char** argv)
 
         dim3 dimBlock(BLOCK_SIZE);
         dim3 dimGrid(NUM_SETS*2 + 1);
-        std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid);
 
         printf("Min distance: %f arcmin\n", min_arcmin);
         printf("Max distance: %f arcmin\n", max_arcmin);
@@ -96,6 +94,13 @@ int main( int argc, char** argv)
         // from on use x, y, and z arrays, free h_all_data
         free(h_all_data);
 
+        // START!
+        gloop::Benchmark benchmark;
+        benchmark.begin();
+
+        std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid);
+
         // allocate cuda memory to hold all points
         hist_t* new_hists;
         hist_t* d_hists;
@@ -103,6 +108,7 @@ int main( int argc, char** argv)
         REAL * d_y_data;
         REAL * d_z_data;
         {
+
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
 
             pb_SwitchToTimer( &timers, pb_TimerID_COPY );
@@ -153,6 +159,9 @@ int main( int argc, char** argv)
             CUDA_ERRCK
             pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
         }
+        benchmark.end();
+        benchmark.report(stderr);
+
         // **===-----------------------------------------------------------===**
 
         // references into output histograms
