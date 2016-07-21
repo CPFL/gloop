@@ -154,7 +154,7 @@ EOS
 
 $kernelSplitTests = [
     KernelSplitTest.new("tpacf-kernel",
-"Release/src/samples/parboil2/tpacf-kernel/tpacf-kernel",
+"release/src/samples/parboil2/tpacf-kernel/tpacf-kernel",
 "-i", <<-EOS, "-o", "/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/tpacf/run/large/tpacf.out", "--", "-n", "100", "-p", "10391"
 /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Datapnts.1,
 /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.1,
