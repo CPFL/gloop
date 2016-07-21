@@ -6,7 +6,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler ${OpenMP_CXX_FLAGS}")
 
 add_executable(lavaMD
-    main.c
+    main.cc
     kernel/kernel_gpu_cuda_wrapper.cu
     util/device/device.cu
     util/num/num.c
