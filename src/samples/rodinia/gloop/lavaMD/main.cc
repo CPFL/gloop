@@ -22,6 +22,7 @@
 #include <stdbool.h>				// (in path known to compiler)			needed by true/false
 #include <string.h>
 #include <time.h>
+#include <gloop/benchmark.h>
 
 //======================================================================================================================================================150
 //	UTILITIES
@@ -262,6 +263,8 @@ main(	int argc,
 	//====================================================================================================100
 	//	GPU_CUDA
 	//====================================================================================================100
+    gloop::Benchmark benchmark;
+    benchmark.begin();
 
 	kernel_gpu_cuda_wrapper(par_cpu,
 							dim_cpu,
@@ -269,6 +272,9 @@ main(	int argc,
 							rv_cpu,
 							qv_cpu,
 							fv_cpu);
+
+    benchmark.end();
+    benchmark.report(stderr);
 
 	time6 = get_time();
 
