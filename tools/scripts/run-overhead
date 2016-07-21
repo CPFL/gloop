@@ -1,12 +1,9 @@
 #!/usr/bin/ruby
 # -*- coding: utf-8 -*-
 
-$devNull = File.open(File::NULL, "w")
+require 'open3'
 
-def runBenchmark args
-    STDERR.puts args.join(" ")
-    system args.join(" ")
-end
+$devNull = File.open(File::NULL, "w")
 
 class Test
     def initialize(name)
@@ -16,6 +13,13 @@ class Test
     def execute
         args = @args.collect {|arg| arg.gsub("\n", "") }
         runBenchmark(args)
+    end
+
+    def runBenchmark args
+        out, err, status = Open3.capture3(args.join(" "))
+        m = /result:us\((\d+)\)/m.match(err)
+        raise self unless m
+        puts "#{@name}:#{m[1].to_i}"
     end
 end
 
