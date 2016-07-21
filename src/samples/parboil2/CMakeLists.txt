@@ -14,6 +14,8 @@ add_subdirectory(spmv)
 add_subdirectory(stencil)
 add_subdirectory(tpacf)
 
+add_subdirectory(tpacf-non-shared)
+
 # GLoop versions.
 add_subdirectory(lbm-gloop)
 add_subdirectory(tpacf-gloop)
