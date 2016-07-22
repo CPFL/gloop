@@ -37,4 +37,11 @@ inline void eagerlyInitializeContext()
     GLOOP_CUDA_SAFE_CALL(cudaFree(0));
 }
 
+inline void eagerlyFinalizeContext()
+{
+    CUdevice device;
+    GLOOP_CUDA_SAFE_CALL(cuDeviceGet(&device, 0));
+    GLOOP_CUDA_SAFE_CALL(cuDevicePrimaryCtxRelease(device));
+}
+
 } // namespace gloop

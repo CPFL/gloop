@@ -5,6 +5,8 @@
 //======================================================================================================================================================150
 //	MAIN FUNCTION HEADER
 //======================================================================================================================================================150
+#include <gloop/initialize.cuh>
+#include <gloop/statistics.h>
 
 #include "./../main.h"								// (in the main program folder)	needed to recognized input parameters
 
@@ -63,6 +65,8 @@ kernel_gpu_cuda_wrapper(par_str par_cpu,
 	//	INITIAL DRIVER OVERHEAD
 	//====================================================================================================100
 
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::GPUInit>();
+    gloop::eagerlyInitializeContext();
 	cudaThreadSynchronize();
 
 	//====================================================================================================100
@@ -87,6 +91,7 @@ kernel_gpu_cuda_wrapper(par_str par_cpu,
 	threads.y = 1;
 
 	time1 = get_time();
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
 
 	//======================================================================================================================================================150
 	//	GPU MEMORY				(MALLOC)
@@ -180,6 +185,8 @@ kernel_gpu_cuda_wrapper(par_str par_cpu,
 
 	time3 = get_time();
 
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
+
 	//======================================================================================================================================================150
 	//	KERNEL
 	//======================================================================================================================================================150
@@ -194,6 +201,7 @@ kernel_gpu_cuda_wrapper(par_str par_cpu,
 
 	checkCUDAError("Start");
 	cudaThreadSynchronize();
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
 
 	time4 = get_time();
 
@@ -218,6 +226,9 @@ kernel_gpu_cuda_wrapper(par_str par_cpu,
 	cudaFree(d_box_gpu);
 
 	time6 = get_time();
+
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::GPUInit>();
+    gloop::eagerlyFinalizeContext();
 
 	//======================================================================================================================================================150
 	//	DISPLAY TIMING

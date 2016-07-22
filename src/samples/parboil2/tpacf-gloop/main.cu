@@ -44,7 +44,7 @@ int main( int argc, char** argv)
         dim3 dimBlock(BLOCK_SIZE);
         dim3 dimGrid(NUM_SETS*2 + 1);
 
-        gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Init>();
+        gloop::Statistics::instance().switchTo<gloop::Statistics::Type::GPUInit>();
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
         std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dimGrid);
 
@@ -127,12 +127,12 @@ int main( int argc, char** argv)
             initBinB( &timers );
             CUDA_ERRCK
 
-            // **===------------------ Kick off TPACF on CUDA------------------===**
             gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
             cudaMemcpy(d_x_data, h_x_data, 3*f_mem_size, cudaMemcpyHostToDevice);
             CUDA_ERRCK
         }
 
+        // **===------------------ Kick off TPACF on CUDA------------------===**
         gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
         {
             // FIXME.
@@ -225,7 +225,7 @@ int main( int argc, char** argv)
             cudaFree( d_x_data );
             pb_FreeParameters(params);
         }
-        gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Init>();
+        gloop::Statistics::instance().switchTo<gloop::Statistics::Type::GPUInit>();
     }
     gloop::Statistics::instance().switchTo<gloop::Statistics::Type::None>();
     gloop::Statistics::instance().report(stderr);

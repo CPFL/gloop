@@ -33,7 +33,8 @@ namespace gloop {
     V(IO, 0) \
     V(Kernel, 1) \
     V(Copy, 2) \
-    V(Init, 3) \
+    V(DataInit, 3) \
+    V(GPUInit, 4) \
     V(None, -1) \
 
 
@@ -44,7 +45,7 @@ public:
         GLOOP_STATISTICS_TYPE(GLOOP_LIST_ENUM)
 #undef GLOOP_LIST_ENUM
     };
-    static constexpr const size_t NumberOfTypes = 4;
+    static constexpr const size_t NumberOfTypes = 5;
 
     template<Type type>
     void begin()

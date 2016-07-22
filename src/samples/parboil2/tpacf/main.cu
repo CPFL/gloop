@@ -36,7 +36,7 @@ main( int argc, char** argv)
   options args;
   parse_args(argc, argv, &args);
   
-  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Init>();
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::GPUInit>();
   gloop::eagerlyInitializeContext();
   
   gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
@@ -198,6 +198,9 @@ main( int argc, char** argv)
   gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
   cudaFree( d_hists );
   cudaFree( d_x_data );
+
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::GPUInit>();
+  gloop::eagerlyFinalizeContext();
 
   gloop::Statistics::instance().switchTo<gloop::Statistics::Type::None>();
   gloop::Statistics::instance().report(stderr);

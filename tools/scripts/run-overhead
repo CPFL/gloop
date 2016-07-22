@@ -7,9 +7,10 @@ class Result
     def initialize(name, data)
         @name = name
         @times = {
-            "Init" => 0,
+            "GPUInit" => 0,
+            "DataInit" => 0,
             "IO" => 0,
-            "Copy" => 0
+            "Copy" => 0,
             "Kernel" => 0,
         }
 
@@ -287,7 +288,7 @@ EOS
 EOS
     ),
 #     CUDATest.new("hybridsort", "release/src/samples/rodinia/cuda/hybridsort/hybridsort", "r"),
-#     CUDATest.new("lavaMD", "release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d 30"),
+    CUDATest.new("lavaMD", "release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d 30"),
 #     CUDATest.new("mummergpu", "release/src/samples/rodinia/cuda/mummergpu/mummergpu", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
 
