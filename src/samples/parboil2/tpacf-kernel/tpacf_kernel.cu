@@ -11,7 +11,7 @@
 #include <assert.h>
 #include "model.h"
 #include <math.h>
-#include <gloop/benchmark.h>
+#include <gloop/statistics.h>
 #include <gloop/utility/util.cu.h>
 
 #define WARP_SIZE 32
@@ -54,9 +54,9 @@ void initBinB( struct pb_TimerSet *timers )
     for (int k = 0; k < NUM_BINS+1; k++) {
         binb[k] = cos(pow(10.0, (log10(min_arcmin) + k*1.0/bins_per_dec)) / 60.0*D2R);
     }
-    pb_SwitchToTimer( timers, pb_TimerID_COPY );
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
     cudaMemcpyToSymbol(dev_binb, binb, (NUM_BINS+1)*sizeof(REAL));
-    pb_SwitchToTimer( timers, pb_TimerID_COMPUTE );
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
     free(binb);
 }
 
@@ -254,11 +254,8 @@ void TPACF(hist_t * histograms, REAL* d_x_data, REAL* d_y_data, REAL* d_z_data)
     dim3 dimGrid(NUM_SETS*2 + 1);
 
     Context* d_context;
-    cudaMalloc((void**)&d_context, (NUM_SETS*2 + 1) * sizeof(Context));
+    GLOOP_CUDA_SAFE_CALL(cudaMalloc((void**)&d_context, (NUM_SETS*2 + 1) * sizeof(Context)));
     // gen_hists
-    // gloop::Benchmark benchmark;
-    // cudaDeviceSynchronize();
-    // benchmark.begin();
     {
         phase1<<<dimGrid, dimBlock>>>(d_context, d_x_data, d_y_data, d_z_data, NUM_SETS, NUM_ELEMENTS);
         // Iterate over all data points
@@ -269,9 +266,8 @@ void TPACF(hist_t * histograms, REAL* d_x_data, REAL* d_y_data, REAL* d_z_data)
         }
         phase3<<<dimGrid, dimBlock>>>(d_context, histograms);
     }
-    // cudaDeviceSynchronize();
-    // benchmark.end();
-    // benchmark.report();
+    cudaDeviceSynchronize();
+    GLOOP_CUDA_SAFE_CALL(cudaFree(d_context));
 }
 // **===-----------------------------------------------------------===**
 

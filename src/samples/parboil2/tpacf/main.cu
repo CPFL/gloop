@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <gloop/initialize.cuh>
 #include <gloop/statistics.h>
 #include "args.h"
 
@@ -34,6 +35,9 @@ main( int argc, char** argv)
 
   options args;
   parse_args(argc, argv, &args);
+  
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Init>();
+  gloop::eagerlyInitializeContext();
   
   gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
 

@@ -105,11 +105,11 @@ bool HostContext::initialize(HostLoop& hostLoop)
         }
 
         assert(!m_poller);
-        m_poller = make_unique<boost::thread>([this]() {
-            m_hostLoop.initializeInThread();
-            pollerMain();
-        });
     }
+    m_poller = make_unique<boost::thread>([this]() {
+        m_hostLoop.initializeInThread();
+        pollerMain();
+    });
     return true;
 }
 

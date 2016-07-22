@@ -41,9 +41,9 @@ void initBinB(struct pb_TimerSet* timers)
         binb[k] = cos(pow(10.0, (log10(min_arcmin) + k * 1.0 / bins_per_dec))
             / 60.0 * D2R);
     }
-    pb_SwitchToTimer(timers, pb_TimerID_COPY);
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
     cudaMemcpyToSymbol(dev_binb, binb, (NUM_BINS + 1) * sizeof(REAL));
-    pb_SwitchToTimer(timers, pb_TimerID_COMPUTE);
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
     free(binb);
 }
 
@@ -193,15 +193,10 @@ void TPACF(hist_t* histograms, REAL* d_x_data, REAL* d_y_data,
     dim3 dimBlock(BLOCK_SIZE);
     dim3 dimGrid(NUM_SETS * 2 + 1);
 
-    // gloop::Benchmark benchmark;
-    // cudaDeviceSynchronize();
-    // benchmark.begin();
     gen_hists<<<dimGrid, dimBlock>>>(histograms, d_x_data,
         d_y_data, d_z_data, NUM_SETS,
         NUM_ELEMENTS);
-    // cudaDeviceSynchronize();
-    // benchmark.end();
-    // benchmark.report();
+    cudaDeviceSynchronize();
 }
 // **===-----------------------------------------------------------===**
 

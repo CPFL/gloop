@@ -11,6 +11,7 @@
 #include <assert.h>
 #include "model.h"
 #include <math.h>
+#include <gloop/statistics.h>
 
 #define WARP_SIZE 32
 #define NUM_BANKS 16
@@ -64,9 +65,9 @@ void initBinB( struct pb_TimerSet *timers )
     for (int k = 0; k < NUM_BINS+1; k++) {
         binb[k] = cos(pow(10.0, (log10(min_arcmin) + k*1.0/bins_per_dec)) / 60.0*D2R);
     }
-    pb_SwitchToTimer( timers, pb_TimerID_COPY );
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
     cudaMemcpyToSymbol(dev_binb, binb, (NUM_BINS+1)*sizeof(REAL));
-    pb_SwitchToTimer( timers, pb_TimerID_COMPUTE );
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
     free(binb);
 }
 

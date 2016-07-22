@@ -3,6 +3,35 @@
 
 require 'open3'
 
+class Result
+    def initialize(name, data)
+        @name = name
+        @times = {
+            "IO" => 0,
+            "Init" => 0,
+            "Kernel" => 0,
+            "Copy" => 0
+        }
+
+        @times.each {|key, _|
+            @times[key] = extractTime(key, data)
+        }
+    end
+
+    def report
+        @times.each {|key, value|
+            puts "#{@name}:#{key}: #{value.to_s}"
+        }
+    end
+
+    private
+    def extractTime(type, data)
+        m = /#{type} result:us\((\d+)\)/m.match(data)
+        raise self unless m
+        m[1].to_i
+    end
+end
+
 class Test
     def initialize(name)
         @name = name
@@ -10,14 +39,16 @@ class Test
 
     def execute
         args = @args.collect {|arg| arg.gsub("\n", "") }
-        runBenchmark(args)
+        result = runBenchmark(args)
+        result.report()
+    end
+
+    def extractTime(type, data)
     end
 
     def runBenchmark args
         out, err, status = Open3.capture3(args.join(" "))
-        m = /result:us\((\d+)\)/m.match(err)
-        raise self unless m
-        puts "#{@name}:#{m[1].to_i}"
+        Result.new(@name, err)
     end
 end
 
@@ -255,9 +286,9 @@ EOS
 /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.100
 EOS
     ),
-    CUDATest.new("hybridsort", "release/src/samples/rodinia/cuda/hybridsort/hybridsort", "r"),
-    CUDATest.new("lavaMD", "release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d 30"),
-    CUDATest.new("mummergpu", "release/src/samples/rodinia/cuda/mummergpu/mummergpu", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
+#     CUDATest.new("hybridsort", "release/src/samples/rodinia/cuda/hybridsort/hybridsort", "r"),
+#     CUDATest.new("lavaMD", "release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d 30"),
+#     CUDATest.new("mummergpu", "release/src/samples/rodinia/cuda/mummergpu/mummergpu", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
 
 $kernelSplitTests = [
@@ -367,8 +398,8 @@ $kernelSplitTests = [
 /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.100
 EOS
     ),
-    KernelSplitTest.new("hybridsort-kernel", "release/src/samples/rodinia/kernel/hybridsort/hybridsort-kernel", "r"),
-    KernelSplitTest.new("mummergpu-kernel", "release/src/samples/rodinia/kernel/mummergpu/mummergpu-kernel", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
+#     KernelSplitTest.new("hybridsort-kernel", "release/src/samples/rodinia/kernel/hybridsort/hybridsort-kernel", "r"),
+#     KernelSplitTest.new("mummergpu-kernel", "release/src/samples/rodinia/kernel/mummergpu/mummergpu-kernel", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
 
 $gloopTests = [
@@ -478,9 +509,9 @@ $gloopTests = [
 /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.100
 EOS
     ),
-    GLoopTest.new("hybridsort-gloop", "release/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r"),
-    GLoopTest.new("lavaMD-gloop", "release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d 30"),
-    GLoopTest.new("mummergpu-gloop", "release/src/samples/rodinia/gloop/mummergpu/mummergpu-gloop", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
+#     GLoopTest.new("hybridsort-gloop", "release/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r"),
+#     GLoopTest.new("lavaMD-gloop", "release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d 30"),
+#     GLoopTest.new("mummergpu-gloop", "release/src/samples/rodinia/gloop/mummergpu/mummergpu-gloop", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
 
 

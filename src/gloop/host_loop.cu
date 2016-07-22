@@ -38,6 +38,7 @@
 #include "data_log.h"
 #include "helper.cuh"
 #include "host_loop_inlines.cuh"
+#include "initialize.cuh"
 #include "io.cuh"
 #include "rpc.cuh"
 #include "make_unique.h"
@@ -163,12 +164,14 @@ __global__ void initializeHostLoop()
 
 void HostLoop::initialize()
 {
-    initializeInThread();
     {
         // This ensures that primary GPU context is initialized.
         std::lock_guard<KernelLock> lock(m_kernelLock);
+        GLOOP_CUDA_SAFE_CALL(cudaSetDevice(m_deviceNumber));
         // GLOOP_CUDA_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceMapHost | cudaDeviceScheduleSpin));
         GLOOP_CUDA_SAFE_CALL(cudaSetDeviceFlags(cudaDeviceMapHost));
+        eagerlyInitializeContext();
+
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pgraph));
 
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
@@ -228,7 +231,9 @@ void HostLoop::initialize()
 
 void HostLoop::initializeInThread()
 {
+    // std::lock_guard<KernelLock> lock(m_kernelLock);
     GLOOP_CUDA_SAFE_CALL(cudaSetDevice(m_deviceNumber));
+    // eagerlyInitializeContext();
 }
 
 void HostLoop::drain()
