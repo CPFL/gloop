@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <gloop/benchmark.h>
+#include <gloop/statistics.h>
 #include "args.h"
 
 #include "model.h"
@@ -35,7 +35,7 @@ main( int argc, char** argv)
   options args;
   parse_args(argc, argv, &args);
   
-  pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
 
   NUM_ELEMENTS = args.npoints;
   NUM_SETS = args.random_count;
@@ -59,16 +59,16 @@ main( int argc, char** argv)
   struct cartesian *working = h_all_data;
     
   // go through and read all data and random points into h_all_data
-  pb_SwitchToTimer( &timers, pb_TimerID_IO );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::IO>();
   readdatafile(params->inpFiles[0], working, num_elements);
-  pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
 
   working += num_elements;
   for(int i = 0; i < (NUM_SETS); i++)
     {
-      pb_SwitchToTimer( &timers, pb_TimerID_IO );
+      gloop::Statistics::instance().switchTo<gloop::Statistics::Type::IO>();
       readdatafile(params->inpFiles[i+1], working, num_elements);
-      pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
+      gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
 
       working += num_elements;
     }
@@ -91,11 +91,7 @@ main( int argc, char** argv)
   free(h_all_data);
 
   // START!
-    gloop::Benchmark benchmark;
-    benchmark.begin();
-
-
-  pb_SwitchToTimer( &timers, pb_TimerID_COPY );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
 
   // allocate cuda memory to hold all points
   REAL * d_x_data;
@@ -109,7 +105,7 @@ main( int argc, char** argv)
   hist_t * d_hists;
   cudaMalloc((void**) & d_hists, NUM_BINS*(NUM_SETS*2+1)*sizeof(hist_t) );
   CUDA_ERRCK
-  pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
 
   // allocate system memory for final histograms
   hist_t *new_hists = (hist_t *) malloc(NUM_BINS*(NUM_SETS*2+1)*
@@ -120,23 +116,19 @@ main( int argc, char** argv)
   CUDA_ERRCK
 
   // **===------------------ Kick off TPACF on CUDA------------------===**
-  pb_SwitchToTimer( &timers, pb_TimerID_COPY );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
   cudaMemcpy(d_x_data, h_x_data, 3*f_mem_size, cudaMemcpyHostToDevice);
   CUDA_ERRCK
-  pb_SwitchToTimer( &timers, pb_TimerID_KERNEL );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
 
   TPACF(d_hists, d_x_data, d_y_data, d_z_data);
 
-  pb_SwitchToTimer( &timers, pb_TimerID_COPY );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
   cudaMemcpy(new_hists, d_hists, NUM_BINS*(NUM_SETS*2+1)*
 	     sizeof(hist_t), cudaMemcpyDeviceToHost);
   CUDA_ERRCK
-  pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
   // **===-----------------------------------------------------------===**
-
-    benchmark.end();
-    benchmark.report(stderr);
-
   // references into output histograms
   hist_t *dd_hist = new_hists;
   hist_t *rr_hist = dd_hist + NUM_BINS;
@@ -179,7 +171,7 @@ main( int argc, char** argv)
       outfile = stdout;
     }
   
-  pb_SwitchToTimer( &timers, pb_TimerID_IO );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::IO>();
   // print out final histograms + omega (while calculating omega)
   for(int i=0; i<NUM_BINS; i++)
     {
@@ -190,7 +182,7 @@ main( int argc, char** argv)
 //      dr_t += dr[i];
 //      rr_t += rr[i];
     }
-  pb_SwitchToTimer( &timers, pb_TimerID_COMPUTE );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
 
   if(outfile != stdout)
     fclose(outfile);
@@ -199,11 +191,12 @@ main( int argc, char** argv)
   free(new_hists);
   free( h_x_data);
 
-  pb_SwitchToTimer( &timers, pb_TimerID_COPY );
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
   cudaFree( d_hists );
   cudaFree( d_x_data );
 
-  pb_SwitchToTimer(&timers, pb_TimerID_NONE);
+  gloop::Statistics::instance().switchTo<gloop::Statistics::Type::None>();
+  gloop::Statistics::instance().report(stderr);
   pb_PrintTimerSet(&timers);
   pb_FreeParameters(params);
 }

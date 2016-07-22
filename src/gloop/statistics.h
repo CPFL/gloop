@@ -23,3 +23,98 @@
 */
 
 #pragma once
+
+#include <array>
+#include "benchmark.h"
+
+namespace gloop {
+
+#define GLOOP_STATISTICS_TYPE(V) \
+    V(IO, 0) \
+    V(Kernel, 1) \
+    V(Copy, 2) \
+    V(Init, 3) \
+    V(None, -1) \
+
+
+class Statistics {
+public:
+    enum class Type : int32_t {
+#define GLOOP_LIST_ENUM(type, value) type = (value),
+        GLOOP_STATISTICS_TYPE(GLOOP_LIST_ENUM)
+#undef GLOOP_LIST_ENUM
+    };
+    static constexpr const size_t NumberOfTypes = 4;
+
+    template<Type type>
+    void begin()
+    {
+        begin(type);
+    }
+
+    template<Type type>
+    void end()
+    {
+        end(type);
+    }
+
+    void begin(Type type)
+    {
+        m_benchmarks[static_cast<int32_t>(type)].begin();
+    }
+
+    void end(Type type)
+    {
+        gloop::Benchmark& benchmark = m_benchmarks[static_cast<int32_t>(type)];
+        benchmark.end();
+        m_times[static_cast<int32_t>(type)] += benchmark.ticks();
+    }
+
+    void report(FILE* file)
+    {
+#define GLOOP_REPORT(type, value)\
+        if (Type::type != Type::None) {\
+            report(file, Type::type, #type " ");\
+        }
+        GLOOP_STATISTICS_TYPE(GLOOP_REPORT)
+#undef GLOOP_REPORT
+    }
+
+    template<Type type, typename Functor>
+    void bench(Functor functor)
+    {
+        begin<type>();
+        functor();
+        end<type>();
+    }
+
+    static Statistics& instance()
+    {
+        static Statistics statistics;
+        return statistics;
+    }
+
+    template<Type type>
+    void switchTo()
+    {
+        if (m_currentType != Type::None) {
+            end(m_currentType);
+        }
+        if (type != Type::None) {
+            begin(type);
+        }
+        m_currentType = type;
+    }
+
+private:
+    void report(FILE* file, Type type, const std::string& prefix = "")
+    {
+        std::fprintf(file, "%sresult:us(%lld)\n", prefix.c_str(), static_cast<long long>(m_times[static_cast<int32_t>(type)].count()));
+    }
+
+    Type m_currentType { Type::None };
+    std::array<std::chrono::microseconds, NumberOfTypes> m_times { };
+    std::array<gloop::Benchmark, NumberOfTypes> m_benchmarks { };
+};
+
+} // namespace gloop
