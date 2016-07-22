@@ -190,9 +190,7 @@ void HostLoop::initialize()
         // initializeHostLoop<<<1, 1, 0, m_pgraph>>>();
         // cudaStreamSynchronize(m_pgraph);
         GLOOP_CUDA_SAFE_CALL(cudaMemcpyToSymbol(gloop::signal, &m_deviceSignal, sizeof(m_deviceSignal)));
-#if 1
-        printf("clock rate:(%d)\n", m_deviceProperties.clockRate);
-#endif
+        GLOOP_DATA_LOG("clock rate:(%d)\n", m_deviceProperties.clockRate);
     }
 
     // Since kernel work is already held by kernel executing thread,
@@ -526,7 +524,7 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
             releaseCopyWork(copyWork);
             emit(context, rpc, Code::Complete);
 //             benchmark->end();
-//             std::printf("receive: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
+//             GLOOP_DATA_LOG("receive: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
         };
         if (req.u.netTCPReceive.flags & MSG_WAITALL) {
             boost::asio::async_read(*socket, boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), boost::asio::transfer_all(), callback);
@@ -564,7 +562,7 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
                 }
                 emit(context, rpc, Code::Complete);
 //                 benchmark->end();
-//                 std::printf("send: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
+//                 GLOOP_DATA_LOG("send: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
             });
         });
         break;
