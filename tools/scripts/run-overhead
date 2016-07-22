@@ -7,10 +7,10 @@ class Result
     def initialize(name, data)
         @name = name
         @times = {
-            "IO" => 0,
             "Init" => 0,
-            "Kernel" => 0,
+            "IO" => 0,
             "Copy" => 0
+            "Kernel" => 0,
         }
 
         @times.each {|key, _|
