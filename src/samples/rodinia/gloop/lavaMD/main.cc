@@ -22,7 +22,7 @@
 #include <stdbool.h>				// (in path known to compiler)			needed by true/false
 #include <string.h>
 #include <time.h>
-#include <gloop/benchmark.h>
+#include <gloop/statistics.h>
 
 //======================================================================================================================================================150
 //	UTILITIES
@@ -156,6 +156,8 @@ main(	int argc,
 
 	time4 = get_time();
 
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::DataInit>();
+
 	//======================================================================================================================================================150
 	//	SYSTEM MEMORY
 	//======================================================================================================================================================150
@@ -263,9 +265,6 @@ main(	int argc,
 	//====================================================================================================100
 	//	GPU_CUDA
 	//====================================================================================================100
-    gloop::Benchmark benchmark;
-    benchmark.begin();
-
 	kernel_gpu_cuda_wrapper(par_cpu,
 							dim_cpu,
 							box_cpu,
@@ -273,8 +272,7 @@ main(	int argc,
 							qv_cpu,
 							fv_cpu);
 
-    benchmark.end();
-    benchmark.report(stderr);
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::DataInit>();
 
 	time6 = get_time();
 
@@ -283,6 +281,7 @@ main(	int argc,
 	//======================================================================================================================================================150
 
 	// dump results
+#if 0
 #ifdef OUTPUT
         FILE *fptr;
 	fptr = fopen("result.txt", "w");	
@@ -291,13 +290,15 @@ main(	int argc,
 	}
 	fclose(fptr);
 #endif       	
-
-
+#endif
 
 	free(rv_cpu);
 	free(qv_cpu);
 	free(fv_cpu);
 	free(box_cpu);
+
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::None>();
+    gloop::Statistics::instance().report(stderr);
 
 	time7 = get_time();
 

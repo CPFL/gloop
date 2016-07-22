@@ -6,6 +6,7 @@
 //	MAIN FUNCTION HEADER
 //======================================================================================================================================================150
 #include <gloop/gloop.h>
+#include <gloop/statistics.h>
 #include "./../main.h" // (in the main program folder)	needed to recognized input parameters
 
 //======================================================================================================================================================150
@@ -62,6 +63,7 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
     //	INITIAL DRIVER OVERHEAD
     //====================================================================================================100
 
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::GPUInit>();
     std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
     std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(30));
     // cudaThreadSynchronize();
@@ -93,6 +95,7 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
     //	GPU MEMORY				(MALLOC)
     //======================================================================================================================================================150
 
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
 
@@ -185,6 +188,8 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
 
     time3 = get_time();
 
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Kernel>();
+
     //======================================================================================================================================================150
     //	KERNEL
     //======================================================================================================================================================150
@@ -211,6 +216,7 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
     //	GPU MEMORY			COPY (CONTD.)
     //======================================================================================================================================================150
 
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::Copy>();
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
 
@@ -236,6 +242,8 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
     }
 
     time6 = get_time();
+
+    gloop::Statistics::instance().switchTo<gloop::Statistics::Type::GPUInit>();
 
     //======================================================================================================================================================150
     //	DISPLAY TIMING

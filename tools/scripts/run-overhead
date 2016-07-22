@@ -511,7 +511,7 @@ $gloopTests = [
 EOS
     ),
 #     GLoopTest.new("hybridsort-gloop", "release/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r"),
-#     GLoopTest.new("lavaMD-gloop", "release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d 30"),
+    GLoopTest.new("lavaMD-gloop", "release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d 30"),
 #     GLoopTest.new("mummergpu-gloop", "release/src/samples/rodinia/gloop/mummergpu/mummergpu-gloop", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
 
