@@ -803,16 +803,7 @@ __device__ void perform(
     }
 
     // OK, calculate the TB's most longest query.
-    __shared__ int longestQuery;
-    BEGIN_SINGLE_THREAD
-    {
-        longestQuery = 0;
-    }
-    END_SINGLE_THREAD
-    atomicMax(&longestQuery, last);
-    __syncthreads();
-
-    if (qrystart <= longestQuery) {
+    if (__syncthreads_or(qrystart <= last)) {
         if (!disabled && qrystart <= last) {
             //_PixelOfNode node;
             unsigned int node_start;
