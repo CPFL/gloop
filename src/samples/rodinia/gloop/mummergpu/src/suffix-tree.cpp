@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <gloop/statistics.h>
 
 #define ulong4 uint32_t
 #define uint4 uint32_t
@@ -1965,6 +1966,7 @@ int addToBuffer(char* string)
 
 void flushOutput()
 {
+   gloop::Statistics::Scope<gloop::Statistics::Type::IO> scope;
     if (bytes_written) {
         output_buf[bytes_written] = 0;
         printf("%s", output_buf);

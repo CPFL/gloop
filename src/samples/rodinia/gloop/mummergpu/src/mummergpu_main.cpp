@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <gloop/benchmark.h>
+#include <gloop/statistics.h>
 
 #define int2 int32_t
 #define ulong4 uint32_t
@@ -144,49 +145,51 @@ int main(int argc, char* argv[])
 
     int err = 0;
 
-    gloop::Benchmark benchmark;
-    benchmark.begin();
-
     Reference ref;
-    if ((err = createReference(OPT_reffilename, &ref))) {
-        printStringForError(err);
-        exit(err);
-    }
-
     QuerySet queries;
-    if ((err = createQuerySet(OPT_qryfilename, &queries))) {
-        printStringForError(err);
-        exit(err);
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::IO> scope;
+        if ((err = createReference(OPT_reffilename, &ref))) {
+            printStringForError(err);
+            exit(err);
+        }
+
+        if ((err = createQuerySet(OPT_qryfilename, &queries))) {
+            printStringForError(err);
+            exit(err);
+        }
     }
 
-    MatchContext ctx;
-    if ((err = createMatchContext(&ref,
-             &queries,
-             0,
-             OPT_on_cpu,
-             OPT_match_length,
-             OPT_stats_file,
-             OPT_reverse,
-             OPT_forwardreverse,
-             OPT_forwardcoordinates,
-             OPT_showQueryLength,
-             OPT_dotfilename,
-             OPT_texfilename,
-             &ctx))) {
-        printStringForError(err);
-        exit(err);
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
+        MatchContext ctx;
+        if ((err = createMatchContext(&ref,
+                 &queries,
+                 0,
+                 OPT_on_cpu,
+                 OPT_match_length,
+                 OPT_stats_file,
+                 OPT_reverse,
+                 OPT_forwardreverse,
+                 OPT_forwardcoordinates,
+                 OPT_showQueryLength,
+                 OPT_dotfilename,
+                 OPT_texfilename,
+                 &ctx))) {
+            printStringForError(err);
+            exit(err);
+        }
+
+        if ((err = matchQueries(&ctx))) {
+            printStringForError(err);
+            exit(err);
+        }
+
+        if ((err = destroyMatchContext(&ctx))) {
+            printStringForError(err);
+            exit(err);
+        }
     }
 
-    if ((err = matchQueries(&ctx))) {
-        printStringForError(err);
-        exit(err);
-    }
-
-    if ((err = destroyMatchContext(&ctx))) {
-        printStringForError(err);
-        exit(err);
-    }
-
-    benchmark.end();
-    benchmark.report(stderr);
+    gloop::Statistics::instance().report(stderr);
 }
