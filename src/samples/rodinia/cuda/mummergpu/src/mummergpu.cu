@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <gloop/statistics.h>
+#include <gloop/initialize.cuh>
 
 #include <cuda.h>
 #include <vector_types.h>
@@ -230,6 +232,8 @@ int createReference(const char* fromFile, Reference* ref)
 extern "C"
 int destroyReference(Reference* ref)
 {
+   gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
+
    free(ref->h_node_tex_array);
    free(ref->h_children_tex_array);
    free(ref->str);
@@ -297,20 +301,28 @@ int createMatchContext(Reference* ref,
                        char* texfilename,
                        MatchContext* ctx) {
                        
-    ctx->queries = queries;
-    ctx->ref = ref;
-    ctx->full_ref = ref->str;
-    ctx->full_ref_len = ref->len;
-    
-    ctx->on_cpu = on_cpu;
-    ctx->min_match_length = min_match_length;
-    ctx->stats_file = stats_file;
-    ctx->reverse = reverse;
-    ctx->forwardreverse = forwardreverse;
-    ctx->forwardcoordinates = forwardcoordinates;
-    ctx->show_query_length = showQueryLength;
-    ctx->dotfilename = dotfilename;
-    ctx->texfilename = texfilename;
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
+        gloop::eagerlyInitializeContext();
+    }
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
+
+        ctx->queries = queries;
+        ctx->ref = ref;
+        ctx->full_ref = ref->str;
+        ctx->full_ref_len = ref->len;
+        
+        ctx->on_cpu = on_cpu;
+        ctx->min_match_length = min_match_length;
+        ctx->stats_file = stats_file;
+        ctx->reverse = reverse;
+        ctx->forwardreverse = forwardreverse;
+        ctx->forwardcoordinates = forwardcoordinates;
+        ctx->show_query_length = showQueryLength;
+        ctx->dotfilename = dotfilename;
+        ctx->texfilename = texfilename;
+    }
     return 0;
 }
 
@@ -318,9 +330,14 @@ int createMatchContext(Reference* ref,
 extern "C"
 int destroyMatchContext(MatchContext* ctx)
 {
+   gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
    free(ctx->full_ref);
    //destroyReference(ctx->ref);
    destroyQuerySet(ctx->queries);
+   {
+       gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
+       gloop::eagerlyFinalizeContext();
+   }
    return 0;
 }
 
@@ -472,6 +489,7 @@ void boardMemory(size_t * free_mem, size_t * total_mem)
 
 void loadReferenceTexture(MatchContext* ctx)
 {
+   gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
     Reference* ref = ctx->ref;
     int numrows = ceil(ref->len / ((float)ref->pitch));
     int blocksize = 4;
@@ -639,7 +657,7 @@ void unloadReferenceTree(MatchContext* ctx)
 
 //loads a tree and text for [begin, end) in the reference
 void loadReference(MatchContext* ctx) {
-
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
     Reference* ref = ctx->ref;
     
     ref->bytes_on_board = 0;
@@ -903,6 +921,7 @@ void dumpQueryBlockInfo(QuerySet* queries)
 
 void loadQueries(MatchContext* ctx)
 {    
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
     QuerySet* queries = ctx->queries;
     queries->bytes_on_board = 0;
     
@@ -973,6 +992,7 @@ void loadQueries(MatchContext* ctx)
 
 void unloadQueries(MatchContext* ctx)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
    QuerySet* queries = ctx->queries;
 
    CUDA_SAFE_CALL(cudaFree(queries->d_tex_array));
@@ -1051,6 +1071,7 @@ void buildCoordOffsetArray(MatchContext* ctx,
 
 void loadResultBuffer(MatchContext* ctx)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
     unsigned int numQueries = ctx->queries->count;
     
     assert (numQueries);
@@ -1133,6 +1154,8 @@ void unloadResultBuffer(MatchContext* ctx) {
 
 void transferResultsFromDevice(MatchContext* ctx)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+
    if (!ctx->on_cpu)
    {
       char* fromboardtimer = createTimer();
@@ -1345,7 +1368,7 @@ void runPrintKernel(MatchContext* ctx,
                     Alignment* alignments,
                     unsigned int numAlignments)
 {
-
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
     MatchInfo* d_matches;
     size_t matchesSize = numMatches * sizeof(MatchInfo);
     CUDA_MALLOC((void**) &d_matches, matchesSize);
@@ -1391,51 +1414,54 @@ void runPrintKernel(MatchContext* ctx,
     
     fprintf(stderr, "  Calling print kernel... ");
     
-    printKernel <<< dimGrid, dimBlock, 0 >>> (d_matches,
-            numMatches,
-            d_alignments,
-            
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+        printKernel <<< dimGrid, dimBlock, 0 >>> (d_matches,
+                numMatches,
+                d_alignments,
+                
 #if COALESCED_QUERIES
-            ctx->results.d_coord_tex_array,
+                ctx->results.d_coord_tex_array,
 #endif
-            
+                
 #if !QRYTEX
 #if COALESCED_QUERIES
-            (int*)
+                (int*)
 #endif
-            ctx->queries->d_tex_array,
+                ctx->queries->d_tex_array,
 #endif
-            
+                
 #if !NODETEX
-            (_PixelOfNode*)ctx->ref->d_node_tex_array,
+                (_PixelOfNode*)ctx->ref->d_node_tex_array,
 #endif
 #if !CHILDTEX
-            (_PixelOfChildren*)ctx->ref->d_children_tex_array,
+                (_PixelOfChildren*)ctx->ref->d_children_tex_array,
 #endif
-            ctx->queries->d_addrs_tex_array,
-            ctx->queries->d_lengths_array,
-            page->begin,
-            page->end,
-            page->shadow_left,
-            page->shadow_right,
-            ctx->min_match_length
-            
+                ctx->queries->d_addrs_tex_array,
+                ctx->queries->d_lengths_array,
+                page->begin,
+                page->end,
+                page->shadow_left,
+                page->shadow_right,
+                ctx->min_match_length
+                
 #if TREE_ACCESS_HISTOGRAM
-            , ctx->ref->d_node_hist,
-            ctx->ref->d_child_hist
+                , ctx->ref->d_node_hist,
+                ctx->ref->d_child_hist
 #endif
-                                             );
-                                             
-    cudaThreadSynchronize();
-    
-    
-    
-    cudaError_t err = cudaGetLastError();
-    if ( cudaSuccess != err)
-    {
-        fprintf(stderr, "Kernel execution failed: %s.\n",
-                cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
+                                                 );
+                                                 
+        cudaThreadSynchronize();
+        
+        
+        
+        cudaError_t err = cudaGetLastError();
+        if ( cudaSuccess != err)
+        {
+            fprintf(stderr, "Kernel execution failed: %s.\n",
+                    cudaGetErrorString(err));
+            exit(EXIT_FAILURE);
+        }
     }
     
     startTimer(atimer);
@@ -1506,6 +1532,8 @@ int addMatchToBuffer(int left_in_ref, int qrypos, int matchlen);
 
 void getExactAlignments(MatchContext * ctx, ReferencePage * page, bool on_cpu)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
+
     assert(!ctx->reverse && !ctx->forwardreverse);
     
     size_t boardFreeMemory;
@@ -1541,6 +1569,7 @@ void getExactAlignments(MatchContext * ctx, ReferencePage * page, bool on_cpu)
     while (next_coord < last_coord)
     {
         // see how many queries will fit on the board
+        gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
         totalRounds++;
         
         unsigned int numMatches = 0;
@@ -1579,24 +1608,26 @@ void getExactAlignments(MatchContext * ctx, ReferencePage * page, bool on_cpu)
 			loadQueries(ctx);
 		}
 
-        char* ktimer = createTimer();
-	    startTimer(ktimer);
-		if (on_cpu)
-		{
-			runPrintOnCPU(ctx, page, h_matches, numMatches, 
-				h_alignments, numAlignments);
-		}
-		else
-		{
-			runPrintKernel(ctx, page, h_matches, numMatches, 
-				h_alignments, numAlignments);
-		}
-        stopTimer(ktimer);
+        {
+            char* ktimer = createTimer();
+            startTimer(ktimer);
+            if (on_cpu)
+            {
+                runPrintOnCPU(ctx, page, h_matches, numMatches, 
+                    h_alignments, numAlignments);
+            }
+            else
+            {
+                runPrintKernel(ctx, page, h_matches, numMatches, 
+                    h_alignments, numAlignments);
+            }
+            stopTimer(ktimer);
 
-	    float ktime = getTimerValue(ktimer);
-	    ctx->statistics.t_print_kernel += ktime;
-	    fprintf(stderr, "print kernel time= %f\n", ktime);
-		deleteTimer(ktimer);
+            float ktime = getTimerValue(ktimer);
+            ctx->statistics.t_print_kernel += ktime;
+            fprintf(stderr, "print kernel time= %f\n", ktime);
+            deleteTimer(ktimer);
+        }
 		
 		// char* stimer = createTimer();
 		// startTimer(stimer);
@@ -1616,52 +1647,55 @@ void getExactAlignments(MatchContext * ctx, ReferencePage * page, bool on_cpu)
 		//flushOutput();
 		
 		//Process the alignments
-		char* otimer = createTimer();
-	    startTimer(otimer);
-	
-        for (int m = 0; m < numMatches; m++)
-        {   
-            int base = h_matches[m].resultsoffset;
-            for (int i = 0; i < h_matches[m].numLeaves; i++)
-            {
-                // See if there are any more left maximal alignments for this match
-                if (h_alignments[base+i].left_in_ref == 0)
-                {
-                    break;
-                }
 
-				if (h_matches[m].queryid != lastqry)
-	            {
-	                lastqry = h_matches[m].queryid;
-	                addToBuffer("> ");
-	                addToBuffer(*(ctx->queries->h_names + lastqry));
-	                addToBuffer("\n");
-	            }
-                
-                sprintf(buf, "%d\t%d\t%d\n",
-                        h_alignments[base+i].left_in_ref,
-                        h_matches[m].qrystartpos + 1,
-                        h_alignments[base+i].matchlen);
-				addToBuffer(buf);
-				
-				// addMatchToBuffer(h_alignments[base+i].left_in_ref,
-				// 								 h_matches[m].qrystartpos + 1,
-				// 								h_alignments[base+i].matchlen);
-                
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::IO> scope;
+            char* otimer = createTimer();
+            startTimer(otimer);
+        
+            for (int m = 0; m < numMatches; m++)
+            {   
+                int base = h_matches[m].resultsoffset;
+                for (int i = 0; i < h_matches[m].numLeaves; i++)
+                {
+                    // See if there are any more left maximal alignments for this match
+                    if (h_alignments[base+i].left_in_ref == 0)
+                    {
+                        break;
+                    }
+
+                    if (h_matches[m].queryid != lastqry)
+                    {
+                        lastqry = h_matches[m].queryid;
+                        addToBuffer("> ");
+                        addToBuffer(*(ctx->queries->h_names + lastqry));
+                        addToBuffer("\n");
+                    }
+                    
+                    sprintf(buf, "%d\t%d\t%d\n",
+                            h_alignments[base+i].left_in_ref,
+                            h_matches[m].qrystartpos + 1,
+                            h_alignments[base+i].matchlen);
+                    addToBuffer(buf);
+                    
+                    // addMatchToBuffer(h_alignments[base+i].left_in_ref,
+                    // 								 h_matches[m].qrystartpos + 1,
+                    // 								h_alignments[base+i].matchlen);
+                    
+                }
             }
+            
+            
+            flushOutput();
+            
+            stopTimer(otimer);
+            ctx->statistics.t_results_to_disk += getTimerValue(otimer);
+            deleteTimer(otimer);
+		
+            free(h_matches);
+            free(h_alignments);
+            //cudaFreeHost((void*)h_alignments);
         }
-		
-        
-        flushOutput();
-        
-	    stopTimer(otimer);
-	    ctx->statistics.t_results_to_disk += getTimerValue(otimer);
-	    deleteTimer(otimer);
-		
-        free(h_matches);
-        free(h_alignments);
-		//cudaFreeHost((void*)h_alignments);
-        
     }
     free(ctx->results.h_coord_tex_array);
 	free(ctx->results.h_match_coords);
@@ -1674,6 +1708,7 @@ void getExactAlignments(MatchContext * ctx, ReferencePage * page, bool on_cpu)
 
 int getQueryBlock(MatchContext* ctx, size_t device_mem_avail)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::IO> scope;
     QuerySet* queries = ctx->queries;
     char * queryTex = NULL;
     int* queryAddrs = NULL;
@@ -1685,6 +1720,7 @@ int getQueryBlock(MatchContext* ctx, size_t device_mem_avail)
 
     fprintf(stderr, "Loading query block... ");
     
+
     char* queryreadtimer = createTimer();
     startTimer(queryreadtimer);
     
@@ -1740,6 +1776,7 @@ void destroyQueryBlock(QuerySet* queries)
 
 void resetStats(Statistics* stats)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     stats->t_end_to_end = 0.0;
     stats->t_match_kernel = 0.0;
     stats->t_print_kernel = 0.0;
@@ -1781,6 +1818,7 @@ void writeStatisticsFile(Statistics* stats,
 						 char* node_hist_filename = NULL, 
 						 char* child_hist_filename = NULL)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::IO> scope;
 	if (stats_filename)
 	{
    		FILE* f = fopen(stats_filename, "w");
@@ -2005,6 +2043,7 @@ void matchQueryBlockToReferencePage(MatchContext* ctx,
 								   ReferencePage* page,
 								   bool reverse_complement)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
 	char*  ktimer = createTimer();
 	
     fprintf(stderr, "Memory footprint is:\n\tqueries: %d\n\tref: %d\n\tresults: %d\n",
@@ -2095,6 +2134,7 @@ int getFreeDeviceMemory(bool on_cpu)
 
 int matchQueriesToReferencePage(MatchContext* ctx, ReferencePage* page)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
 	fprintf(stderr, "Beginning reference page %p\n", page);
    	
 	int free_mem = getFreeDeviceMemory(ctx->on_cpu);
@@ -2118,7 +2158,10 @@ int matchQueriesToReferencePage(MatchContext* ctx, ReferencePage* page)
 
     unloadReferenceString(ctx->ref);
     unloadReferenceTree(ctx);
-	lseek(ctx->queries->qfile, 0, SEEK_SET);
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::IO> scope;
+        lseek(ctx->queries->qfile, 0, SEEK_SET);
+    }
     return 0;
 }
 

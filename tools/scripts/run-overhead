@@ -289,7 +289,7 @@ EOS
     ),
 #     CUDATest.new("hybridsort", "release/src/samples/rodinia/cuda/hybridsort/hybridsort", "r"),
     CUDATest.new("lavaMD", "release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d 30"),
-#     CUDATest.new("mummergpu", "release/src/samples/rodinia/cuda/mummergpu/mummergpu", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
+    CUDATest.new("mummergpu", "release/src/samples/rodinia/cuda/mummergpu/mummergpu", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
 
 $kernelSplitTests = [

@@ -98,6 +98,11 @@ public:
     template<Type type>
     void switchTo()
     {
+        switchTo(type);
+    }
+
+    void switchTo(Type type)
+    {
         if (m_currentType != Type::None) {
             end(m_currentType);
         }
@@ -107,7 +112,30 @@ public:
         m_currentType = type;
     }
 
+    template<Type type>
+    class Scope {
+    public:
+        Scope()
+            : m_previousType(instance().currentType())
+        {
+            instance().switchTo(type);
+        }
+
+        ~Scope()
+        {
+            instance().switchTo(m_previousType);
+        }
+
+    private:
+        Type m_previousType { Type::None };
+    };
+
 private:
+    Type currentType() const
+    {
+        return m_currentType;
+    }
+
     void report(FILE* file, Type type, const std::string& prefix = "")
     {
         std::fprintf(file, "%sresult:us(%lld)\n", prefix.c_str(), static_cast<long long>(m_times[static_cast<int32_t>(type)].count()));
