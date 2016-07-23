@@ -36,7 +36,7 @@ set(CMAKE_CUDA_FLAGS "\
 #  ")
 # -Xptxas --warn-on-spills,--warn-on-local-memory-usage\
 
-set(GLOOP_CUDA_RUNTIME_LIBS cuda cudart_static;dl;rt;m;${CMAKE_THREAD_LIBS_INIT})
+set(GLOOP_CUDA_RUNTIME_LIBS cuda cudart;dl;rt;m;${CMAKE_THREAD_LIBS_INIT})
 link_directories(/usr/local/cuda-7.5/lib64)
 
 add_definitions(
