@@ -8,6 +8,7 @@
 #include <vector>
 #include <queue>
 #include <cstring>
+#include <gloop/statistics.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -2126,6 +2127,8 @@ int addToBuffer(char* string)
 
 void flushOutput()
 {
+   gloop::Statistics::Scope<gloop::Statistics::Type::IO> scope;
+
    if (bytes_written)
    {
 	  output_buf[bytes_written] = 0;
