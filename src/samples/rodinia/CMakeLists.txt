@@ -6,5 +6,8 @@ add_subdirectory(cuda/lavaMD)
 add_subdirectory(gloop/lavaMD)
 
 add_subdirectory(cuda/hybridsort)
+add_subdirectory(cuda/hybridsort-host)
 add_subdirectory(gloop/hybridsort)
+add_subdirectory(gloop/hybridsort-host)
 add_subdirectory(kernel/hybridsort)
+add_subdirectory(kernel/hybridsort-host)
