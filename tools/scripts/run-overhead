@@ -287,7 +287,7 @@ EOS
 /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.100
 EOS
     ),
-#     CUDATest.new("hybridsort", "release/src/samples/rodinia/cuda/hybridsort/hybridsort", "r"),
+    CUDATest.new("hybridsort", "release/src/samples/rodinia/cuda/hybridsort/hybridsort", "r"),
     CUDATest.new("lavaMD", "release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d 30"),
     CUDATest.new("mummergpu", "release/src/samples/rodinia/cuda/mummergpu/mummergpu", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
@@ -399,8 +399,8 @@ $kernelSplitTests = [
 /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.100
 EOS
     ),
-#     KernelSplitTest.new("hybridsort-kernel", "release/src/samples/rodinia/kernel/hybridsort/hybridsort-kernel", "r"),
-#     KernelSplitTest.new("mummergpu-kernel", "release/src/samples/rodinia/kernel/mummergpu/mummergpu-kernel", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
+    KernelSplitTest.new("hybridsort-kernel", "release/src/samples/rodinia/kernel/hybridsort/hybridsort-kernel", "r"),
+    KernelSplitTest.new("mummergpu-kernel", "release/src/samples/rodinia/kernel/mummergpu/mummergpu-kernel", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
 
 $gloopTests = [
@@ -510,7 +510,7 @@ $gloopTests = [
 /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.100
 EOS
     ),
-#     GLoopTest.new("hybridsort-gloop", "release/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r"),
+    GLoopTest.new("hybridsort-gloop", "release/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r"),
     GLoopTest.new("lavaMD-gloop", "release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d 30"),
     GLoopTest.new("mummergpu-gloop", "release/src/samples/rodinia/gloop/mummergpu/mummergpu-gloop", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]

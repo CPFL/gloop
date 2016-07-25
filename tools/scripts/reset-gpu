@@ -1,0 +1,24 @@
+#!/usr/bin/ruby
+# -*- coding: utf-8 -*-
+
+def systemAndDieIfFail cmd
+    status = system cmd
+    raise cmd if status != 0
+end
+
+def unload
+    systemAndDieIfFail "sudo rmmod nvidia_modeset"
+    systemAndDieIfFail "sudo rmmod nvidia_uvm"
+    systemAndDieIfFail "sudo rmmod nvidia"
+end
+
+def load
+    systemAndDieIfFail "sudo modprobe nvidia"
+    systemAndDieIfFail "sudo modprobe nvidia_uvm"
+    systemAndDieIfFail "sudo modprobe nvidia_modeset"
+end
+
+def main()
+end
+
+main() if __FILE__ == $0
