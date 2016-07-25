@@ -22,13 +22,13 @@ module NVIDIA
         systemAndDieIfFail "sudo modprobe nvidia_uvm"
 
         systemAndDieIfFail "sudo nvidia-smi -pm 1"
-        systemAndDieIfFail "sudo nvidia-smi -ac 3004,875"
+        # systemAndDieIfFail "sudo nvidia-smi -ac 3004,875"
         STDOUT.print "done\n"
     end
 end
 
 def main()
-    # NVIDIA::unload()
+    NVIDIA::unload()
     NVIDIA::load()
 end
 

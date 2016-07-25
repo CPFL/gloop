@@ -1,0 +1,23 @@
+#!/usr/bin/ruby
+# -*- coding: utf-8 -*-
+
+def systemAndDieIfFail cmd
+    status = system cmd
+    raise cmd if status != 0
+end
+
+module NVIDIA
+    def self.init
+        systemAndDieIfFail "sudo nvidia-smi -pm 1"
+        systemAndDieIfFail "sudo nvidia-smi -ac 3004,875"
+        STDOUT.print "done\n"
+    end
+end
+
+
+
+def main()
+    NVIDIA::init()
+end
+
+main() if __FILE__ == $0
