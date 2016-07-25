@@ -23,6 +23,7 @@
 */
 
 #include <gloop/gloop.h>
+#include <gloop/statistics.h>
 #include "bucketsort.cuh"
 
 static __global__ void bucketprefixoffsetKernel(unsigned int* d_prefixoffsets, unsigned int* d_offsets, int blocks)
@@ -42,6 +43,7 @@ static __global__ void bucketprefixoffsetKernel(unsigned int* d_prefixoffsets, u
 
 void bucketprefixoffsetGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 blocks, dim3 threads, unsigned int* d_prefixoffsets, unsigned int* d_offsets, int aBlocks)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
     std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
     bucketprefixoffsetKernel<<<blocks, threads, 0, hostLoop.pgraph()>>>(d_prefixoffsets, d_offsets, aBlocks);
     GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(hostLoop.pgraph()));

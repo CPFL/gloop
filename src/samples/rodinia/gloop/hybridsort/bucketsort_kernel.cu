@@ -23,6 +23,7 @@
 */
 
 #include <gloop/gloop.h>
+#include <gloop/statistics.h>
 #include "bucketsort.cuh"
 
 typedef gloop::Global LoopType;
@@ -52,6 +53,7 @@ static __device__ void bucketsortKernel(gloop::DeviceLoop<LoopType>* loop, float
 
 void bucketsortGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 blocks, dim3 threads, float* input, int* indice, float* output, int size, unsigned int* d_prefixoffsets, unsigned int* l_offsets)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
     hostLoop.launchWithSharedMemory<LoopType>(hostContext, dim3(90), blocks, threads, sizeof(unsigned int) * BUCKET_BLOCK_MEMORY, [] __device__ (gloop::DeviceLoop<LoopType>* loop, float* input, int* indice, float* output, int size, unsigned int* d_prefixoffsets, unsigned int* l_offsets) {
         bucketsortKernel(loop, input, indice, output, size, d_prefixoffsets, l_offsets);
     }, input, indice, output, size, d_prefixoffsets, l_offsets);

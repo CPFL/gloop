@@ -34,6 +34,7 @@
  */
 
 #include "histogram1024.cuh"
+#include <gloop/statistics.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // This is nvidias histogram256 SDK example modded to do a 1024 point
@@ -175,21 +176,26 @@ void histogram1024GPU(
     int dataN)
 {
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         checkCudaErrors(cudaMemset(d_Result1024, 0, HISTOGRAM_SIZE));
     }
 
-    hostLoop.launchWithSharedMemory<LoopType>(hostContext, dim3(BLOCK_N), dim3(BLOCK_N), dim3(THREAD_N), sizeof(unsigned int) * BLOCK_MEMORY, [] __device__(
-        gloop::DeviceLoop<LoopType>* loop,
-        unsigned int* d_Result,
-        float* d_Data,
-        float minimum,
-        float maximum,
-        int dataN
-        ) {
-        performHistogram(loop, d_Result, d_Data, minimum, maximum, dataN, 0);
-    }, d_Result1024, d_Data, minimum, maximum, dataN);
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+        hostLoop.launchWithSharedMemory<LoopType>(hostContext, dim3(BLOCK_N), dim3(BLOCK_N), dim3(THREAD_N), sizeof(unsigned int) * BLOCK_MEMORY, [] __device__(
+            gloop::DeviceLoop<LoopType>* loop,
+            unsigned int* d_Result,
+            float* d_Data,
+            float minimum,
+            float maximum,
+            int dataN
+            ) {
+            performHistogram(loop, d_Result, d_Data, minimum, maximum, dataN, 0);
+        }, d_Result1024, d_Data, minimum, maximum, dataN);
+    }
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         checkCudaErrors(cudaMemcpy(h_Result, d_Result1024, HISTOGRAM_SIZE, cudaMemcpyDeviceToHost));
     }

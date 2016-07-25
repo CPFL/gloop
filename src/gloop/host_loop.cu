@@ -190,7 +190,7 @@ void HostLoop::initialize()
         // initializeHostLoop<<<1, 1, 0, m_pgraph>>>();
         // cudaStreamSynchronize(m_pgraph);
         GLOOP_CUDA_SAFE_CALL(cudaMemcpyToSymbol(gloop::signal, &m_deviceSignal, sizeof(m_deviceSignal)));
-        GLOOP_DATA_LOG("clock rate:(%d)\n", m_deviceProperties.clockRate);
+        // GLOOP_DATA_LOG("clock rate:(%d)\n", m_deviceProperties.clockRate);
     }
 
     // Since kernel work is already held by kernel executing thread,

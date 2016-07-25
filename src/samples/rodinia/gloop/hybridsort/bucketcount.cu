@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <gloop/gloop.h>
+#include <gloop/statistics.h>
 
 texture<float, 1, cudaReadModeElementType> texPivot;
 
@@ -86,6 +87,7 @@ static __device__ void bucketcountKernel(gloop::DeviceLoop<gloop::Global>* loop,
 
 void bucketcountGPU(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 grid, dim3 threads, float* input, int* indice, unsigned int* d_prefixoffsets, int size)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
     hostLoop.launchWithSharedMemory<gloop::Global>(hostContext, dim3(360), grid, threads, sizeof(unsigned int) * BUCKET_BLOCK_MEMORY, [] __device__ (gloop::DeviceLoop<gloop::Global>* loop, float* input, int* indice, unsigned int* d_prefixoffsets, int size) {
         bucketcountKernel(loop, input, indice, d_prefixoffsets, size);
     }, input, indice, d_prefixoffsets, size);

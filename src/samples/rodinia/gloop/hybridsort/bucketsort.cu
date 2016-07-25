@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <gloop/gloop.h>
+#include <gloop/statistics.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Forward declarations
@@ -44,6 +45,7 @@ unsigned int* l_offsets = NULL;
 ////////////////////////////////////////////////////////////////////////////////
 void init_bucketsort(int listsize)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     h_offsets = (unsigned int*)malloc(histosize * sizeof(int));
     checkCudaErrors(cudaMalloc((void**)&d_offsets, histosize * sizeof(unsigned int)));
     pivotPoints = (float*)malloc(DIVISIONS * sizeof(float));
@@ -65,6 +67,7 @@ void init_bucketsort(int listsize)
 ////////////////////////////////////////////////////////////////////////////////
 void finish_bucketsort()
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     checkCudaErrors(cudaFree(d_indice));
     checkCudaErrors(cudaFree(d_offsets));
     checkCudaErrors(cudaFree(l_pivotpoints));
@@ -84,10 +87,12 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     int* sizes, int* nullElements, float minimum, float maximum,
     unsigned int* origOffsets)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     ////////////////////////////////////////////////////////////////////////////
     // First pass - Create 1024 bin histogram
     ////////////////////////////////////////////////////////////////////////////
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         checkCudaErrors(cudaMemset((void*)d_offsets, 0, histosize * sizeof(int)));
     }
@@ -106,6 +111,7 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     // Count the bucket sizes in new divisions
     ///////////////////////////////////////////////////////////////////////////
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         checkCudaErrors(cudaMemcpy(l_pivotpoints, pivotPoints, (DIVISIONS) * sizeof(int), cudaMemcpyHostToDevice));
         checkCudaErrors(cudaMemset((void*)d_offsets, 0, DIVISIONS * sizeof(int)));
@@ -131,6 +137,7 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
 
     // copy the sizes from device to host
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         cudaMemcpy(h_offsets, d_offsets, DIVISIONS * sizeof(int), cudaMemcpyDeviceToHost);
     }
@@ -159,6 +166,7 @@ void bucketSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, floa
     // Finally, sort the lot
     ///////////////////////////////////////////////////////////////////////////
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         cudaMemcpy(l_offsets, h_offsets, (DIVISIONS) * sizeof(int), cudaMemcpyHostToDevice);
         cudaMemset(d_output, 0x0, (listsize + (DIVISIONS * 4)) * sizeof(float));

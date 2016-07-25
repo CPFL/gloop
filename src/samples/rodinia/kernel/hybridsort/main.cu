@@ -129,19 +129,25 @@ int main(int argc, char** argv)
         }
 
         cout << "Sorting on GPU..." << flush;
-        Context context{
-            nullptr,
-            nullptr,
-        };
-        CUDA_SAFE_CALL(cudaMalloc(&context.device, sizeof(DeviceContext)));
-        CUDA_SAFE_CALL(cudaHostAlloc(&context.continuing, sizeof(int), cudaHostAllocMapped));
-        *context.continuing = 0;
-        CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, 4 << 30));
-        // GPU Sort
-        for (int i = 0; i < TEST; i++)
-            cudaSort(&context, cpu_idata, datamin, datamax, gpu_odata, numElements);
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
+            Context context{
+                nullptr,
+                nullptr,
+            };
+            CUDA_SAFE_CALL(cudaMalloc(&context.device, sizeof(DeviceContext)));
+            CUDA_SAFE_CALL(cudaHostAlloc(&context.continuing, sizeof(int), cudaHostAllocMapped));
+            *context.continuing = 0;
+            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, 4 << 30));
+            {
+                gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
+                // GPU Sort
+                for (int i = 0; i < TEST; i++)
+                    cudaSort(&context, cpu_idata, datamin, datamax, gpu_odata, numElements);
 
-        cout << "done.\n";
+                cout << "done.\n";
+            }
+        }
 
         {
             gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;

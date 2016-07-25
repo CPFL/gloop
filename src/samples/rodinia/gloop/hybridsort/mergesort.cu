@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <gloop/statistics.h>
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,6 +176,7 @@ float4* runMergeSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
     int* sizes, int* nullElements,
     unsigned int* origOffsets)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     int* startaddr = (int*)malloc((divisions + 1) * sizeof(int));
     int largestSize = -1;
     startaddr[0] = 0;
@@ -188,6 +190,7 @@ float4* runMergeSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
     // Setup texture
     cudaChannelFormatDesc channelDesc;
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         channelDesc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindFloat);
         tex.addressMode[0] = cudaAddressModeWrap;
@@ -208,6 +211,7 @@ float4* runMergeSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
     int blocks = ((listsize / 4) % THREADS == 0) ? (listsize / 4) / THREADS : (listsize / 4) / THREADS + 1;
     dim3 grid(blocks, 1);
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         cudaBindTexture(0, tex, d_origList, channelDesc, listsize * sizeof(float));
     }
@@ -217,6 +221,7 @@ float4* runMergeSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
     // Then, go level by level
     ////////////////////////////////////////////////////////////////////////////
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         cudaMemcpyToSymbol(constStartAddr, startaddr, (divisions + 1) * sizeof(int));
         cudaMemcpyToSymbol(finalStartAddr, origOffsets, (divisions + 1) * sizeof(int));
@@ -242,14 +247,18 @@ float4* runMergeSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
         d_origList = d_resultList;
         d_resultList = tempList;
         {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
             cudaBindTexture(0, tex, d_origList, channelDesc, listsize * sizeof(float));
         }
 
 #if 1
-        hostLoop.launchWithSharedMemory<LoopType>(hostContext, dim3(135), grid, threads, 0, [] __device__ (gloop::DeviceLoop<LoopType>* loop, float4* result, int nrElems, int threadsPerDiv) {
-            mergeSortPassInitialKernel(loop, result, nrElems, threadsPerDiv);
-        }, d_resultList, nrElems, threadsPerDiv);
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+            hostLoop.launchWithSharedMemory<LoopType>(hostContext, dim3(135), grid, threads, 0, [] __device__ (gloop::DeviceLoop<LoopType>* loop, float4* result, int nrElems, int threadsPerDiv) {
+                mergeSortPassInitialKernel(loop, result, nrElems, threadsPerDiv);
+            }, d_resultList, nrElems, threadsPerDiv);
+        }
 #endif
 
         nrElems *= 2;

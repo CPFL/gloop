@@ -23,6 +23,7 @@
 */
 #include "mergesort_inlines.cuh"
 #include "mergesort.cuh"
+#include <gloop/statistics.h>
 
 static __global__ void mergepackKernel(float* orig, float* result)
 {
@@ -36,6 +37,7 @@ static __global__ void mergepackKernel(float* orig, float* result)
 
 void mergepack(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext, dim3 grid, dim3 threads, float* d_resultList, float* d_origList)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
     std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
     mergepackKernel<<<grid, threads, 0, hostLoop.pgraph()>>>(d_resultList, d_origList);
     GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(hostLoop.pgraph()));
