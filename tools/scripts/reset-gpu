@@ -3,7 +3,7 @@
 
 def systemAndDieIfFail cmd
     status = system cmd
-    raise cmd if status != 0
+    # raise cmd if status != 0
 end
 
 module NVIDIA
