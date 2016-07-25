@@ -38,6 +38,8 @@
 // histogram
 ///////////////////////////////////////////////////////////////////////////////
 
+#include <gloop/statistics.h>
+
 //Total number of possible data values
 #define BIN_COUNT 1024 // Changed from 256
 #define HISTOGRAM_SIZE (BIN_COUNT * sizeof(unsigned int))
@@ -126,11 +128,13 @@ unsigned int *d_Result1024;
 
 //Internal memory allocation
 void initHistogram1024(void){
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     checkCudaErrors( cudaMalloc((void **)&d_Result1024, HISTOGRAM_SIZE ));
 }
 
 //Internal memory deallocation
 void closeHistogram1024(void){
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     checkCudaErrors( cudaFree(d_Result1024) );
 }
 
@@ -142,13 +146,23 @@ void histogram1024GPU(
 	float maximum,
     int dataN)
 {
-    checkCudaErrors( cudaMemset(d_Result1024, 0, HISTOGRAM_SIZE) );
-    histogram1024Kernel<<<BLOCK_N, THREAD_N>>>(
-        d_Result1024,
-        d_Data,
-		minimum,
-		maximum,
-        dataN
-    );
-    checkCudaErrors( cudaMemcpy(h_Result, d_Result1024, HISTOGRAM_SIZE, cudaMemcpyDeviceToHost) );
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+        checkCudaErrors( cudaMemset(d_Result1024, 0, HISTOGRAM_SIZE) );
+    }
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+        histogram1024Kernel<<<BLOCK_N, THREAD_N>>>(
+            d_Result1024,
+            d_Data,
+            minimum,
+            maximum,
+            dataN
+        );
+        cudaThreadSynchronize();
+    }
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+        checkCudaErrors( cudaMemcpy(h_Result, d_Result1024, HISTOGRAM_SIZE, cudaMemcpyDeviceToHost) );
+    }
 }

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <gloop/statistics.h>
 #include "mergesort.cuh"
 #include "mergesort_kernel.cu"
 ////////////////////////////////////////////////////////////////////////////////
@@ -22,6 +23,7 @@ float4* runMergeSort(int listsize, int divisions,
 				     int *sizes, int *nullElements,
 					 unsigned int *origOffsets)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
 	int *startaddr = (int *)malloc((divisions + 1)*sizeof(int)); 
 	int largestSize = -1; 
 	startaddr[0] = 0; 
@@ -33,11 +35,15 @@ float4* runMergeSort(int listsize, int divisions,
 	largestSize *= 4; 
 
 	// Setup texture
-	cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindFloat);
-	tex.addressMode[0] = cudaAddressModeWrap;
-	tex.addressMode[1] = cudaAddressModeWrap;
-	tex.filterMode = cudaFilterModePoint;
-	tex.normalized = false;
+    cudaChannelFormatDesc channelDesc;
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+        channelDesc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindFloat);
+        tex.addressMode[0] = cudaAddressModeWrap;
+        tex.addressMode[1] = cudaAddressModeWrap;
+        tex.filterMode = cudaFilterModePoint;
+        tex.normalized = false;
+    }
 
 	////////////////////////////////////////////////////////////////////////////
 	// First sort all float4 elements internally
@@ -50,15 +56,25 @@ float4* runMergeSort(int listsize, int divisions,
 	dim3 threads(THREADS, 1);
 	int blocks = ((listsize/4)%THREADS == 0) ? (listsize/4)/THREADS : (listsize/4)/THREADS + 1; 
 	dim3 grid(blocks, 1);
-	cudaBindTexture(0,tex, d_origList, channelDesc, listsize*sizeof(float)); 
-	mergeSortFirst<<< grid, threads >>>(d_resultList, listsize);
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+        cudaBindTexture(0,tex, d_origList, channelDesc, listsize*sizeof(float)); 
+    }
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+        mergeSortFirst<<< grid, threads >>>(d_resultList, listsize);
+        cudaThreadSynchronize();
+    }
 
-	////////////////////////////////////////////////////////////////////////////
-	// Then, go level by level
-	////////////////////////////////////////////////////////////////////////////
-	cudaMemcpyToSymbol(constStartAddr, startaddr, (divisions + 1)*sizeof(int)); 
-	cudaMemcpyToSymbol(finalStartAddr, origOffsets, (divisions + 1)*sizeof(int)); 
-	cudaMemcpyToSymbol(nullElems, nullElements, (divisions)*sizeof(int)); 
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+        ////////////////////////////////////////////////////////////////////////////
+        // Then, go level by level
+        ////////////////////////////////////////////////////////////////////////////
+        cudaMemcpyToSymbol(constStartAddr, startaddr, (divisions + 1)*sizeof(int)); 
+        cudaMemcpyToSymbol(finalStartAddr, origOffsets, (divisions + 1)*sizeof(int)); 
+        cudaMemcpyToSymbol(nullElems, nullElements, (divisions)*sizeof(int)); 
+    }
 	int nrElems = 2;
 	while(true){
 		int floatsperthread = (nrElems*4); 
@@ -82,8 +98,15 @@ float4* runMergeSort(int listsize, int divisions,
 		float4 *tempList = d_origList; 
 		d_origList = d_resultList; 
 		d_resultList = tempList; 
-		cudaBindTexture(0,tex, d_origList, channelDesc, listsize*sizeof(float)); 
-		mergeSortPass <<< grid, threads >>>(d_resultList, nrElems, threadsPerDiv); 
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+            cudaBindTexture(0,tex, d_origList, channelDesc, listsize*sizeof(float)); 
+        }
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+            mergeSortPass <<< grid, threads >>>(d_resultList, nrElems, threadsPerDiv); 
+            cudaThreadSynchronize();
+        }
 		nrElems *= 2; 
 		floatsperthread = (nrElems*4); 
 		if(threadsPerDiv == 1) break; 
@@ -100,7 +123,11 @@ float4* runMergeSort(int listsize, int divisions,
 			largestSize/threads.x : 
 			(largestSize/threads.x) + 1; 
 	grid.y = divisions; 
-	mergepack <<< grid, threads >>> ((float *)d_resultList, (float *)d_origList);
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+        mergepack <<< grid, threads >>> ((float *)d_resultList, (float *)d_origList);
+        cudaThreadSynchronize();
+    }
 
 	free(startaddr);
 	return d_origList; 
