@@ -6,19 +6,27 @@ def systemAndDieIfFail cmd
     raise cmd if status != 0
 end
 
-def unload
-    systemAndDieIfFail "sudo rmmod nvidia_modeset"
-    systemAndDieIfFail "sudo rmmod nvidia_uvm"
-    systemAndDieIfFail "sudo rmmod nvidia"
-end
+module NVIDIA
+    def self.unload
+        STDOUT.print "unloading..."
+        systemAndDieIfFail "sudo rmmod nvidia_modeset"
+        systemAndDieIfFail "sudo rmmod nvidia_uvm"
+        systemAndDieIfFail "sudo rmmod nvidia"
+        STDOUT.print "done\n"
+    end
 
-def load
-    systemAndDieIfFail "sudo modprobe nvidia"
-    systemAndDieIfFail "sudo modprobe nvidia_uvm"
-    systemAndDieIfFail "sudo modprobe nvidia_modeset"
+    def self.load
+        STDOUT.print "loading..."
+        systemAndDieIfFail "sudo modprobe nvidia"
+        systemAndDieIfFail "sudo modprobe nvidia_modeset"
+        systemAndDieIfFail "sudo modprobe nvidia_uvm"
+        STDOUT.print "done\n"
+    end
 end
 
 def main()
+    # NVIDIA::unload()
+    NVIDIA::load()
 end
 
 main() if __FILE__ == $0
