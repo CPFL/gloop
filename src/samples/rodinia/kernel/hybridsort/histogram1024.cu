@@ -35,6 +35,7 @@
 
 #include "histogram1024.cuh"
 #include <gloop/gloop.h>
+#include <gloop/statistics.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // This is nvidias histogram256 SDK example modded to do a 1024 point
@@ -135,12 +136,14 @@ unsigned int* d_Result1024;
 //Internal memory allocation
 void initHistogram1024(void)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     checkCudaErrors(cudaMalloc((void**)&d_Result1024, HISTOGRAM_SIZE));
 }
 
 //Internal memory deallocation
 void closeHistogram1024(void)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     checkCudaErrors(cudaFree(d_Result1024));
 }
 
@@ -154,18 +157,22 @@ void histogram1024GPU(
     int dataN)
 {
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         checkCudaErrors(cudaMemset(d_Result1024, 0, HISTOGRAM_SIZE));
     }
-
     int times = dataN / (BLOCK_N * THREAD_N);
     if ((times * (BLOCK_N * THREAD_N)) < dataN) {
         times += 1;
     }
-    for (int i = 0; i < times; ++i) {
-        performHistogram<<<dim3(BLOCK_N), dim3(THREAD_N)>>>(d_Result1024, d_Data, minimum, maximum, dataN, i);
-    }
-
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+        for (int i = 0; i < times; ++i) {
+            performHistogram<<<dim3(BLOCK_N), dim3(THREAD_N)>>>(d_Result1024, d_Data, minimum, maximum, dataN, i);
+        }
+        cudaThreadSynchronize();
+    }
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         checkCudaErrors(cudaMemcpy(h_Result, d_Result1024, HISTOGRAM_SIZE, cudaMemcpyDeviceToHost));
     }
 }

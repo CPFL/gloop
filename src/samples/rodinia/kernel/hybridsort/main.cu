@@ -3,19 +3,20 @@
 #define NOMINMAX
 #include <windows.h>
 #endif
-#include "context.cuh"
 #include "bucketsort.cuh"
+#include "context.cuh"
 #include "helper_cuda.h"
 #include "helper_timer.h"
 #include "mergesort.cuh"
 #include <float.h>
+#include <gloop/statistics.h>
+#include <gloop/initialize.cuh>
+#include <gloop/gloop.h>
 #include <iostream>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <gloop/gloop.h>
-#include <gloop/benchmark.h>
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,155 +49,169 @@ inline int compare(const void* a, const void* b)
 // Forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 void cudaSort(Context* context,
-        float* origList, float minimum, float maximum, float* resultList, int numElements);
+    float* origList, float minimum, float maximum, float* resultList, int numElements);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv)
 {
-    // Create timers for each sort
-    sdkCreateTimer(&uploadTimer);
-    sdkCreateTimer(&downloadTimer);
-    sdkCreateTimer(&bucketTimer);
-    sdkCreateTimer(&mergeTimer);
-    sdkCreateTimer(&totalTimer);
-    sdkCreateTimer(&cpuTimer);
-    int numElements = 0;
-    // Number of elements in the test bed
-    if (strcmp(argv[1], "r") == 0) {
-        numElements = SIZE;
-    }
-    else {
-        FILE* fp;
-        fp = fopen(argv[1], "r");
-        if (fp == NULL) {
-            cout << "Error reading file" << endl;
-            exit(EXIT_FAILURE);
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
+
+        // Create timers for each sort
+        sdkCreateTimer(&uploadTimer);
+        sdkCreateTimer(&downloadTimer);
+        sdkCreateTimer(&bucketTimer);
+        sdkCreateTimer(&mergeTimer);
+        sdkCreateTimer(&totalTimer);
+        sdkCreateTimer(&cpuTimer);
+        int numElements = 0;
+        // Number of elements in the test bed
+        if (strcmp(argv[1], "r") == 0) {
+            numElements = SIZE;
         }
-        int count = 0;
-        float c;
+        else {
+            gloop::Statistics::Scope<gloop::Statistics::Type::IO> scope;
+            FILE* fp;
+            fp = fopen(argv[1], "r");
+            if (fp == NULL) {
+                cout << "Error reading file" << endl;
+                exit(EXIT_FAILURE);
+            }
+            int count = 0;
+            float c;
 
-        while (fscanf(fp, "%f", &c) != EOF) {
-            count++;
+            while (fscanf(fp, "%f", &c) != EOF) {
+                count++;
+            }
+            fclose(fp);
+
+            numElements = count;
         }
-        fclose(fp);
+        cout << "Sorting list of " << numElements << " floats\n";
+        // Generate random data
+        // Memory space the list of random floats will take up
+        int mem_size = numElements * sizeof(float);
+        // Allocate enough for the input list
+        float* cpu_idata = (float*)malloc(mem_size);
+        // Allocate enough for the output list on the cpu side
+        float* cpu_odata = (float*)malloc(mem_size);
+        // Allocate enough memory for the output list on the gpu side
+        float* gpu_odata = (float*)malloc(mem_size);
 
-        numElements = count;
-    }
-    cout << "Sorting list of " << numElements << " floats\n";
-    // Generate random data
-    // Memory space the list of random floats will take up
-    int mem_size = numElements * sizeof(float);
-    // Allocate enough for the input list
-    float* cpu_idata = (float*)malloc(mem_size);
-    // Allocate enough for the output list on the cpu side
-    float* cpu_odata = (float*)malloc(mem_size);
-    // Allocate enough memory for the output list on the gpu side
-    float* gpu_odata = (float*)malloc(mem_size);
-
-    float datamin = FLT_MAX;
-    float datamax = -FLT_MAX;
-    if (strcmp(argv[1], "r") == 0) {
-        for (int i = 0; i < numElements; i++) {
-            // Generate random floats between 0 and 1 for the input data
-            cpu_idata[i] = ((float)rand() / RAND_MAX);
-            //Compare data at index to data minimum, if less than current minimum, set that element as new minimum
-            datamin = min(cpu_idata[i], datamin);
-            //Same as above but for maximum
-            datamax = max(cpu_idata[i], datamax);
+        float datamin = FLT_MAX;
+        float datamax = -FLT_MAX;
+        if (strcmp(argv[1], "r") == 0) {
+            for (int i = 0; i < numElements; i++) {
+                // Generate random floats between 0 and 1 for the input data
+                cpu_idata[i] = ((float)rand() / RAND_MAX);
+                //Compare data at index to data minimum, if less than current minimum, set that element as new minimum
+                datamin = min(cpu_idata[i], datamin);
+                //Same as above but for maximum
+                datamax = max(cpu_idata[i], datamax);
+            }
         }
-    }
-    else {
-        FILE* fp;
-        fp = fopen(argv[1], "r");
-        for (int i = 0; i < numElements; i++) {
-            fscanf(fp, "%f", &cpu_idata[i]);
-            datamin = min(cpu_idata[i], datamin);
-            datamax = max(cpu_idata[i], datamax);
+        else {
+            gloop::Statistics::Scope<gloop::Statistics::Type::IO> scope;
+            FILE* fp;
+            fp = fopen(argv[1], "r");
+            for (int i = 0; i < numElements; i++) {
+                fscanf(fp, "%f", &cpu_idata[i]);
+                datamin = min(cpu_idata[i], datamin);
+                datamax = max(cpu_idata[i], datamax);
+            }
         }
-    }
 
-    cout << "Sorting on GPU..." << flush;
-    gloop::Benchmark benchmark;
-    benchmark.begin();
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
+            gloop::eagerlyInitializeContext();
+        }
 
-    Context context {
-        nullptr,
-        nullptr,
-    };
-    CUDA_SAFE_CALL(cudaMalloc(&context.device, sizeof(DeviceContext)));
-    CUDA_SAFE_CALL(cudaHostAlloc(&context.continuing, sizeof(int), cudaHostAllocMapped));
-    *context.continuing = 0;
-    CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,4<<30));
-    // GPU Sort
-    for (int i = 0; i < TEST; i++)
-        cudaSort(&context, cpu_idata, datamin, datamax, gpu_odata, numElements);
+        cout << "Sorting on GPU..." << flush;
+        Context context{
+            nullptr,
+            nullptr,
+        };
+        CUDA_SAFE_CALL(cudaMalloc(&context.device, sizeof(DeviceContext)));
+        CUDA_SAFE_CALL(cudaHostAlloc(&context.continuing, sizeof(int), cudaHostAllocMapped));
+        *context.continuing = 0;
+        CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, 4 << 30));
+        // GPU Sort
+        for (int i = 0; i < TEST; i++)
+            cudaSort(&context, cpu_idata, datamin, datamax, gpu_odata, numElements);
 
-    benchmark.end();
-    benchmark.report(stderr);
-    cout << "done.\n";
+        cout << "done.\n";
+
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
+            gloop::eagerlyFinalizeContext();
+        }
+
 #ifdef VERIFY
-    cout << "Sorting on CPU..." << flush;
-    // CPU Sort
-    memcpy(cpu_odata, cpu_idata, mem_size);
-    sdkStartTimer(&cpuTimer);
-    qsort(cpu_odata, numElements, sizeof(float), compare);
-    sdkStopTimer(&cpuTimer);
-    cout << "done.\n";
-    cout << "Checking result..." << flush;
-    // Result checking
-    int count = 0;
-    for (int i = 0; i < numElements; i++)
-        if (cpu_odata[i] != gpu_odata[i]) {
-            printf("Sort missmatch on element %d: \n", i);
-            printf("CPU = %f : GPU = %f\n", cpu_odata[i], gpu_odata[i]);
-            count++;
-            break;
-        }
-    if (count == 0)
-        cout << "PASSED.\n";
-    else
-        cout << "FAILED.\n";
+        cout << "Sorting on CPU..." << flush;
+        // CPU Sort
+        memcpy(cpu_odata, cpu_idata, mem_size);
+        sdkStartTimer(&cpuTimer);
+        qsort(cpu_odata, numElements, sizeof(float), compare);
+        sdkStopTimer(&cpuTimer);
+        cout << "done.\n";
+        cout << "Checking result..." << flush;
+        // Result checking
+        int count = 0;
+        for (int i = 0; i < numElements; i++)
+            if (cpu_odata[i] != gpu_odata[i]) {
+                printf("Sort missmatch on element %d: \n", i);
+                printf("CPU = %f : GPU = %f\n", cpu_odata[i], gpu_odata[i]);
+                count++;
+                break;
+            }
+        if (count == 0)
+            cout << "PASSED.\n";
+        else
+            cout << "FAILED.\n";
 #endif
-    // Timer report
-    printf("GPU iterations: %d\n", TEST);
+        // Timer report
+        printf("GPU iterations: %d\n", TEST);
 #ifdef TIMER
 #ifdef VERIFY
-    printf("Average CPU execution time: %f ms\n", sdkGetTimerValue(&cpuTimer));
+        printf("Average CPU execution time: %f ms\n", sdkGetTimerValue(&cpuTimer));
 #endif
-    printf("Average GPU execution time: %f ms\n", sdkGetTimerValue(&totalTimer) / TEST);
-    printf("    - Upload		: %f ms\n", sdkGetTimerValue(&uploadTimer) / TEST);
-    printf("    - Download		: %f ms\n", sdkGetTimerValue(&downloadTimer) / TEST);
-    printf("    - Bucket sort	: %f ms\n", sdkGetTimerValue(&bucketTimer) / TEST);
-    printf("    - Merge sort	: %f ms\n", sdkGetTimerValue(&mergeTimer) / TEST);
+        printf("Average GPU execution time: %f ms\n", sdkGetTimerValue(&totalTimer) / TEST);
+        printf("    - Upload		: %f ms\n", sdkGetTimerValue(&uploadTimer) / TEST);
+        printf("    - Download		: %f ms\n", sdkGetTimerValue(&downloadTimer) / TEST);
+        printf("    - Bucket sort	: %f ms\n", sdkGetTimerValue(&bucketTimer) / TEST);
+        printf("    - Merge sort	: %f ms\n", sdkGetTimerValue(&mergeTimer) / TEST);
 #endif
 
 #ifdef OUTPUT
-    FILE* tp;
-    const char filename2[] = "./hybridoutput.txt";
-    tp = fopen(filename2, "w");
-    for (int i = 0; i < numElements; i++) {
-        fprintf(tp, "%f ", cpu_idata[i]);
-    }
+        FILE* tp;
+        const char filename2[] = "./hybridoutput.txt";
+        tp = fopen(filename2, "w");
+        for (int i = 0; i < numElements; i++) {
+            fprintf(tp, "%f ", cpu_idata[i]);
+        }
 
-    fclose(tp);
+        fclose(tp);
 #endif
 
-    // Release memory
-    sdkDeleteTimer(&uploadTimer);
-    sdkDeleteTimer(&downloadTimer);
-    sdkDeleteTimer(&bucketTimer);
-    sdkDeleteTimer(&mergeTimer);
-    sdkDeleteTimer(&totalTimer);
-    sdkDeleteTimer(&cpuTimer);
-    free(cpu_idata);
-    free(cpu_odata);
-    free(gpu_odata);
+        // Release memory
+        sdkDeleteTimer(&uploadTimer);
+        sdkDeleteTimer(&downloadTimer);
+        sdkDeleteTimer(&bucketTimer);
+        sdkDeleteTimer(&mergeTimer);
+        sdkDeleteTimer(&totalTimer);
+        sdkDeleteTimer(&cpuTimer);
+        free(cpu_idata);
+        free(cpu_odata);
+        free(gpu_odata);
+    }
+    gloop::Statistics::instance().report(stderr);
 }
 
 void cudaSort(Context* ctx, float* origList, float minimum, float maximum, float* resultList, int numElements)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     // Initialization and upload data
     float* d_input = NULL;
     float* d_output = NULL;
@@ -205,8 +220,11 @@ void cudaSort(Context* ctx, float* origList, float minimum, float maximum, float
     {
         cudaMalloc((void**)&d_input, mem_size);
         cudaMalloc((void**)&d_output, mem_size);
-        cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float), cudaMemcpyHostToDevice);
-        init_bucketsort(numElements);
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+            cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float), cudaMemcpyHostToDevice);
+            init_bucketsort(numElements);
+        }
     }
     sdkStopTimer(&uploadTimer);
 
@@ -237,6 +255,7 @@ void cudaSort(Context* ctx, float* origList, float minimum, float maximum, float
     // Download result
     sdkStartTimer(&downloadTimer);
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         checkCudaErrors(cudaMemcpy((void*)resultList,
             (void*)mergeresult, numElements * sizeof(float), cudaMemcpyDeviceToHost));
     }

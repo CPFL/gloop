@@ -22,6 +22,7 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <gloop/gloop.h>
+#include <gloop/statistics.h>
 #include "mergesort.cuh"
 #include "mergesort_inlines.cuh"
 
@@ -39,5 +40,7 @@ static __global__ void mergeSortFirstKernel(float4* result, int listsize)
 
 void mergeSortFirst(Context* ctx, dim3 grid, dim3 threads, float4* result, int listsize)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
     mergeSortFirstKernel<<<grid, threads>>>(result, listsize);
+    cudaThreadSynchronize();
 }

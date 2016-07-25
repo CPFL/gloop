@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <gloop/gloop.h>
+#include <gloop/statistics.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Forward declarations
@@ -44,6 +45,7 @@ unsigned int* l_offsets = NULL;
 ////////////////////////////////////////////////////////////////////////////////
 void init_bucketsort(int listsize)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     h_offsets = (unsigned int*)malloc(histosize * sizeof(int));
     checkCudaErrors(cudaMalloc((void**)&d_offsets, histosize * sizeof(unsigned int)));
     pivotPoints = (float*)malloc(DIVISIONS * sizeof(float));
@@ -65,6 +67,7 @@ void init_bucketsort(int listsize)
 ////////////////////////////////////////////////////////////////////////////////
 void finish_bucketsort()
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     checkCudaErrors(cudaFree(d_indice));
     checkCudaErrors(cudaFree(d_offsets));
     checkCudaErrors(cudaFree(l_pivotpoints));
@@ -84,10 +87,12 @@ void bucketSort(Context* ctx, float* d_input, float* d_output, int listsize,
     int* sizes, int* nullElements, float minimum, float maximum,
     unsigned int* origOffsets)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     ////////////////////////////////////////////////////////////////////////////
     // First pass - Create 1024 bin histogram
     ////////////////////////////////////////////////////////////////////////////
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         checkCudaErrors(cudaMemset((void*)d_offsets, 0, histosize * sizeof(int)));
     }
     histogram1024GPU(ctx, h_offsets, d_input, minimum, maximum, listsize);
@@ -105,6 +110,7 @@ void bucketSort(Context* ctx, float* d_input, float* d_output, int listsize,
     // Count the bucket sizes in new divisions
     ///////////////////////////////////////////////////////////////////////////
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         checkCudaErrors(cudaMemcpy(l_pivotpoints, pivotPoints, (DIVISIONS) * sizeof(int), cudaMemcpyHostToDevice));
         checkCudaErrors(cudaMemset((void*)d_offsets, 0, DIVISIONS * sizeof(int)));
         checkCudaErrors(cudaBindTexture(0, texPivot, l_pivotpoints, DIVISIONS * sizeof(int)));
@@ -113,22 +119,28 @@ void bucketSort(Context* ctx, float* d_input, float* d_output, int listsize,
     dim3 threads(BUCKET_THREAD_N, 1);
     int blocks = ((listsize - 1) / (threads.x * BUCKET_BAND)) + 1;
     dim3 grid(blocks, 1);
-    // Find the new indice for all elements
-    bucketcountGPU(ctx, grid, threads, d_input, d_indice, d_prefixoffsets, listsize);
-///////////////////////////////////////////////////////////////////////////
-// Prefix scan offsets and align each division to float4 (required by
-// mergesort)
-///////////////////////////////////////////////////////////////////////////
-#ifdef BUCKET_WG_SIZE_0
-    threads.x = BUCKET_WG_SIZE_0;
-#else
-    threads.x = 128;
-#endif
-    grid.x = DIVISIONS / threads.x;
-    bucketprefixoffsetGPU(ctx, grid, threads, d_prefixoffsets, d_offsets, blocks);
 
-    // copy the sizes from device to host
     {
+        // Find the new indice for all elements
+        gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+        bucketcountGPU(ctx, grid, threads, d_input, d_indice, d_prefixoffsets, listsize);
+    ///////////////////////////////////////////////////////////////////////////
+    // Prefix scan offsets and align each division to float4 (required by
+    // mergesort)
+    ///////////////////////////////////////////////////////////////////////////
+#ifdef BUCKET_WG_SIZE_0
+        threads.x = BUCKET_WG_SIZE_0;
+#else
+        threads.x = 128;
+#endif
+        grid.x = DIVISIONS / threads.x;
+        bucketprefixoffsetGPU(ctx, grid, threads, d_prefixoffsets, d_offsets, blocks);
+        cudaThreadSynchronize();
+    }
+
+    {
+        // copy the sizes from device to host
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         cudaMemcpy(h_offsets, d_offsets, DIVISIONS * sizeof(int), cudaMemcpyDeviceToHost);
     }
 
@@ -156,13 +168,18 @@ void bucketSort(Context* ctx, float* d_input, float* d_output, int listsize,
     // Finally, sort the lot
     ///////////////////////////////////////////////////////////////////////////
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         cudaMemcpy(l_offsets, h_offsets, (DIVISIONS) * sizeof(int), cudaMemcpyHostToDevice);
         cudaMemset(d_output, 0x0, (listsize + (DIVISIONS * 4)) * sizeof(float));
     }
     threads.x = BUCKET_THREAD_N;
     blocks = ((listsize - 1) / (threads.x * BUCKET_BAND)) + 1;
     grid.x = blocks;
-    bucketsortGPU(ctx, grid, threads, d_input, d_indice, d_output, listsize, d_prefixoffsets, l_offsets);
+
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+        bucketsortGPU(ctx, grid, threads, d_input, d_indice, d_output, listsize, d_prefixoffsets, l_offsets);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

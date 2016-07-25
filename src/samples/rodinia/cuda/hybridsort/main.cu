@@ -224,8 +224,7 @@ void cudaSort(float* origList, float minimum, float maximum,
     int* sizes = (int*)malloc(DIVISIONS * sizeof(int));
     int* nullElements = (int*)malloc(DIVISIONS * sizeof(int));
     unsigned int* origOffsets = (unsigned int*)malloc((DIVISIONS + 1) * sizeof(int));
-    bucketSort(d_input, d_output, numElements, sizes, nullElements,
-        minimum, maximum, origOffsets);
+    bucketSort(d_input, d_output, numElements, sizes, nullElements, minimum, maximum, origOffsets);
     sdkStopTimer(&bucketTimer);
 
     // Mergesort the result
@@ -237,8 +236,7 @@ void cudaSort(float* origList, float minimum, float maximum,
     for (int i = 0; i < DIVISIONS; i++)
         newlistsize += sizes[i] * 4;
 
-    float4* mergeresult = runMergeSort(newlistsize, DIVISIONS, d_origList, d_resultList,
-        sizes, nullElements, origOffsets); //d_origList;
+    float4* mergeresult = runMergeSort(newlistsize, DIVISIONS, d_origList, d_resultList, sizes, nullElements, origOffsets); //d_origList;
     sdkStopTimer(&mergeTimer);
     sdkStopTimer(&totalTimer);
 
@@ -252,9 +250,11 @@ void cudaSort(float* origList, float minimum, float maximum,
     sdkStopTimer(&downloadTimer);
 
     // Clean up
-    finish_bucketsort();
-    cudaFree(d_input);
-    cudaFree(d_output);
+    {
+        finish_bucketsort();
+        cudaFree(d_input);
+        cudaFree(d_output);
+    }
     free(nullElements);
     free(sizes);
 }

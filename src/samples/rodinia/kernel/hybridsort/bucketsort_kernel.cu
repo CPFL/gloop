@@ -51,4 +51,5 @@ static __global__ void bucketsortKernel(float* input, int* indice, float* output
 void bucketsortGPU(Context*, dim3 blocks, dim3 threads, float* input, int* indice, float* output, int size, unsigned int* d_prefixoffsets, unsigned int* l_offsets)
 {
     bucketsortKernel<<<blocks, threads>>>(input, indice, output, size, d_prefixoffsets, l_offsets);
+    cudaThreadSynchronize();
 }

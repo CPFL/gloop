@@ -21,6 +21,7 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include <gloop/statistics.h>
 #include "mergesort_inlines.cuh"
 #include "mergesort.cuh"
 
@@ -36,5 +37,7 @@ static __global__ void mergepackKernel(float* orig, float* result)
 
 void mergepack(Context*, dim3 grid, dim3 threads, float* d_resultList, float* d_origList)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
     mergepackKernel<<<grid, threads>>>(d_resultList, d_origList);
+    cudaThreadSynchronize();
 }

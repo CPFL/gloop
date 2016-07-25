@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <gloop/sync_read_write.h>
+#include <gloop/statistics.h>
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,6 +185,7 @@ float4* runMergeSort(Context* ctx, int listsize, int divisions,
     int* sizes, int* nullElements,
     unsigned int* origOffsets)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     int* startaddr = (int*)malloc((divisions + 1) * sizeof(int));
     int largestSize = -1;
     startaddr[0] = 0;
@@ -197,6 +199,7 @@ float4* runMergeSort(Context* ctx, int listsize, int divisions,
     // Setup texture
     cudaChannelFormatDesc channelDesc;
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         channelDesc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindFloat);
         tex.addressMode[0] = cudaAddressModeWrap;
         tex.addressMode[1] = cudaAddressModeWrap;
@@ -216,6 +219,7 @@ float4* runMergeSort(Context* ctx, int listsize, int divisions,
     int blocks = ((listsize / 4) % THREADS == 0) ? (listsize / 4) / THREADS : (listsize / 4) / THREADS + 1;
     dim3 grid(blocks, 1);
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         cudaBindTexture(0, tex, d_origList, channelDesc, listsize * sizeof(float));
     }
     mergeSortFirst(ctx, grid, threads, d_resultList, listsize);
@@ -224,6 +228,7 @@ float4* runMergeSort(Context* ctx, int listsize, int divisions,
     // Then, go level by level
     ////////////////////////////////////////////////////////////////////////////
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         cudaMemcpyToSymbol(constStartAddr, startaddr, (divisions + 1) * sizeof(int));
         cudaMemcpyToSymbol(finalStartAddr, origOffsets, (divisions + 1) * sizeof(int));
         cudaMemcpyToSymbol(nullElems, nullElements, (divisions) * sizeof(int));
@@ -248,20 +253,24 @@ float4* runMergeSort(Context* ctx, int listsize, int divisions,
         d_origList = d_resultList;
         d_resultList = tempList;
         {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
             cudaBindTexture(0, tex, d_origList, channelDesc, listsize * sizeof(float));
         }
 
-        gloop::syncWrite<unsigned int>(ctx->continuing, 0);
-        mergeSortPassInitialKernel<<<grid, threads>>>(*ctx, d_resultList, nrElems, threadsPerDiv);
-        cudaThreadSynchronize();
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+            gloop::syncWrite<unsigned int>(ctx->continuing, 0);
+            mergeSortPassInitialKernel<<<grid, threads>>>(*ctx, d_resultList, nrElems, threadsPerDiv);
+            cudaThreadSynchronize();
 
 #if 1
-        for (int i = 0; gloop::readNoCache<unsigned int>(ctx->continuing); ++i) {
-            gloop::syncWrite<unsigned int>(ctx->continuing, 0);
-            mergeSortPassSecondKernel<<<grid, threads>>>(*ctx, d_resultList, nrElems, threadsPerDiv, i);
-            cudaThreadSynchronize();
-        }
+            for (int i = 0; gloop::readNoCache<unsigned int>(ctx->continuing); ++i) {
+                gloop::syncWrite<unsigned int>(ctx->continuing, 0);
+                mergeSortPassSecondKernel<<<grid, threads>>>(*ctx, d_resultList, nrElems, threadsPerDiv, i);
+                cudaThreadSynchronize();
+            }
 #endif
+        }
 
         nrElems *= 2;
         floatsperthread = (nrElems * 4);

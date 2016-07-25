@@ -122,6 +122,7 @@ void bucketSort(float *d_input, float *d_output, int listsize,
         // Find the new indice for all elements
         gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
         bucketcount <<< grid, threads >>>(d_input, d_indice, d_prefixoffsets, listsize);
+
         ///////////////////////////////////////////////////////////////////////////
         // Prefix scan offsets and align each division to float4 (required by 
         // mergesort)
