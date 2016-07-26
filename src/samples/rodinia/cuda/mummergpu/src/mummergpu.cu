@@ -584,6 +584,7 @@ void loadReferenceTexture(MatchContext* ctx)
 
 void unloadReferenceString(Reference* ref)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
 #if REFTEX
    CUDA_SAFE_CALL(cudaUnbindTexture( reftex ) );
 #endif
@@ -599,6 +600,7 @@ void unloadReferenceString(Reference* ref)
 
 void unloadReferenceTree(MatchContext* ctx)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
    Reference* ref = ctx->ref;
 
 #if REORDER_TREE
@@ -1143,6 +1145,7 @@ void loadResultBuffer(MatchContext* ctx)
 
 
 void unloadResultBuffer(MatchContext* ctx) {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
     CUDA_SAFE_CALL(cudaFree(ctx->results.d_match_coords));
     ctx->results.d_match_coords = NULL;
     ctx->results.bytes_on_board = 0;
@@ -2117,8 +2120,11 @@ int getFreeDeviceMemory(bool on_cpu)
 	// We have to 'prime' CUDA by making an allocation here.  cuMemGetInfo 
 	// will return zeroes until we do a malloc.
 	int * p = NULL;
-	CUDA_SAFE_CALL(cudaMalloc((void**)&p, sizeof(int)));
-	CUDA_SAFE_CALL(cudaFree(p));
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+        CUDA_SAFE_CALL(cudaMalloc((void**)&p, sizeof(int)));
+        CUDA_SAFE_CALL(cudaFree(p));
+    }
 	if (!on_cpu) {
 
         boardMemory(&free_mem, &total_mem);

@@ -576,6 +576,7 @@ void loadReferenceTexture(MatchContext* ctx)
 
 void unloadReferenceString(Reference* ref)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
 #if REFTEX
     CUDA_SAFE_CALL(cudaUnbindTexture(reftex));
 #endif
@@ -591,6 +592,7 @@ void unloadReferenceString(Reference* ref)
 
 void unloadReferenceTree(MatchContext* ctx)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
     Reference* ref = ctx->ref;
 
 #if REORDER_TREE
@@ -1105,6 +1107,7 @@ void loadResultBuffer(MatchContext* ctx)
 
 void unloadResultBuffer(MatchContext* ctx)
 {
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
     CUDA_SAFE_CALL(cudaFree(ctx->results.d_match_coords));
     ctx->results.d_match_coords = NULL;
     ctx->results.bytes_on_board = 0;
@@ -2016,6 +2019,7 @@ int getFreeDeviceMemory(MatchContext* ctx, bool on_cpu)
     int* p = NULL;
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(ctx->hostLoop->kernelLock());
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         CUDA_SAFE_CALL(cudaMalloc((void**)&p, sizeof(int)));
         CUDA_SAFE_CALL(cudaFree(p));
     }
