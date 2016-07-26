@@ -126,7 +126,10 @@ int main(int argc, char** argv)
             gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
             gloop::eagerlyInitializeContext();
         }
-        cudaMallocHost((void**)&gpu_odata, mem_size);
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+            cudaMallocHost((void**)&gpu_odata, mem_size);
+        }
 
         cout << "Sorting on GPU..." << flush;
         // GPU Sort
@@ -196,7 +199,10 @@ int main(int argc, char** argv)
         free(cpu_idata);
         free(cpu_odata);
         // free(gpu_odata);
-        cudaFreeHost(gpu_odata);
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+            cudaFreeHost(gpu_odata);
+        }
     }
     gloop::Statistics::instance().report(stderr);
 }
@@ -210,10 +216,10 @@ void cudaSort(float* origList, float minimum, float maximum,
     float* d_output = NULL;
     int mem_size = (numElements + DIVISIONS * 4) * sizeof(float);
     sdkStartTimer(&uploadTimer);
-    cudaMalloc((void**)&d_input, mem_size);
-    cudaMalloc((void**)&d_output, mem_size);
     {
         gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+        cudaMalloc((void**)&d_input, mem_size);
+        cudaMalloc((void**)&d_output, mem_size);
         cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float),
             cudaMemcpyHostToDevice);
         init_bucketsort(numElements);
@@ -255,8 +261,11 @@ void cudaSort(float* origList, float minimum, float maximum,
     // Clean up
     {
         finish_bucketsort();
-        cudaFree(d_input);
-        cudaFree(d_output);
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+            cudaFree(d_input);
+            cudaFree(d_output);
+        }
     }
     free(nullElements);
     free(sizes);

@@ -207,10 +207,10 @@ void cudaSort(float* origList, float minimum, float maximum,
     float* d_output = NULL;
     int mem_size = (numElements + DIVISIONS * 4) * sizeof(float);
     sdkStartTimer(&uploadTimer);
-    cudaMalloc((void**)&d_input, mem_size);
-    cudaMalloc((void**)&d_output, mem_size);
     {
         gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+        cudaMalloc((void**)&d_input, mem_size);
+        cudaMalloc((void**)&d_output, mem_size);
         cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float),
             cudaMemcpyHostToDevice);
         init_bucketsort(numElements);
@@ -252,8 +252,12 @@ void cudaSort(float* origList, float minimum, float maximum,
     // Clean up
     {
         finish_bucketsort();
-        cudaFree(d_input);
-        cudaFree(d_output);
+
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+            cudaFree(d_input);
+            cudaFree(d_output);
+        }
     }
     free(nullElements);
     free(sizes);

@@ -136,7 +136,10 @@ int main(int argc, char** argv)
                 nullptr,
                 nullptr,
             };
-            CUDA_SAFE_CALL(cudaMallocHost((void**)&gpu_odata, mem_size));
+            {
+                gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+                CUDA_SAFE_CALL(cudaMallocHost((void**)&gpu_odata, mem_size));
+            }
             CUDA_SAFE_CALL(cudaMalloc(&context.device, sizeof(DeviceContext)));
             CUDA_SAFE_CALL(cudaHostAlloc(&context.continuing, sizeof(int), cudaHostAllocMapped));
             *context.continuing = 0;
@@ -207,7 +210,10 @@ int main(int argc, char** argv)
         sdkDeleteTimer(&cpuTimer);
         free(cpu_idata);
         free(cpu_odata);
-        cudaFreeHost(gpu_odata);
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+            cudaFreeHost(gpu_odata);
+        }
 
         {
             gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
@@ -226,13 +232,11 @@ void cudaSort(Context* ctx, float* origList, float minimum, float maximum, float
     int mem_size = (numElements + DIVISIONS * 4) * sizeof(float);
     sdkStartTimer(&uploadTimer);
     {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         cudaMalloc((void**)&d_input, mem_size);
         cudaMalloc((void**)&d_output, mem_size);
-        {
-            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
-            cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float), cudaMemcpyHostToDevice);
-            init_bucketsort(numElements);
-        }
+        cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float), cudaMemcpyHostToDevice);
+        init_bucketsort(numElements);
     }
     sdkStopTimer(&uploadTimer);
 
@@ -272,8 +276,12 @@ void cudaSort(Context* ctx, float* origList, float minimum, float maximum, float
     // Clean up
     {
         finish_bucketsort();
-        cudaFree(d_input);
-        cudaFree(d_output);
+
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+            cudaFree(d_input);
+            cudaFree(d_output);
+        }
     }
     free(nullElements);
     free(sizes);

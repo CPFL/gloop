@@ -207,14 +207,11 @@ void cudaSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
     sdkStartTimer(&uploadTimer);
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         cudaMalloc((void**)&d_input, mem_size);
         cudaMalloc((void**)&d_output, mem_size);
-
-        {
-            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
-            cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float), cudaMemcpyHostToDevice);
-            init_bucketsort(numElements);
-        }
+        cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float), cudaMemcpyHostToDevice);
+        init_bucketsort(numElements);
     }
     sdkStopTimer(&uploadTimer);
 
@@ -256,8 +253,12 @@ void cudaSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         finish_bucketsort();
-        cudaFree(d_input);
-        cudaFree(d_output);
+
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+            cudaFree(d_input);
+            cudaFree(d_output);
+        }
     }
     free(nullElements);
     free(sizes);

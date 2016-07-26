@@ -127,7 +127,10 @@ int main(int argc, char** argv)
             gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
             std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
             std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(480));
-            cudaMallocHost((void**)&gpu_odata, mem_size);
+            {
+                gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+                cudaMallocHost((void**)&gpu_odata, mem_size);
+            }
             CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,512<<20));
             {
                 gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
@@ -194,7 +197,11 @@ int main(int argc, char** argv)
         free(cpu_idata);
         free(cpu_odata);
         // free(gpu_odata);
-        cudaFreeHost(gpu_odata);
+
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+            cudaFreeHost(gpu_odata);
+        }
     }
     gloop::Statistics::instance().report(stderr);
 }
@@ -210,14 +217,12 @@ void cudaSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
     sdkStartTimer(&uploadTimer);
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
         cudaMalloc((void**)&d_input, mem_size);
         cudaMalloc((void**)&d_output, mem_size);
 
-        {
-            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
-            cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float), cudaMemcpyHostToDevice);
-            init_bucketsort(numElements);
-        }
+        cudaMemcpy((void*)d_input, (void*)origList, numElements * sizeof(float), cudaMemcpyHostToDevice);
+        init_bucketsort(numElements);
     }
     sdkStopTimer(&uploadTimer);
 
@@ -259,8 +264,11 @@ void cudaSort(gloop::HostLoop& hostLoop, gloop::HostContext& hostContext,
     {
         std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop.kernelLock());
         finish_bucketsort();
-        cudaFree(d_input);
-        cudaFree(d_output);
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+            cudaFree(d_input);
+            cudaFree(d_output);
+        }
     }
     free(nullElements);
     free(sizes);

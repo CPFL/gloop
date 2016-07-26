@@ -47,17 +47,19 @@ void init_bucketsort(int listsize)
 {
     gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
     h_offsets = (unsigned int*)malloc(histosize * sizeof(int));
-    checkCudaErrors(cudaMalloc((void**)&d_offsets, histosize * sizeof(unsigned int)));
     pivotPoints = (float*)malloc(DIVISIONS * sizeof(float));
-
-    checkCudaErrors(cudaMalloc((void**)&d_indice, listsize * sizeof(int)));
     historesult = (float*)malloc(histosize * sizeof(float));
 
-    checkCudaErrors(cudaMalloc((void**)&l_pivotpoints, DIVISIONS * sizeof(float)));
-    checkCudaErrors(cudaMalloc((void**)&l_offsets, DIVISIONS * sizeof(int)));
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+        checkCudaErrors(cudaMalloc((void**)&d_offsets, histosize * sizeof(unsigned int)));
+        checkCudaErrors(cudaMalloc((void**)&d_indice, listsize * sizeof(int)));
+        checkCudaErrors(cudaMalloc((void**)&l_pivotpoints, DIVISIONS * sizeof(float)));
+        checkCudaErrors(cudaMalloc((void**)&l_offsets, DIVISIONS * sizeof(int)));
 
-    int blocks = ((listsize - 1) / (BUCKET_THREAD_N * BUCKET_BAND)) + 1;
-    checkCudaErrors(cudaMalloc((void**)&d_prefixoffsets, blocks * BUCKET_BLOCK_MEMORY * sizeof(int)));
+        int blocks = ((listsize - 1) / (BUCKET_THREAD_N * BUCKET_BAND)) + 1;
+        checkCudaErrors(cudaMalloc((void**)&d_prefixoffsets, blocks * BUCKET_BLOCK_MEMORY * sizeof(int)));
+    }
 
     initHistogram1024();
 }
@@ -68,14 +70,18 @@ void init_bucketsort(int listsize)
 void finish_bucketsort()
 {
     gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
-    checkCudaErrors(cudaFree(d_indice));
-    checkCudaErrors(cudaFree(d_offsets));
-    checkCudaErrors(cudaFree(l_pivotpoints));
-    checkCudaErrors(cudaFree(l_offsets));
     free(pivotPoints);
     free(h_offsets);
     free(historesult);
-    checkCudaErrors(cudaFree(d_prefixoffsets));
+
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
+        checkCudaErrors(cudaFree(d_indice));
+        checkCudaErrors(cudaFree(d_offsets));
+        checkCudaErrors(cudaFree(l_pivotpoints));
+        checkCudaErrors(cudaFree(l_offsets));
+        checkCudaErrors(cudaFree(d_prefixoffsets));
+    }
     closeHistogram1024();
 }
 

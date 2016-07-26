@@ -136,14 +136,14 @@ unsigned int* d_Result1024;
 //Internal memory allocation
 void initHistogram1024(void)
 {
-    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
     checkCudaErrors(cudaMalloc((void**)&d_Result1024, HISTOGRAM_SIZE));
 }
 
 //Internal memory deallocation
 void closeHistogram1024(void)
 {
-    gloop::Statistics::Scope<gloop::Statistics::Type::DataInit> scope;
+    gloop::Statistics::Scope<gloop::Statistics::Type::Copy> scope;
     checkCudaErrors(cudaFree(d_Result1024));
 }
 
