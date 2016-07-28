@@ -96,8 +96,8 @@ int main( int argc, char** argv)
             grep_text(loop, src, out, dbs);
         }, d_filenames[0], d_filenames[1], d_filenames[2]);
         benchmark.end();
-        printf("[%d] ", id);
-        benchmark.report();
+        fprintf(stderr, "[%d] ", id);
+        benchmark.report(stderr);
     }
 	if (d_filenames) free(d_filenames);
 	return 0;
