@@ -47,20 +47,20 @@ __device__ void get_row(gloop::DeviceLoop<>* loop, uchar** cur_page_ptr, size_t*
         return;
     }
 
+    int mapsize = (max_file_size-req_file_offset)>GLOOP_PAGE_SIZE?GLOOP_PAGE_SIZE:(max_file_size-req_file_offset);
     BEGIN_SINGLE_THREAD
     {
-        int mapsize = (max_file_size-req_file_offset)>GLOOP_PAGE_SIZE?GLOOP_PAGE_SIZE:(max_file_size-req_file_offset);
 
         *cur_page_offset=(req_file_offset& (~(GLOOP_PAGE_SIZE-1)));// round to the beg. of the page
         *isFilled = true;
-        gloop::fs::read(loop, fd, *cur_page_offset, mapsize, (unsigned char*)*cur_page_ptr, [=](gloop::DeviceLoop<>* loop, int bytesRead) {
+    }
+    END_SINGLE_THREAD
+    gloop::fs::read(loop, fd, *cur_page_offset, mapsize, (unsigned char*)*cur_page_ptr, [=](gloop::DeviceLoop<>* loop, int bytesRead) {
 //             BEGIN_SINGLE_THREAD
 //                 printf("db:(%d),data:(%d),offset:(%u),checksum:(%04x)\n", db_idx, id, (unsigned)(*cur_page_offset), (unsigned)checksum((const uint8_t*)*cur_page_ptr, mapsize));
 //             END_SINGLE_THREAD
-            callback(loop, (float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
-        });
-    }
-    END_SINGLE_THREAD
+        callback(loop, (float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
+    });
 }
 
 GLOOP_ALWAYS_INLINE __device__ float inner_product( float* a, float* b, int size)
