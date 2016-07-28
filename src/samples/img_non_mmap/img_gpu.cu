@@ -66,7 +66,7 @@ __device__ void get_row(gloop::DeviceLoop<>* loop, uchar** cur_page_ptr, size_t*
 GLOOP_ALWAYS_INLINE __device__ float inner_product( float* a, float* b, int size)
 {
     #define ACCUM_N 512
-    __shared__ float s_reduction[ACCUM_N];
+    __shared__ volatile float s_reduction[ACCUM_N];
 
     float tmp=0;
     //      __syncthreads();
