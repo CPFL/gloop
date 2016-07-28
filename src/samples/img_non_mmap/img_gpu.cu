@@ -56,9 +56,6 @@ __device__ void get_row(gloop::DeviceLoop<>* loop, uchar** cur_page_ptr, size_t*
     }
     END_SINGLE_THREAD
     gloop::fs::read(loop, fd, *cur_page_offset, mapsize, (unsigned char*)*cur_page_ptr, [=](gloop::DeviceLoop<>* loop, int bytesRead) {
-//             BEGIN_SINGLE_THREAD
-//                 printf("db:(%d),data:(%d),offset:(%u),checksum:(%04x)\n", db_idx, id, (unsigned)(*cur_page_offset), (unsigned)checksum((const uint8_t*)*cur_page_ptr, mapsize));
-//             END_SINGLE_THREAD
         callback(loop, (float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
     });
 }
@@ -99,10 +96,6 @@ GLOOP_ALWAYS_INLINE __device__ float inner_product( float* a, float* b, int size
 
 GLOOP_ALWAYS_INLINE __device__ bool match(float* a, float* b, int size, float match_threshold, int data_idx, int db_idx)
 {
-//     float result = sqrt(inner_product(a,b,size));
-//     BEGIN_SINGLE_THREAD
-//         printf("data:(%d),db:(%d),match:(%d),res:(%f)\n", (int)data_idx, (int)(result < match_threshold), (float)result, (int)size);
-//     END_SINGLE_THREAD
     return sqrt(inner_product(a,b,size)) < match_threshold;
 }
 
@@ -111,32 +104,45 @@ void __device__ process_one_row(gloop::DeviceLoop<>* loop, Context* context, int
 {
     if (_cursor < db_rows) {
         size_t _req_offset=(_cursor*context->src_row_len)<<2;
-        auto continuation = [=] (gloop::DeviceLoop<>* loop, float* ptr_row_db) {
+        if (_req_offset - context->ph_db.file_offset >= GLOOP_PAGE_SIZE) {
+            auto continuation = [=] (gloop::DeviceLoop<>* loop, float* ptr_row_db) {
 
-            int found = match(context->input_img_row, ptr_row_db, context->src_row_len, context->match_threshold, data_idx, db_idx);
-            BEGIN_SINGLE_THREAD
-            {
-                // printf("img %d %d\n", db_idx, data_idx);
+                int found = match(context->input_img_row, ptr_row_db, context->src_row_len, context->match_threshold, data_idx, db_idx);
                 if (found) {
-                    context->out_buffer[out_count]=data_idx+context->start_offset*context->total_rows;
-                    context->out_buffer[out_count+1]=db_idx;
-                    context->out_buffer[out_count+2]=_cursor;
+                    BEGIN_SINGLE_THREAD
+                    {
+                        context->out_buffer[out_count]=data_idx+context->start_offset*context->total_rows;
+                        context->out_buffer[out_count+1]=db_idx;
+                        context->out_buffer[out_count+2]=_cursor;
+                    }
+                    END_SINGLE_THREAD
+                    callback(loop, ptr_row_db, found);
+                    return;
                 }
-            }
-            END_SINGLE_THREAD
-            if (!found) {
                 gloop::loop::postTask(loop, [=](gloop::DeviceLoop<>* loop) {
                     process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, _cursor + 1, db_rows, ptr_row_db + context->src_row_len, callback);
                 });
                 return;
-            }
-            callback(loop, ptr_row_db, found);
-        };
-        if (_req_offset - context->ph_db.file_offset >= GLOOP_PAGE_SIZE) {
+            };
             get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, &context->ph_db.isFilled, _req_offset, db_size, zfd_db, PROT_READ | PROT_WRITE, data_idx, db_idx, continuation);
             return;
         }
-        continuation(loop, ptr_row_db);
+
+        int found = match(context->input_img_row, ptr_row_db, context->src_row_len, context->match_threshold, data_idx, db_idx);
+        if (found) {
+            BEGIN_SINGLE_THREAD
+            {
+                context->out_buffer[out_count]=data_idx+context->start_offset*context->total_rows;
+                context->out_buffer[out_count+1]=db_idx;
+                context->out_buffer[out_count+2]=_cursor;
+            }
+            END_SINGLE_THREAD
+            callback(loop, ptr_row_db, 1);
+            return;
+        }
+        gloop::loop::postTask(loop, [=](gloop::DeviceLoop<>* loop) {
+            process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, _cursor + 1, db_rows, ptr_row_db + context->src_row_len, callback);
+        });
         return;
     }
     callback(loop, ptr_row_db, /* not found */ 0);
@@ -178,9 +184,6 @@ template<typename Callback>
 void __device__ process_one_data(gloop::DeviceLoop<>* loop, Context* context, size_t data_idx, int out_count, int limit, Callback callback)
 {
     if (data_idx < limit) {
-//         BEGIN_SINGLE_THREAD
-//             // printf("data %u\n", (unsigned)data_idx);
-//         END_SINGLE_THREAD
         gloop::fs::read(loop, context->zfd_src, data_idx*context->src_row_len<<2, GREP_ROW_WIDTH*4, (uchar*)context->input_img_row, [=](gloop::DeviceLoop<>* loop, int bytes_read) {
             if (bytes_read!=GREP_ROW_WIDTH*4) GPU_ERROR("Failed to read src");
 
