@@ -59,7 +59,6 @@ add_library(gloop STATIC
     monitor_utility.cc
     process.cu
     system_initialize.cu
-    utility/util.cu
 )
 target_link_libraries(gloop
     dl
