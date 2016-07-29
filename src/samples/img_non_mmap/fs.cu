@@ -144,7 +144,7 @@ int main( int argc, char** argv)
 
         benchmark.end();
         printf("[%d] ", id);
-        benchmark.report();
+        benchmark.report(stderr);
     }
 	if (d_filenames) free(d_filenames);
 	return 0;

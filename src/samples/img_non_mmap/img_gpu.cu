@@ -40,7 +40,7 @@ struct Context {
 };
 
 template<typename Callback>
-__device__ void get_row(gloop::DeviceLoop<>* loop, uchar** cur_page_ptr, size_t* cur_page_offset, int* isFilled, size_t req_file_offset, int max_file_size, int fd, int type, int id, int db_idx, Callback callback)
+__device__ GLOOP_NEVER_INLINE void get_row(gloop::DeviceLoop<>* loop, uchar** cur_page_ptr, size_t* cur_page_offset, int* isFilled, size_t req_file_offset, int max_file_size, int fd, int type, int id, int db_idx, Callback callback)
 {
     if (*isFilled && *cur_page_offset+GLOOP_PAGE_SIZE>req_file_offset) {
         callback(loop, (float*)(*cur_page_ptr+(req_file_offset&(GLOOP_PAGE_SIZE-1))));
@@ -50,7 +50,6 @@ __device__ void get_row(gloop::DeviceLoop<>* loop, uchar** cur_page_ptr, size_t*
     int mapsize = (max_file_size-req_file_offset)>GLOOP_PAGE_SIZE?GLOOP_PAGE_SIZE:(max_file_size-req_file_offset);
     BEGIN_SINGLE_THREAD
     {
-
         *cur_page_offset=(req_file_offset& (~(GLOOP_PAGE_SIZE-1)));// round to the beg. of the page
         *isFilled = true;
     }
@@ -60,11 +59,11 @@ __device__ void get_row(gloop::DeviceLoop<>* loop, uchar** cur_page_ptr, size_t*
     });
 }
 
-GLOOP_ALWAYS_INLINE __device__ float inner_product( float* a, float* b, int size)
-{
-    #define ACCUM_N 512
-    __shared__ volatile float s_reduction[ACCUM_N];
+#define ACCUM_N 512
+__shared__ float s_reduction[ACCUM_N];
 
+GLOOP_ALWAYS_INLINE __device__ float inner_product(float* a, float* b, int size)
+{
     float tmp=0;
     //      __syncthreads();
     //      if (threadIdx.x==0) {
@@ -88,47 +87,33 @@ GLOOP_ALWAYS_INLINE __device__ float inner_product( float* a, float* b, int size
     {
         if(threadIdx.x<stride) s_reduction[threadIdx.x] += s_reduction[stride + threadIdx.x];
     }
-
     __syncthreads();
 
     return s_reduction[0];
 }
 
-GLOOP_ALWAYS_INLINE __device__ bool match(float* a, float* b, int size, float match_threshold, int data_idx, int db_idx)
+GLOOP_ALWAYS_INLINE __device__ bool match(float* a, float* b, int size, float match_threshold)
 {
     return sqrt(inner_product(a,b,size)) < match_threshold;
 }
 
 template<typename Callback>
-void __device__ process_one_row(gloop::DeviceLoop<>* loop, Context* context, int data_idx, int db_idx, int out_count, int db_size, int zfd_db, int _cursor, int db_rows, float* ptr_row_db, Callback callback)
+void GLOOP_NEVER_INLINE __device__ process_one_row(gloop::DeviceLoop<>* loop, Context* context, int data_idx, int db_idx, int out_count, int db_size, int zfd_db, int _cursor, int db_rows, float* ptr_row_db, Callback callback)
 {
-    if (_cursor < db_rows) {
-        size_t _req_offset=(_cursor*context->src_row_len)<<2;
-        if (_req_offset - context->ph_db.file_offset >= GLOOP_PAGE_SIZE) {
-            auto continuation = [=] (gloop::DeviceLoop<>* loop, float* ptr_row_db) {
-
-                int found = match(context->input_img_row, ptr_row_db, context->src_row_len, context->match_threshold, data_idx, db_idx);
-                if (found) {
-                    BEGIN_SINGLE_THREAD
-                    {
-                        context->out_buffer[out_count]=data_idx+context->start_offset*context->total_rows;
-                        context->out_buffer[out_count+1]=db_idx;
-                        context->out_buffer[out_count+2]=_cursor;
-                    }
-                    END_SINGLE_THREAD
-                    callback(loop, ptr_row_db, found);
-                    return;
-                }
-                gloop::loop::postTask(loop, [=](gloop::DeviceLoop<>* loop) {
-                    process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, _cursor + 1, db_rows, ptr_row_db + context->src_row_len, callback);
-                });
-                return;
-            };
-            get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, &context->ph_db.isFilled, _req_offset, db_size, zfd_db, PROT_READ | PROT_WRITE, data_idx, db_idx, continuation);
+    const int src_row_len = context->src_row_len;
+    const size_t file_offset = context->ph_db.file_offset;
+    const float match_threshold = context->match_threshold;
+    float* input_img_row = context->input_img_row;
+    for (;_cursor < db_rows; _cursor += 1, ptr_row_db += src_row_len) {
+        size_t _req_offset=(_cursor*src_row_len)<<2;
+        if (_req_offset - file_offset >= GLOOP_PAGE_SIZE) {
+            get_row(loop, &context->ph_db.page, &context->ph_db.file_offset, &context->ph_db.isFilled, _req_offset, db_size, zfd_db, PROT_READ | PROT_WRITE, data_idx, db_idx, [=] (gloop::DeviceLoop<>* loop, float* ptr_row_db) {
+                process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, _cursor, db_rows, ptr_row_db, callback);
+            });
             return;
         }
 
-        int found = match(context->input_img_row, ptr_row_db, context->src_row_len, context->match_threshold, data_idx, db_idx);
+        int found = match(input_img_row, ptr_row_db, src_row_len, match_threshold);
         if (found) {
             BEGIN_SINGLE_THREAD
             {
@@ -140,16 +125,18 @@ void __device__ process_one_row(gloop::DeviceLoop<>* loop, Context* context, int
             callback(loop, ptr_row_db, 1);
             return;
         }
-        gloop::loop::postTask(loop, [=](gloop::DeviceLoop<>* loop) {
-            process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, _cursor + 1, db_rows, ptr_row_db + context->src_row_len, callback);
-        });
-        return;
+        // This loop exit is not necessary since we frequently enter to loop state in get_row.
+        // if (gloop::loop::postTaskIfNecessary(loop, [=](gloop::DeviceLoop<>* loop) {
+        //         process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, _cursor + 1, db_rows, ptr_row_db + src_row_len, callback);
+        //     })) {
+        //     return;
+        // }
     }
     callback(loop, ptr_row_db, /* not found */ 0);
 }
 
 template<typename Callback>
-void __device__ process_one_db(gloop::DeviceLoop<>* loop, Context* context, int data_idx, int db_idx, int out_count, Callback callback)
+void GLOOP_NEVER_INLINE __device__ process_one_db(gloop::DeviceLoop<>* loop, Context* context, int data_idx, int db_idx, int out_count, Callback callback)
 {
     if (db_idx < context->num_db_files) {
         gloop::fs::open(loop, context->db_files[db_idx], /* O_RDONLY */ O_RDWR, [=](gloop::DeviceLoop<>* loop, int zfd_db) {
