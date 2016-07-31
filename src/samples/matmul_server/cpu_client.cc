@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
                 std::vector<float> vec(MATRIX_SIZE * 2, 1.0f);
                 std::vector<float> result(MATRIX_SIZE, 0);
                 for (int j = 0; j < 200; ++j) {
-                    printf("[%d][%d]\n", i, j);
+                    // printf("[%d][%d]\n", i, j);
                     int res = 0;
                     res = send(sock, (void*)vec.data(), vec.size() * sizeof(float), 0);
                     if (res < 0)
