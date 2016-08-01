@@ -232,7 +232,14 @@ void Session::main()
         unsigned int priority { };
         std::size_t size { };
         Command command { };
-        if (m_requestQueue->try_receive(&command, sizeof(Command), size, priority)) {
+
+#if 1
+        m_requestQueue->receive(&command, sizeof(Command), size, priority);
+        if (handle(command)) {
+            m_responseQueue->send(&command, sizeof(Command), 0);
+        }
+#else
+        if (m_requestQueue->receive(&command, sizeof(Command), size, priority)) {
             if (handle(command)) {
                 m_responseQueue->send(&command, sizeof(Command), 0);
             }
@@ -240,6 +247,7 @@ void Session::main()
             // FIXME
             boost::this_thread::interruption_point();
         }
+#endif
     }
 }
 
