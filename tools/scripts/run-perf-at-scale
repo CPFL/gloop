@@ -27,8 +27,14 @@ require 'fileutils'
 require_relative './gloop.rb'
 
 class Result
-    def initialize(name, data)
+    def initialize(name)
         @name = name
+    end
+end
+
+class BenchmarkResult < Result
+    def initialize(name, data)
+        super(name)
         @time = extractTime(data)
     end
 
@@ -44,19 +50,54 @@ class Result
     end
 end
 
-class GrepTextTest
+class StatisticsResult < Result
+    def initialize(name, data)
+        super(name)
+        @name = name
+        @times = {
+            "GPUInit" => 0,
+            "DataInit" => 0,
+            "IO" => 0,
+            "Copy" => 0,
+            "Kernel" => 0,
+        }
+
+        @times.each {|key, _|
+            @times[key] = extractTime(key, data)
+        }
+    end
+
+    def report
+        result = 0
+        @times.each {|key, value|
+            result += value
+        }
+        puts "#{@name}: #{result.to_s}"
+    end
+
+    private
+    def extractTime(type, data)
+        m = /#{type} result:us\((\d+)\)/m.match(data)
+        raise self unless m
+        m[1].to_i
+    end
+end
+
+class Test
     def initialize(name, times)
         @name = name
         @times = times
     end
 
     def execute
-        results = runBenchmark
+        results = runBenchmark()
         results.each {|result|
             result.report()
         }
     end
+end
 
+class GrepTextTest < Test
     def createCommand i
         %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out#{i} db_shakespere.txt)
     end
@@ -70,7 +111,138 @@ class GrepTextTest
                     Thread.pass
                     out, err, status = Open3.capture3(createCommand(i).join(" "))
                     FileUtils.rm "out#{i}" if File.exists? "out#{i}"
-                    results[i] = Result.new(@name + i.to_s, err)
+                    results[i] = BenchmarkResult.new(@name + i.to_s, err)
+                }
+            }
+
+            threads.each {|thread|
+                thread.join
+            }
+        }
+        results
+    end
+end
+
+class TPACFTest < Test
+    def createCommand i
+        [
+            "#{GLoop::Root}/release/src/samples/parboil2/tpacf-gloop/tpacf-gloop",
+            "-i", <<-EOS, "-o", "out#{i}", "--", "-n", "100", "-p", "10391"
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Datapnts.1,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.1,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.2,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.3,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.4,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.5,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.6,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.7,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.8,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.9,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.10,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.11,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.12,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.13,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.14,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.15,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.16,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.17,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.18,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.19,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.20,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.21,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.22,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.23,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.24,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.25,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.26,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.27,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.28,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.29,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.30,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.31,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.32,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.33,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.34,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.35,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.36,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.37,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.38,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.39,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.40,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.41,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.42,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.43,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.44,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.45,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.46,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.47,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.48,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.49,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.50,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.51,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.52,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.53,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.54,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.55,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.56,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.57,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.58,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.59,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.60,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.61,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.62,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.63,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.64,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.65,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.66,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.67,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.68,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.69,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.70,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.71,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.72,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.73,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.74,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.75,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.76,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.77,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.78,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.79,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.80,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.81,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.82,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.83,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.84,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.85,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.86,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.87,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.88,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.89,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.90,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.91,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.92,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.93,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.94,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.95,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.96,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.97,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.98,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.99,
+/home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.100
+            EOS
+        ].collect {|arg| arg.gsub("\n", "") }
+    end
+
+    def runBenchmark
+        results = []
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            @times.times {|i|
+                threads << Thread.new {
+                    Thread.pass
+                    out, err, status = Open3.capture3(createCommand(i).join(" "))
+                    FileUtils.rm "out#{i}" if File.exists? "out#{i}"
+                    results[i] = StatisticsResult.new(@name + i.to_s, err)
                 }
             }
 
@@ -87,6 +259,10 @@ $tests = [
     GrepTextTest.new("grep_text", 2),
     GrepTextTest.new("grep_text", 4),
     GrepTextTest.new("grep_text", 8),
+    TPACFTest.new("tpacf", 1),
+    TPACFTest.new("tpacf", 2),
+    TPACFTest.new("tpacf", 4),
+    TPACFTest.new("tpacf", 8),
 ]
 
 def main
