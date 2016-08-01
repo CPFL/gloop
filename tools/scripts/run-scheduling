@@ -111,22 +111,24 @@ class Test
 end
 
 class Throttles
-    def initialize num
+    def initialize num, count
         @num = num
+        @count = count
         @processes = []
     end
 
     def run
         @num.times {
-            pid = Process.spawn(%W(#{GLoop::Root}/release/src/samples/throttle/throttle -1 1 1 1 1).join(" "), :in => "/dev/null", :out => "/dev/null", :err => "/dev/null")
-            Process.detach pid
+            pid = Process.spawn(%W(#{GLoop::Root}/release/src/samples/throttle/throttle #{@count} 1 1 1 1).join(" "), :in => "/dev/null", :out => "/dev/null", :err => "/dev/null")
+            # Process.detach pid
             @processes << pid
         }
     end
 
     def kill
         @processes.each {|pid|
-            Process.kill :INT, pid
+            # Process.kill :INT, pid
+            Process.wait pid
         }
     end
 end
@@ -140,7 +142,7 @@ class GrepTextTest < SchedulingTest
     end
 
     def runBenchmark
-        throttles = Throttles.new(@times)
+        throttles = Throttles.new(@times, 20000000)
         throttles.run
         result = nil
         FileUtils.chdir("#{GLoop::Root}/data") {|dir|
@@ -265,7 +267,7 @@ class TPACFTest < SchedulingTest
     end
 
     def runBenchmark
-        throttles = Throttles.new(@times)
+        throttles = Throttles.new(@times, 8000000)
         throttles.run
         result = nil
         FileUtils.chdir("#{GLoop::Root}/data") {|dir|
