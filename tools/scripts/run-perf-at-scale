@@ -1,0 +1,98 @@
+#!/usr/bin/ruby
+# -*- coding: utf-8 -*-
+#  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+#  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+#  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+#  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+#  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+#  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+#  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+require 'open3'
+require 'fileutils'
+require_relative './gloop.rb'
+
+class Result
+    def initialize(name, data)
+        @name = name
+        @time = extractTime(data)
+    end
+
+    def report
+        puts "#{@name}: #{@time.to_s}"
+    end
+
+    private
+    def extractTime(data)
+        m = /result:us\((\d+)\)/m.match(data)
+        raise self unless m
+        m[1].to_i
+    end
+end
+
+class GrepTextTest
+    def initialize(name, times)
+        @name = name
+        @times = times
+    end
+
+    def execute
+        results = runBenchmark
+        results.each {|result|
+            result.report()
+        }
+    end
+
+    def createCommand i
+        %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out#{i} db_shakespere.txt)
+    end
+
+    def runBenchmark
+        results = []
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            @times.times {|i|
+                threads << Thread.new {
+                    Thread.pass
+                    out, err, status = Open3.capture3(createCommand(i).join(" "))
+                    FileUtils.rm "out#{i}" if File.exists? "out#{i}"
+                    results[i] = Result.new(@name + i.to_s, err)
+                }
+            }
+
+            threads.each {|thread|
+                thread.join
+            }
+        }
+        results
+    end
+end
+
+$tests = [
+    GrepTextTest.new("grep_text", 1),
+    GrepTextTest.new("grep_text", 2),
+#     GrepTextTest.new("grep_text", 4),
+#     GrepTextTest.new("grep_text", 8),
+]
+
+def main
+    $tests.each {|test|
+        test.execute
+    }
+end
+
+main() if __FILE__ == $0
