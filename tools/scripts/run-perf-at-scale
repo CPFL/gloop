@@ -85,8 +85,8 @@ end
 $tests = [
     GrepTextTest.new("grep_text", 1),
     GrepTextTest.new("grep_text", 2),
-#     GrepTextTest.new("grep_text", 4),
-#     GrepTextTest.new("grep_text", 8),
+    GrepTextTest.new("grep_text", 4),
+    GrepTextTest.new("grep_text", 8),
 ]
 
 def main
