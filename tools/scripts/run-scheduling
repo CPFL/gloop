@@ -280,14 +280,12 @@ class TPACFTest < SchedulingTest
 end
 
 $tests = [
+    TPACFTest.new("tpacf", 1),
+    TPACFTest.new("tpacf", 3),
+    TPACFTest.new("tpacf", 7),
     GrepTextTest.new("grep_text", 1),
     GrepTextTest.new("grep_text", 3),
     GrepTextTest.new("grep_text", 7),
-    # GrepTextTest.new("grep_text", 8),
-    # TPACFTest.new("tpacf", 1),
-    # TPACFTest.new("tpacf", 2),
-    # TPACFTest.new("tpacf", 4),
-    # TPACFTest.new("tpacf", 8),
 ]
 
 def main
