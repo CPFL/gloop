@@ -195,7 +195,7 @@ int main(int argc, char** argv)
     {
         if (argc > 2) {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
-            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (512 << 20)));
+            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1 << 30)));
             gpunet_client_init(&addr, &dev_addr, argv[1], argv[2]);
             printf("address:(%x),port:(%u)\n", ((struct sockaddr_in*)addr)->sin_addr.s_addr, ((struct sockaddr_in*)addr)->sin_port);
         } else {

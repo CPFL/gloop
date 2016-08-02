@@ -31,6 +31,7 @@
 #define TB_PER (SHARED_BLOCK_SIZE)
 #define THREADS_PER_TB dim3(TB_PER, TB_PER)
 // TITAN Z SMX => 15
-#define BLOCKS 45
+// K40 SMX => 30
+#define BLOCKS 60
 
 #endif  // MATMUL_SERVER_CONFIG_H_
