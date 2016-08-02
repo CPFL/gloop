@@ -117,9 +117,13 @@ class Throttles
         @processes = []
     end
 
+    def command
+        %W(#{GLoop::Root}/release/src/samples/throttle/throttle #{@count} 1 1 1 1)
+    end
+
     def run
         @num.times {
-            pid = Process.spawn(%W(#{GLoop::Root}/release/src/samples/throttle/throttle #{@count} 1 1 1 1).join(" "), :in => "/dev/null", :out => "/dev/null", :err => "/dev/null")
+            pid = Process.spawn(command().join(" "), :in => "/dev/null", :out => "/dev/null", :err => "/dev/null")
             # Process.detach pid
             @processes << pid
         }
@@ -130,6 +134,17 @@ class Throttles
             # Process.kill :INT, pid
             Process.wait pid
         }
+    end
+end
+
+class PriorityThrottles < Throttles
+    def initialize num, count
+        super(num, count)
+        @priority = num * 2 # 66%
+    end
+
+    def command
+        %W(#{GLoop::Root}/release/src/samples/proportional-throttle/proportional-throttle #{@count} 1 1 1 #{@priority})
     end
 end
 
@@ -281,13 +296,51 @@ class TPACFTest < SchedulingTest
     end
 end
 
+class PriorityGrepTextTest < GrepTextTest
+    def runBenchmark
+        throttles = PriorityThrottles.new(@times, 20000000)
+        throttles.run
+        result = nil
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            out, err, status = Open3.capture3(createCommand().join(" "))
+            FileUtils.rm "out" if File.exists? "out"
+            result = BenchmarkResult.new(@name, err)
+        }
+        throttles.kill
+        [ result ]
+    end
+end
+
+class PriorityTPACFTest < TPACFTest
+    def runBenchmark
+        throttles = PriorityThrottles.new(@times, 8000000)
+        throttles.run
+        result = nil
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            out, err, status = Open3.capture3(createCommand().join(" "))
+            FileUtils.rm "out" if File.exists? "out"
+            result = StatisticsResult.new(@name, err)
+        }
+        throttles.kill
+        [ result ]
+    end
+end
+
 $tests = [
-    TPACFTest.new("tpacf", 1),
-    TPACFTest.new("tpacf", 3),
-    TPACFTest.new("tpacf", 7),
-    GrepTextTest.new("grep_text", 1),
-    GrepTextTest.new("grep_text", 3),
-    GrepTextTest.new("grep_text", 7),
+    TPACFTest.new("tpacf1", 1),
+    TPACFTest.new("tpacf3", 3),
+    TPACFTest.new("tpacf7", 7),
+    PriorityTPACFTest.new("priority-tpacf1", 1),
+    PriorityTPACFTest.new("priority-tpacf3", 3),
+    PriorityTPACFTest.new("priority-tpacf7", 7),
+    GrepTextTest.new("grep_text1", 1),
+    GrepTextTest.new("grep_text3", 3),
+    GrepTextTest.new("grep_text7", 7),
+    PriorityGrepTextTest.new("priority-grep_text1", 1),
+    PriorityGrepTextTest.new("priority-grep_text3", 3),
+    PriorityGrepTextTest.new("priority-grep_text7", 7),
 ]
 
 def main
