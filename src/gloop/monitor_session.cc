@@ -51,7 +51,9 @@ Session::~Session()
     m_server.unregisterSession(*this);
     GLOOP_DEBUG("server:(%u),close:(%u)\n", m_server.id(), static_cast<unsigned>(id()));
     if (m_thread) {
-        m_thread->interrupt();
+        Command command { Command::Type::Shutdown };
+        m_requestQueue->send(&command, sizeof(Command), 0);
+        // m_thread->interrupt();
         m_thread->join();
         m_thread.reset();
     }
@@ -195,6 +197,10 @@ bool Session::handle(Command& command)
         return false;
     }
 
+    case Command::Type::Shutdown: {
+        return false;
+    }
+
     case Command::Type::IO: {
         GLOOP_UNREACHABLE();
     }
@@ -238,6 +244,9 @@ void Session::main()
 
 #if 1
         m_requestQueue->receive(&command, sizeof(Command), size, priority);
+        if (command.type == Command::Type::Shutdown)
+            return;
+
         if (handle(command)) {
             m_responseQueue->send(&command, sizeof(Command), 0);
         }

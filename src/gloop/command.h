@@ -33,7 +33,8 @@ struct Command {
         Operation,
         IO,
         Lock,
-        Unlock
+        Unlock,
+        Shutdown
     };
 
     enum Operation : uint32_t {
