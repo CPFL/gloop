@@ -88,7 +88,7 @@ class UtilizationResult
     def initialize data
         @result = {}
         epoch = 0
-        data.split('\n').each {|line|
+        data.split("\n").each {|line|
             if line =~ /epoch:\((\d+)\)/
                 epoch = $1.to_i
                 @result[epoch] = {}
@@ -106,14 +106,14 @@ class UtilizationResult
 end
 
 class Scheduler
-    def initialize
+    def initialize period
         @process = nil
         @result = Tempfile::open()
+        @period = period
     end
 
     def start
-        # @process = Process.spawn(%W(#{GLoop::Root}/release/src/gloop/gloop-monitor 1 100).join(" "), :in => "/dev/null", :out => "/dev/null", :err => @result.path)
-        @process = Process.spawn(%W(#{GLoop::Root}/release/src/gloop/gloop-monitor 1 100).join(" "), :in => "/dev/null", :out => "/dev/null")
+        @process = Process.spawn(%W(#{GLoop::Root}/release/src/gloop/gloop-monitor 1 #{@period}).join(" "), :in => "/dev/null", :out => "/dev/null", :err => @result.path)
         Process.detach @process
         sleep 5
     end
@@ -129,10 +129,10 @@ class Scheduler
 end
 
 class Test
-    def initialize(name, times)
+    def initialize(name, times, period)
         @name = name
         @times = times
-        @scheduler = Scheduler.new
+        @scheduler = Scheduler.new period
     end
 
     def execute
@@ -165,7 +165,6 @@ class Throttles
     def run
         @num.times {
             pid = Process.spawn(command().join(" "), :in => "/dev/null", :out => "/dev/null", :err => "/dev/null")
-            puts pid
             # Process.detach pid
             @processes << pid
         }
@@ -378,19 +377,20 @@ class PriorityTPACFTest < TPACFTest
     end
 end
 
+$period = 200
 $tests = [
-    # TPACFTest.new("tpacf1", 1),
-    # TPACFTest.new("tpacf3", 3),
-    TPACFTest.new("tpacf7", 7),
-    # PriorityTPACFTest.new("priority-tpacf1", 1),
-    # PriorityTPACFTest.new("priority-tpacf3", 3),
-    # PriorityTPACFTest.new("priority-tpacf7", 7),
-    # GrepTextTest.new("grep_text1", 1),
-    # GrepTextTest.new("grep_text3", 3),
-    # GrepTextTest.new("grep_text7", 7),
-    # PriorityGrepTextTest.new("priority-grep_text1", 1),
-    # PriorityGrepTextTest.new("priority-grep_text3", 3),
-    # PriorityGrepTextTest.new("priority-grep_text7", 7),
+    TPACFTest.new("tpacf1", 1, $period),
+    # TPACFTest.new("tpacf3", 3, $period),
+    # TPACFTest.new("tpacf7", 7, $period),
+    # PriorityTPACFTest.new("priority-tpacf1", 1, $period),
+    # PriorityTPACFTest.new("priority-tpacf3", 3, $period),
+    # PriorityTPACFTest.new("priority-tpacf7", 7, $period),
+    # GrepTextTest.new("grep_text1", 1, $period),
+    # GrepTextTest.new("grep_text3", 3, $period),
+    # GrepTextTest.new("grep_text7", 7, $period),
+    # PriorityGrepTextTest.new("priority-grep_text1", 1, $period),
+    # PriorityGrepTextTest.new("priority-grep_text3", 3, $period),
+    # PriorityGrepTextTest.new("priority-grep_text7", 7, $period),
 ]
 
 def main
