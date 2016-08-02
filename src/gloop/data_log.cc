@@ -22,32 +22,8 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
-
-#include "noncopyable.h"
-#include <boost/thread.hpp>
-#include <memory>
+#include "data_log.h"
 
 namespace gloop {
-namespace monitor {
 
-class Server;
-
-class UtilizationAccounting {
-GLOOP_NONCOPYABLE(UtilizationAccounting);
-public:
-    UtilizationAccounting(Server&, int epochInMS);
-
-    void start();
-
-private:
-    typedef std::vector<std::pair<uint64_t, uint64_t>> Data;
-
-    void dump(uint64_t epoch, Data&);
-
-    Server& m_server;
-    std::chrono::milliseconds m_epoch;
-    std::unique_ptr<boost::thread> m_thread;
-};
-
-} }  // namsepace gloop::monitor
+}  // namespae gloop

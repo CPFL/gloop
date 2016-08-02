@@ -41,6 +41,11 @@ add_custom_target(redirector
         "${CMAKE_CURRENT_BINARY_DIR}/redirector.cuh"
 )
 
+add_library(gloop-utility OBJECT
+    data_log.cc
+    monitor_utility.cc
+)
+
 add_library(gloop STATIC
     # gloop_device.cu
     "${CMAKE_CURRENT_BINARY_DIR}/redirector.cu"
@@ -55,9 +60,9 @@ add_library(gloop STATIC
     dump_memory.cu
     io.cu
     mapped_memory.cu
-    monitor_utility.cc
     process.cu
     system_initialize.cu
+    $<TARGET_OBJECTS:gloop-utility>
 )
 target_link_libraries(gloop
     dl
@@ -112,6 +117,7 @@ add_executable(gloop-monitor
     monitor_utilization_accounting.cc
     "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.pb.cc"
     "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.grpc.pb.cc"
+    $<TARGET_OBJECTS:gloop-utility>
 )
 target_link_libraries(gloop-monitor
     grpc++_unsecure

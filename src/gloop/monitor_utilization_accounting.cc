@@ -22,18 +22,57 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "benchmark.h"
 #include "data_log.h"
+#include "monitor_lock.h"
+#include "monitor_server.h"
 #include "monitor_utilization_accounting.h"
+#include "make_unique.h"
+#include <algorithm>
+#include <mutex>
+#include <thread>
 
 namespace gloop {
 namespace monitor {
 
-void UtilizationAccounting::start()
+
+UtilizationAccounting::UtilizationAccounting(Server& server, int epochInMS)
+    : m_server(server)
+    , m_epoch(std::chrono::milliseconds(epochInMS))
 {
 }
 
-void UtilizationAccounting::stop()
+void UtilizationAccounting::start()
 {
+    m_thread = make_unique<boost::thread>([&] {
+        TimeWatch watch;
+        std::vector<std::pair<uint64_t, uint64_t>> data;
+        uint64_t epoch = 0;
+        while (true) {
+            watch.begin();
+            {
+                data.clear();
+                {
+                    std::lock_guard<Lock> guard(m_server.serverStatusLock());
+                    for (auto& session : m_server.sessionList()) {
+                        data.push_back(std::make_pair(session.id(), session.readAndClearUtil()));
+                    }
+                }
+                dump(epoch, data);
+            }
+            watch.end();
+            auto sleepPeriod = m_epoch - watch.ticks();
+            if (sleepPeriod > std::chrono::milliseconds(0)) {
+                std::this_thread::sleep_for(sleepPeriod);
+            }
+            ++epoch;
+        }
+    });
+}
+
+void UtilizationAccounting::dump(uint64_t epoch, Data& data)
+{
+    std::sort(data.begin(), data.end());
 }
 
 } }  // namsepace gloop::monitor

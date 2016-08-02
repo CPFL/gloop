@@ -37,9 +37,9 @@
 namespace gloop {
 namespace monitor {
 
-Monitor::Monitor(uint32_t gpus, bool enableUtilizationMonitor)
+Monitor::Monitor(uint32_t gpus, int enableUtilizationMonitorInMS)
     : m_gpus(gpus)
-    , m_enableUtilizationMonitor(enableUtilizationMonitor)
+    , m_enableUtilizationMonitorInMS(enableUtilizationMonitorInMS)
 {
     for (uint32_t i = 0; i < m_gpus; ++i) {
         ::unlink(createName(GLOOP_ENDPOINT, i).c_str());

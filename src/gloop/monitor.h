@@ -39,7 +39,7 @@ namespace monitor {
 class Monitor final : private proto::Monitor::Service {
 GLOOP_NONCOPYABLE(Monitor);
 public:
-    Monitor(uint32_t gpus, bool enableUtilizationMonitor);
+    Monitor(uint32_t gpus, int enableUtilizationMonitorInMS);
 
     boost::asio::io_service& ioService() { return m_ioService; }
 
@@ -47,13 +47,14 @@ public:
 
     uint32_t nextId() { return m_nextId++; }
 
-    bool enableUtilizationMonitor() const { return m_enableUtilizationMonitor; }
+    bool enableUtilizationMonitor() const { return m_enableUtilizationMonitorInMS != 0; }
+    int enableUtilizationMonitorInMS() const { return m_enableUtilizationMonitorInMS; }
 
 private:
     grpc::Status listSessions(grpc::ServerContext* context, const proto::ListSessionRequest* request, grpc::ServerWriter<proto::Session>* writer) override;
 
     uint32_t m_gpus;
-    bool m_enableUtilizationMonitor;
+    int m_enableUtilizationMonitorInMS;
     boost::asio::io_service m_ioService;
     std::atomic<uint32_t> m_nextId { 0 };
     std::vector<std::shared_ptr<Server>> m_servers;

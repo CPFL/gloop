@@ -38,7 +38,7 @@ Server::Server(Monitor& monitor, uint32_t serverId)
     , m_acceptor(m_ioService, boost::asio::local::stream_protocol::endpoint(createName(GLOOP_ENDPOINT, serverId)))
 {
     if (m_monitor.enableUtilizationMonitor()) {
-        m_utilizationAccounting = make_unique<UtilizationAccounting>();
+        m_utilizationAccounting = make_unique<UtilizationAccounting>(*this, m_monitor.enableUtilizationMonitorInMS());
         m_utilizationAccounting->start();
     }
     accept();

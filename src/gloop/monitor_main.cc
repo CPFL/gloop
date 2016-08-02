@@ -30,11 +30,11 @@ int main(int argc, char** argv)
 {
     try {
         int gpus = atoi(argv[1]);
-        int enableUtilizationMonitor = 0;
+        int enableUtilizationMonitorInMS = 0;
         if (argc >= 3)
-            enableUtilizationMonitor = atoi(argv[2]);
+            enableUtilizationMonitorInMS = atoi(argv[2]);
         GLOOP_DATA_LOG("monitor start %dGPUs\n", gpus);
-        gloop::monitor::Monitor monitor(gpus, enableUtilizationMonitor);
+        gloop::monitor::Monitor monitor(gpus, enableUtilizationMonitorInMS);
         monitor.run();
     } catch (std::exception& e) {
         GLOOP_DATA_LOG("Exception: %s\n", e.what());
