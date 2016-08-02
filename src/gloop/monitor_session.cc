@@ -42,13 +42,14 @@ Session::Session(Server& server, uint32_t id)
     , m_kernelLock(server.kernelLock(), std::defer_lock)
     , m_timer(server.ioService())
 {
+    GLOOP_DEBUG("session:(%u)\n", static_cast<unsigned>(id));
 }
 
 Session::~Session()
 {
     // NOTE: This destructor is always executed in single thread.
     m_server.unregisterSession(*this);
-    // GLOOP_DATA_LOG("server:(%u),close:(%u)\n", m_server.id(), static_cast<unsigned>(id()));
+    GLOOP_DEBUG("server:(%u),close:(%u)\n", m_server.id(), static_cast<unsigned>(id()));
     if (m_thread) {
         m_thread->interrupt();
         m_thread->join();
@@ -58,7 +59,7 @@ Session::~Session()
 
 void Session::handShake()
 {
-    // GLOOP_DATA_LOG("server:(%u),open:(%u)\n", m_server.id(), static_cast<unsigned>(id()));
+    GLOOP_DEBUG("server:(%u),open:(%u)\n", m_server.id(), static_cast<unsigned>(id()));
     boost::asio::async_read(m_socket, boost::asio::buffer(&m_buffer, sizeof(Command)), boost::bind(&Session::handleRead, this, boost::asio::placeholders::error));
 }
 
@@ -90,6 +91,7 @@ void Session::kill()
     if (m_kernelLock.owns_lock()) {
         m_killed = true;
         m_killTimer.begin();
+        // GLOOP_DATA_LOG("kill\n");
         syncWrite<uint32_t>(static_cast<volatile uint32_t*>(m_signal->get_address()), 1);
     }
 }
