@@ -82,8 +82,8 @@ public:
 
     int64_t readAndClearUtil()
     {
-        int64_t us = m_used.count();
-        m_used = Duration(0);
+        int64_t us = m_util.count();
+        m_util = Duration(0);
         return us;
     }
 
