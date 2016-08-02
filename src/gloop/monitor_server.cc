@@ -23,6 +23,7 @@
 */
 
 #include "data_log.h"
+#include "make_unique.h"
 #include "monitor.h"
 #include "monitor_server.h"
 #include "monitor_session.h"
@@ -36,6 +37,10 @@ Server::Server(Monitor& monitor, uint32_t serverId)
     , m_ioService(monitor.ioService())
     , m_acceptor(m_ioService, boost::asio::local::stream_protocol::endpoint(createName(GLOOP_ENDPOINT, serverId)))
 {
+    if (m_monitor.enableUtilizationMonitor()) {
+        m_utilizationAccounting = make_unique<UtilizationAccounting>();
+        m_utilizationAccounting->start();
+    }
     accept();
 }
 

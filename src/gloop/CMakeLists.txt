@@ -1,5 +1,4 @@
 cmake_policy(SET CMP0055 NEW)
-
 ExternalProject_Get_Property(LIBUV_LIB_EP SOURCE_DIR)
 include_directories("${SOURCE_DIR}/include")
 include_directories(".")
@@ -110,6 +109,7 @@ add_executable(gloop-monitor
     monitor_main.cc
     monitor_server.cc
     monitor_session.cc
+    monitor_utilization_accounting.cc
     "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.pb.cc"
     "${CMAKE_CURRENT_BINARY_DIR}/monitor_service.grpc.pb.cc"
 )

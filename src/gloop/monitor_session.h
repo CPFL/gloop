@@ -77,7 +77,6 @@ public:
     Duration& used() { return m_used; }
 
     void burnUsed(const Duration&);
-    void setUsed(const Duration&);
 
     uint64_t costPerBit() const { return m_costPerBit; }
 
@@ -114,6 +113,7 @@ private:
     TimeWatch m_timeWatch;
     Duration m_used { 0 };
     Duration m_burned { 0 };
+    Duration m_util { 0 };
     uint64_t m_costPerBit { 1 };
 
     bool m_killed { false };

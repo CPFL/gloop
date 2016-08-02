@@ -22,23 +22,18 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "config.h"
 #include "data_log.h"
-#include "monitor.h"
+#include "monitor_utilization_accounting.h"
 
-int main(int argc, char** argv)
+namespace gloop {
+namespace monitor {
+
+void UtilizationAccounting::start()
 {
-    try {
-        int gpus = atoi(argv[1]);
-        int enableUtilizationMonitor = 0;
-        if (argc >= 3)
-            enableUtilizationMonitor = atoi(argv[2]);
-        GLOOP_DATA_LOG("monitor start %dGPUs\n", gpus);
-        gloop::monitor::Monitor monitor(gpus, enableUtilizationMonitor);
-        monitor.run();
-    } catch (std::exception& e) {
-        GLOOP_DATA_LOG("Exception: %s\n", e.what());
-    }
-
-    return 0;
 }
+
+void UtilizationAccounting::stop()
+{
+}
+
+} }  // namsepace gloop::monitor

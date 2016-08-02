@@ -22,23 +22,25 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "config.h"
-#include "data_log.h"
-#include "monitor.h"
+#pragma once
 
-int main(int argc, char** argv)
-{
-    try {
-        int gpus = atoi(argv[1]);
-        int enableUtilizationMonitor = 0;
-        if (argc >= 3)
-            enableUtilizationMonitor = atoi(argv[2]);
-        GLOOP_DATA_LOG("monitor start %dGPUs\n", gpus);
-        gloop::monitor::Monitor monitor(gpus, enableUtilizationMonitor);
-        monitor.run();
-    } catch (std::exception& e) {
-        GLOOP_DATA_LOG("Exception: %s\n", e.what());
-    }
+#include "noncopyable.h"
+#include <boost/thread.hpp>
+#include <memory>
 
-    return 0;
-}
+namespace gloop {
+namespace monitor {
+
+class UtilizationAccounting {
+GLOOP_NONCOPYABLE(UtilizationAccounting);
+public:
+    UtilizationAccounting() = default;
+
+    void start();
+    void stop();
+
+private:
+    std::unique_ptr<boost::thread> m_thread;
+};
+
+} }  // namsepace gloop::monitor

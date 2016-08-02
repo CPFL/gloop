@@ -31,6 +31,7 @@
 #include <queue>
 #include "monitor_lock.h"
 #include "monitor_session.h"
+#include "monitor_utilization_accounting.h"
 #include "noncopyable.h"
 #include "utility.h"
 namespace gloop {
@@ -89,6 +90,7 @@ private:
     boost::asio::local::stream_protocol::acceptor m_acceptor;
     boost::condition_variable_any m_condition;
     uint32_t m_toBeAllowed { anySessionAllowed() };
+    std::unique_ptr<UtilizationAccounting> m_utilizationAccounting;
     // std::priority_queue<Session*, std::vector<Session*>, SessionPriorityFunctor> m_priorityQueue;
 };
 

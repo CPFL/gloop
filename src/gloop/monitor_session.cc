@@ -180,6 +180,7 @@ bool Session::handle(Command& command)
                     std::lock_guard<Lock> serverStatusGuard(m_server.serverStatusLock());
                     m_used += (m_timeWatch.ticks() * m_costPerBit);
                     m_server.calculateNextSession(serverStatusGuard);
+                    m_util += m_timeWatch.ticks();
                 }
                 m_kernelLock.unlock();
                 // GLOOP_DATA_LOG("[%u] Unlock kernel token, used:(%llu).\n", m_id, (long long unsigned)m_used.count());
@@ -258,11 +259,6 @@ void Session::burnUsed(const Duration& currentVirtualTime)
         m_burned += -m_used;
         m_used = Duration(0);
     }
-}
-
-void Session::setUsed(const Duration& used)
-{
-    m_used = used;
 }
 
 } }  // namsepace gloop::monitor
