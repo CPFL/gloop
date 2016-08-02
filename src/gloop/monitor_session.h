@@ -80,9 +80,9 @@ public:
 
     uint64_t costPerBit() const { return m_costPerBit; }
 
-    uint64_t readAndClearUtil()
+    int64_t readAndClearUtil()
     {
-        uint64_t us = m_used.count();
+        int64_t us = m_used.count();
         m_used = Duration(0);
         return us;
     }

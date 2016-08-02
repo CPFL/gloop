@@ -41,7 +41,7 @@ public:
     void start();
 
 private:
-    typedef std::vector<std::pair<uint64_t, uint64_t>> Data;
+    typedef std::vector<std::pair<uint32_t, int64_t>> Data;
 
     void dump(uint64_t epoch, Data&);
 

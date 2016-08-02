@@ -46,7 +46,7 @@ void UtilizationAccounting::start()
 {
     m_thread = make_unique<boost::thread>([&] {
         TimeWatch watch;
-        std::vector<std::pair<uint64_t, uint64_t>> data;
+        Data data;
         uint64_t epoch = 0;
         while (true) {
             watch.begin();
@@ -58,7 +58,9 @@ void UtilizationAccounting::start()
                         data.push_back(std::make_pair(session.id(), session.readAndClearUtil()));
                     }
                 }
-                dump(epoch, data);
+                if (!data.empty()) {
+                    dump(epoch, data);
+                }
             }
             watch.end();
             auto sleepPeriod = m_epoch - watch.ticks();
@@ -72,7 +74,13 @@ void UtilizationAccounting::start()
 
 void UtilizationAccounting::dump(uint64_t epoch, Data& data)
 {
+    // This may take long time. Do not take any lock here. And should count this time.
     std::sort(data.begin(), data.end());
+    fprintf(stderr, "epoch:(%lld)\n", static_cast<long long int>(epoch));
+    for (const auto& pair : data) {
+        fprintf(stderr, "id:(%d),util:(%lld)\n", static_cast<int>(pair.first), static_cast<long long int>(pair.second));
+    }
+    fflush(stderr);
 }
 
 } }  // namsepace gloop::monitor
