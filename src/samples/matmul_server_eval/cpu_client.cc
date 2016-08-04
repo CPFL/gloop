@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <vector>
+#include <gloop/benchmark.h>
 
 #include "microbench_util_cpu.h"
 #include "matmul_server_config.h"
@@ -46,13 +47,19 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+    int nthreads = BLOCKS;
+    if (argc >= 4)
+        nthreads = atoi(argv[3]);
+
     {
         std::vector<std::shared_ptr<boost::thread>> threads;
-        for (int i = 0; i < BLOCKS; ++i) {
+        for (int i = 0; i < nthreads; ++i) {
             threads.push_back(std::make_shared<boost::thread>([=] {
                 int sock = microbench_client_connect(argv[1], argv[2]);
                 std::vector<float> vec(MATRIX_SIZE * 2, 1.0f);
                 std::vector<float> result(MATRIX_SIZE, 0);
+                gloop::Benchmark benchmark;
+                benchmark.begin();
                 for (int j = 0; j < 4; ++j) {
                     // printf("[%d][%d]\n", i, j);
                     int res = 0;
@@ -63,6 +70,8 @@ int main(int argc, char *argv[])
                     if (res < 0)
                         std::abort();
                 }
+                benchmark.end();
+                benchmark.report(stderr, "4 times");
                 close(sock);
 #if 0
                 for (int i = 0; i < MATRIX_HW; ++i) {
