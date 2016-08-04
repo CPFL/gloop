@@ -31,8 +31,8 @@
 #define SHARED_BLOCK_SIZE 32
 #define TB_PER (SHARED_BLOCK_SIZE)
 #define THREADS_PER_TB dim3(TB_PER, TB_PER)
-// TITAN Z SMX => 15
-// K40 SMX => 30
+// TITAN Z SMX => 15, 2 per SM. => 30 is the best case.
+// K40 SMX => 15, 2 per SM => 30 is the best case.
 // #define BLOCKS 60
 // #define BLOCKS 30
 #define BLOCKS 1
