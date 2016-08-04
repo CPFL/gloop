@@ -103,12 +103,14 @@ public:
 
     __device__ void accept(gloop::DeviceLoop<>* loop)
     {
-        gloop::net::tcp::accept(loop, m_server, [=](gloop::DeviceLoop<>* loop, gloop::net::Socket* socket) {
-            if (!socket) {
-                return;
-            }
-            this->handle(loop, socket);
-        });
+        if (m_count++ != 10) {
+            gloop::net::tcp::accept(loop, m_server, [=](gloop::DeviceLoop<>* loop, gloop::net::Socket* socket) {
+                if (!socket) {
+                    return;
+                }
+                this->handle(loop, socket);
+            });
+        }
     }
 
     __device__ void close(gloop::DeviceLoop<>* loop, gloop::net::Socket* socket)
@@ -116,6 +118,30 @@ public:
         gloop::net::tcp::close(loop, socket, [=](gloop::DeviceLoop<>* loop, int error) {
             this->accept(loop);
         });
+    }
+
+    template<typename Callback>
+    __device__ void matmul(gloop::DeviceLoop<>* loop, int y, Callback callback)
+    {
+        float* lhs = m_message;
+        float* rhs = m_message + MATRIX_SIZE;
+        float* out = m_message + MATRIX_SIZE * 2;
+
+        int xtimes = MATRIX_HW / blockDim.x;
+        int ytimes = MATRIX_HW / blockDim.y;
+
+        for (; y < ytimes; ++y) {
+            for (int x = 0; x < xtimes; ++x) {
+                matrixMulCUDA<SHARED_BLOCK_SIZE>(out, lhs, rhs, MATRIX_HW, MATRIX_HW, x, y);
+            }
+
+            if (gloop::loop::postTaskIfNecessary(loop, [=] (gloop::DeviceLoop<>* loop) {
+                this->matmul(loop, y + 1, callback);
+            })) {
+                return;
+            }
+        }
+        callback(loop);
     }
 
     __device__ void handle(gloop::DeviceLoop<>* loop, gloop::net::Socket* socket)
@@ -126,23 +152,14 @@ public:
                 return;
             }
             GPU_ASSERT(receiveCount == (MATRIX_SIZE * sizeof(float) * 2));
-            float* lhs = m_message;
-            float* rhs = m_message + MATRIX_SIZE;
-            float* out = m_message + MATRIX_SIZE * 2;
-
-            int xtimes = MATRIX_HW / blockDim.x;
-            int ytimes = MATRIX_HW / blockDim.y;
-            for (int y = 0; y < ytimes; ++y) {
-                for (int x = 0; x < xtimes; ++x) {
-                    matrixMulCUDA<SHARED_BLOCK_SIZE>(out, lhs, rhs, MATRIX_HW, MATRIX_HW, x, y);
-                }
-            }
-            gloop::net::tcp::send(loop, socket, MATRIX_SIZE * sizeof(float), (uint8_t*)out, [=](gloop::DeviceLoop<>* loop, ssize_t sentCount) {
-                if (sentCount == 0) {
-                    this->close(loop, socket);
-                    return;
-                }
-                this->handle(loop, socket);
+            matmul(loop, 0, [=] (gloop::DeviceLoop<>* loop) {
+                gloop::net::tcp::send(loop, socket, MATRIX_SIZE * sizeof(float), (uint8_t*)(m_message + MATRIX_SIZE * 2), [=](gloop::DeviceLoop<>* loop, ssize_t sentCount) {
+                    if (sentCount == 0) {
+                        this->close(loop, socket);
+                        return;
+                    }
+                    this->handle(loop, socket);
+                });
             });
         });
     }
@@ -150,6 +167,7 @@ public:
 private:
     float m_message[MSG_SIZE];
     gloop::net::Server* m_server;
+    int m_count { 0 };
 };
 
 __device__ gloop::net::Server* globalServer = nullptr;
@@ -196,7 +214,7 @@ int main(int argc, char** argv)
         if (argc > 2) {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
             CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1 << 30)));
-            gpunet_client_init(&addr, &dev_addr, argv[1], argv[2]);
+            gpunet_server_init(&addr, &dev_addr, argv[2]);
             printf("address:(%x),port:(%u)\n", ((struct sockaddr_in*)addr)->sin_addr.s_addr, ((struct sockaddr_in*)addr)->sin_port);
         } else {
             gpunet_usage_client(argc, argv);
