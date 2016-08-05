@@ -107,7 +107,7 @@ inline __device__ auto receiveOnePage(DeviceLoop* loop, net::Socket* socket, siz
         BEGIN_SINGLE_THREAD
         {
             auto rpc = loop->enqueueRPC([=](DeviceLoop* loop, volatile request::Request* req) {
-                __threadfence_system();
+                // __threadfence_system();
                 callback(loop, req->u.netTCPReceiveResult.receiveCount, page);
             });
             volatile request::NetTCPReceive& req = rpc.request(loop)->u.netTCPReceive;

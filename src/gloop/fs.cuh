@@ -103,7 +103,7 @@ inline __device__ auto readOnePage(DeviceLoop* loop, int fd, size_t offset, size
         BEGIN_SINGLE_THREAD
         {
             auto rpc = loop->enqueueRPC([=](DeviceLoop* loop, volatile request::Request* req) {
-                __threadfence();
+                // __threadfence_block();
                 callback(loop, req->u.readResult.readCount, page);
             });
             volatile request::Read& req = rpc.request(loop)->u.read;
@@ -210,7 +210,8 @@ template<typename DeviceLoop, typename Lambda>
 inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     // Ensure buffer's modification is flushed.
-    __threadfence_system();
+    // __threadfence_system();
+    // __threadfence_block();
     writeOnePage(loop, fd, offset, min(count, GLOOP_SHARED_PAGE_SIZE), buffer, [=](DeviceLoop* loop, ssize_t writtenCount) {
         performOnePageWrite(loop, fd, offset, count, buffer, offset, writtenCount, callback);
     });
