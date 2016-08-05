@@ -54,7 +54,9 @@ enum class Code : int32_t {
     NetTCPUnbind,
     NetTCPAccept,
     NetTCPReceive,
+    NetTCPReceiveDirect,
     NetTCPSend,
+    NetTCPSendDirect,
     NetTCPClose,
 
     Exit,

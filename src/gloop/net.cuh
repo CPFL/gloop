@@ -165,6 +165,25 @@ inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t cou
 }
 
 template<typename DeviceLoop, typename Lambda>
+inline __device__ auto receiveDirect(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, int flags, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        auto rpc = loop->enqueueRPC([=](DeviceLoop* loop, volatile request::Request* req) {
+            // __threadfence_system();
+            callback(loop, req->u.netTCPReceiveDirectResult.receiveCount);
+        });
+        volatile request::NetTCPReceive& req = rpc.request(loop)->u.netTCPReceive;
+        req.socket = socket;
+        req.count = count;
+        req.buffer = buffer;
+        req.flags = flags;
+        rpc.emit(loop, Code::NetTCPReceiveDirect);
+    }
+    END_SINGLE_THREAD
+}
+
+template<typename DeviceLoop, typename Lambda>
 inline __device__ auto sendOnePage(DeviceLoop* loop, net::Socket* socket, size_t transferringSize, unsigned char* buffer, Lambda callback) -> void
 {
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
@@ -220,6 +239,24 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
     sendOnePage(loop, socket, requestedCount, buffer, [=](DeviceLoop* loop, ssize_t sentCount) {
         performOnePageSend(loop, socket, requestedCount, count, buffer, 0, sentCount, callback);
     });
+}
+
+template<typename DeviceLoop, typename Lambda>
+inline __device__ auto sendDirect(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
+{
+    // __threadfence_system();
+    BEGIN_SINGLE_THREAD
+    {
+        auto rpc = loop->enqueueRPC([=](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop, req->u.netTCPSendResult.sentCount);
+        });
+        volatile request::NetTCPSendDirect& req = rpc.request(loop)->u.netTCPSendDirect;
+        req.socket = socket;
+        req.count = count;
+        req.buffer = buffer;
+        rpc.emit(loop, Code::NetTCPSendDirect);
+    }
+    END_SINGLE_THREAD
 }
 
 template<typename DeviceLoop, typename Lambda>

@@ -172,6 +172,17 @@ struct NetTCPReceiveResult {
     ssize_t receiveCount;
 };
 
+struct NetTCPReceiveDirect {
+    net::Socket* socket;
+    size_t count;
+    unsigned char* buffer;
+    int flags;
+};
+
+struct NetTCPReceiveDirectResult {
+    ssize_t receiveCount;
+};
+
 struct NetTCPSend {
     net::Socket* socket;
     size_t count;
@@ -179,6 +190,16 @@ struct NetTCPSend {
 };
 
 struct NetTCPSendResult {
+    ssize_t sentCount;
+};
+
+struct NetTCPSendDirect {
+    net::Socket* socket;
+    size_t count;
+    unsigned char* buffer;
+};
+
+struct NetTCPSendDirectResult {
     ssize_t sentCount;
 };
 
@@ -236,8 +257,14 @@ struct Payload {
         NetTCPReceive netTCPReceive;
         NetTCPReceiveResult netTCPReceiveResult;
 
+        NetTCPReceiveDirect netTCPReceiveDirect;
+        NetTCPReceiveDirectResult netTCPReceiveDirectResult;
+
         NetTCPSend netTCPSend;
         NetTCPSendResult netTCPSendResult;
+
+        NetTCPSendDirect netTCPSendDirect;
+        NetTCPSendDirectResult netTCPSendDirectResult;
 
         NetTCPClose netTCPClose;
         NetTCPCloseResult netTCPCloseResult;
