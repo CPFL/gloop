@@ -56,10 +56,14 @@ class Test
         result.report()
     end
 
+    def cwd
+        "#{GLoop::Root}/data"
+    end
+
     def runBenchmark args
         err = nil
         out = nil
-        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+        FileUtils.chdir(cwd()) {|dir|
             out, err, status = Open3.capture3(args.join(" "))
             FileUtils.rm "out" if File.exists? "out"
         }
@@ -67,12 +71,18 @@ class Test
     end
 end
 
+class ImagingTest < Test
+    def cwd
+        "#{GLoop::Root}../gpufs/samples/img"
+    end
+end
+
 $tests = [
     Test.new("gloop", %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out db_shakespere.txt)),
     Test.new("gpufs", %W(#{GLoop::Root}/../gpufs/samples/grep_text/fs 1 60 128 input/dict.gpu out db_shakespere.txt)),
     Test.new("cuda", %W(#{GLoop::Root}/../gpufs/samples/grep_text/grep_text_gpu_nofs input/dict.gpu out db_shakespere.txt)),
-    Test.new("gloop", %W(#{GLoop::Root}/release/src/samples/img_non_mmap/img_gloop_non_mmap 1 60 60 128 input/dict.gpu out db_shakespere.txt)),
-    Test.new("gpufs", %W(#{GLoop::Root}/../gpufs/samples/grep_text/fs 1 60 128 input/dict.gpu out db_shakespere.txt)),
+    ImagingTest.new("gloop", %W(#{GLoop::Root}/release/src/samples/img_non_mmap/img_gloop_non_mmap 0 60 1024 res_in out res_o_0 res_o_1 res_o_2)),
+    ImagingTest.new("gpufs", %W(#{GLoop::Root}/../gpufs/samples/img/fs 0 60 1024 res_in out res_o_0 res_o_1 res_o_2)),
 ]
 
 def main
