@@ -103,7 +103,7 @@ public:
 
     __device__ void accept(gloop::DeviceLoop<>* loop)
     {
-        if (m_count++ != 10) {
+        if (m_count++ != 1) {
             gloop::net::tcp::accept(loop, m_server, [=](gloop::DeviceLoop<>* loop, gloop::net::Socket* socket) {
                 if (!socket) {
                     return;

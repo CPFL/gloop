@@ -51,28 +51,57 @@ int main(int argc, char *argv[])
     if (argc >= 4)
         nthreads = atoi(argv[3]);
 
+    int ntimes = 10;
+    if (argc >= 5)
+        ntimes = atoi(argv[4]);
+
+    int waiting = 0;
+    if (argc >= 6)
+        waiting = atoi(argv[5]);
+
+    printf("%d\n", waiting);
     {
         std::vector<std::shared_ptr<boost::thread>> threads;
         for (int i = 0; i < nthreads; ++i) {
             threads.push_back(std::make_shared<boost::thread>([=] {
-                int sock = microbench_client_connect(argv[1], argv[2]);
                 std::vector<float> vec(MATRIX_SIZE * 2, 1.0f);
                 std::vector<float> result(MATRIX_SIZE, 0);
+                int res = 0;
+                int sock = microbench_client_connect(argv[1], argv[2]);
                 gloop::Benchmark benchmark;
                 benchmark.begin();
-                for (int j = 0; j < 4; ++j) {
+                for (int j = 0; j < ntimes; ++j) {
                     // printf("[%d][%d]\n", i, j);
                     int res = 0;
                     res = send(sock, (void*)vec.data(), vec.size() * sizeof(float), 0);
                     if (res < 0)
                         std::abort();
+
                     res = recv(sock, (void*)result.data(), result.size() * sizeof(float), MSG_WAITALL);
                     if (res < 0)
                         std::abort();
+
+                    if (waiting) {
+                        struct timespec value {
+                            0,
+                            1000 * waiting // us
+                        };
+                        struct timespec rem {
+                            0,
+                            0
+                        };
+                        while (nanosleep(&value, &rem) == -1) {
+                            value = rem;
+                            rem = { 0, 0 };
+                        }
+                    }
                 }
+                res = close(sock);
+                if (res < 0)
+                    std::abort();
+
                 benchmark.end();
-                benchmark.report(stderr, "4 times");
-                close(sock);
+                benchmark.report(stderr, "times: ");
 #if 0
                 for (int i = 0; i < MATRIX_HW; ++i) {
                     for (int j = 0; j < MATRIX_HW; ++j) {
