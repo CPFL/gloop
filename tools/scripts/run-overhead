@@ -117,17 +117,19 @@ $gloopTests = [
 
 
 def main
-    $cudaTests.each {|test|
-        test.execute
-    }
+    11.times do
+        $cudaTests.each {|test|
+            test.execute
+        }
 
-    $kernelSplitTests.each {|test|
-        test.execute
-    }
+        $kernelSplitTests.each {|test|
+            test.execute
+        }
 
-    $gloopTests.each {|test|
-        test.execute
-    }
+        $gloopTests.each {|test|
+            test.execute
+        }
+    end
 end
 
 main() if __FILE__ == $0
