@@ -46,12 +46,12 @@ static_assert(GLOOP_SHARED_PAGE_COUNT < 32, "Should be less than 32");
 struct DeviceLoopControl {
     __host__ __device__ static constexpr uint32_t allFilledFreeSlots()
     {
-        return ((1U << GLOOP_SHARED_SLOT_SIZE) - 1);
+        return ((1ULL << GLOOP_SHARED_SLOT_SIZE) - 1);
     }
 
     __host__ __device__ void initialize(uint3 logicalBlocksDim)
     {
-        freePages = (1U << GLOOP_SHARED_PAGE_COUNT) - 1;
+        freePages = (1ULL << GLOOP_SHARED_PAGE_COUNT) - 1;
         freeSlots = allFilledFreeSlots();
         sleepSlots = 0;
         wakeupSlots = 0;
