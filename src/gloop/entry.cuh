@@ -57,7 +57,7 @@ inline __device__ void mainLoop(DeviceLoop* loop, int isInitialExecution, Device
     }
 
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    while (!suspended) {
+    while (__syncthreads_and(!suspended)) {
 #endif
         {
             callback(loop, args...);

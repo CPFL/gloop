@@ -174,17 +174,17 @@ template<>
 inline __device__ void* DeviceLoop<Shared>::allocateSharedSlotIfNecessary(uint32_t pos)
 {
     GLOOP_ASSERT_SINGLE_THREAD();
-    void* target = m_slots + pos;
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     if (m_special.m_scratchIndex1 == invalidPosition()) {
         m_special.m_scratchIndex1 = pos;
-        target = &m_special.m_scratch1;
-    } else if (m_special.m_scratchIndex2 == invalidPosition()) {
+        return &m_special.m_scratch1;
+    }
+    if (m_special.m_scratchIndex2 == invalidPosition()) {
         m_special.m_scratchIndex2 = pos;
-        target = &m_special.m_scratch2;
+        return &m_special.m_scratch2;
     }
 #endif
-    return target;
+    return m_slots + pos;
 }
 
 template<typename Policy>
@@ -416,7 +416,7 @@ next:
         suspended = suspend();
     }
     END_SINGLE_THREAD_WITHOUT_BARRIER
-    return __syncthreads_or(suspended);
+    return suspended;
 }
 
 template<>
