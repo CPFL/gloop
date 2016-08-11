@@ -25,6 +25,7 @@
 #pragma once
 
 #include <utility>
+#include "config.h"
 #include "device_context.cuh"
 #include "device_loop.cuh"
 #include "function.cuh"
@@ -165,12 +166,14 @@ inline __device__ RPC DeviceLoop<Policy>::enqueueRPC(Lambda&& lambda)
 template<>
 inline __device__ void* DeviceLoop<Global>::allocateSharedSlotIfNecessary(uint32_t pos)
 {
+    GLOOP_ASSERT_SINGLE_THREAD();
     return m_slots + pos;
 }
 
 template<>
 inline __device__ void* DeviceLoop<Shared>::allocateSharedSlotIfNecessary(uint32_t pos)
 {
+    GLOOP_ASSERT_SINGLE_THREAD();
     void* target = m_slots + pos;
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     if (m_special.m_scratchIndex1 == invalidPosition()) {
@@ -256,6 +259,7 @@ inline __device__ auto DeviceLoop<Policy>::dequeue() -> uint32_t
 template<>
 inline __device__ void DeviceLoop<Global>::deallocateSharedSlotIfNecessary(uint32_t pos)
 {
+    GLOOP_ASSERT_SINGLE_THREAD();
 }
 
 template<>
@@ -263,6 +267,7 @@ inline __device__ void DeviceLoop<Shared>::deallocateSharedSlotIfNecessary(uint3
 {
     // We are using one shot function. After calling the function, destruction is already done.
     // callback->~DeviceCallback();
+    GLOOP_ASSERT_SINGLE_THREAD();
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     if (pos == m_special.m_scratchIndex1) {
         m_special.m_scratchIndex1 = invalidPosition();
