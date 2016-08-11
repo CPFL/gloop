@@ -124,22 +124,23 @@ $gloopNonSharedTests = [
 ]
 
 def main
-    # 11.times do
-    #     $cudaTests.each {|test|
-    #         test.execute
-    #     }
+    11.times do
+        $cudaTests.each {|test|
+            test.execute
+        }
 
-    #     $kernelSplitTests.each {|test|
-    #         test.execute
-    #     }
+        $kernelSplitTests.each {|test|
+            test.execute
+        }
 
-    #     $gloopTests.each {|test|
-    #         test.execute
-    #     }
-    # end
-    $gloopNonSharedTests.each {|test|
-        test.execute
-    }
+        $gloopTests.each {|test|
+            test.execute
+        }
+
+        $gloopNonSharedTests.each {|test|
+            test.execute
+        }
+    end
 end
 
 main() if __FILE__ == $0
