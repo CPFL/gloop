@@ -73,7 +73,7 @@ end
 
 class ImagingTest < Test
     def cwd
-        "#{GLoop::Root}../gpufs/samples/img"
+        "#{GLoop::Root}/../gpufs/samples/img"
     end
 end
 
@@ -86,9 +86,11 @@ $tests = [
 ]
 
 def main
-    $tests.each {|test|
-        test.execute
-    }
+    11.times do
+        $tests.each {|test|
+            test.execute
+        }
+    end
 end
 
 main() if __FILE__ == $0
