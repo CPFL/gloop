@@ -420,20 +420,20 @@ next:
 }
 
 template<>
-inline __device__ void DeviceLoop<Global>::suspendSharedSlots(PerBlockContext*)
+inline __device__ void DeviceLoop<Global>::suspendSharedSlots()
 {
 }
 
 template<>
-inline __device__ void DeviceLoop<Shared>::suspendSharedSlots(PerBlockContext* blockContext)
+inline __device__ void DeviceLoop<Shared>::suspendSharedSlots()
 {
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     if (m_special.m_scratchIndex1 != invalidPosition()) {
-        new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_special.m_scratchIndex1) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_special.m_scratch1));
+        new (m_slots + m_special.m_scratchIndex1) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_special.m_scratch1));
         reinterpret_cast<DeviceCallback*>(&m_special.m_scratch1)->~DeviceCallback();
     }
     if (m_special.m_scratchIndex2 != invalidPosition()) {
-        new (reinterpret_cast<DeviceCallback*>(&blockContext->slots) + m_special.m_scratchIndex2) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_special.m_scratch2));
+        new (m_slots + m_special.m_scratchIndex2) DeviceCallback(*reinterpret_cast<DeviceCallback*>(&m_special.m_scratch2));
         reinterpret_cast<DeviceCallback*>(&m_special.m_scratch2)->~DeviceCallback();
     }
 #endif
@@ -454,7 +454,7 @@ inline __device__ int DeviceLoop<Policy>::suspend()
         hContext->sleepSlots = m_control.sleepSlots;
         hContext->wakeupSlots = m_control.wakeupSlots;
 
-        suspendSharedSlots(blockContext);
+        suspendSharedSlots();
 
         // Request the resume.
         atomicAdd(&m_kernel->pending, 1);

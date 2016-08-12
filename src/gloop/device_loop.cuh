@@ -116,7 +116,7 @@ private:
     inline __device__ void* allocateSharedSlotIfNecessary(uint32_t position);
     inline __device__ void deallocateSharedSlotIfNecessary(uint32_t pos);
     inline __device__ void initializeSharedSlots();
-    inline __device__ void suspendSharedSlots(PerBlockContext*);
+    inline __device__ void suspendSharedSlots();
 
     GLOOP_ALWAYS_INLINE __device__ DeviceCallback* slots(uint32_t position);
     GLOOP_ALWAYS_INLINE __device__ PerBlockContext* context();
