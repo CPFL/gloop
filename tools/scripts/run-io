@@ -78,11 +78,14 @@ class ImagingTest < Test
 end
 
 $tests = [
-    Test.new("gloop", %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out db_shakespere.txt)),
-    Test.new("gpufs", %W(#{GLoop::Root}/../gpufs/samples/grep_text/fs 1 60 128 input/dict.gpu out db_shakespere.txt)),
-    Test.new("cuda", %W(#{GLoop::Root}/../gpufs/samples/grep_text/grep_text_gpu_nofs input/dict.gpu out db_shakespere.txt)),
-    ImagingTest.new("gloop", %W(#{GLoop::Root}/release/src/samples/img_non_mmap/img_gloop_non_mmap 0 30 512 res_in out res_o_0 res_o_1 res_o_2)),
-    ImagingTest.new("gpufs", %W(#{GLoop::Root}/../gpufs/samples/img/fs 0 30 512 res_in out res_o_0 res_o_1 res_o_2)),
+    Test.new("grep_text-gloop", %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out db_shakespere.txt)),
+    Test.new("grep_text-gpufs", %W(#{GLoop::Root}/../gpufs-original/samples/grep_text/fs 1 60 128 input/dict.gpu out db_shakespere.txt)),
+    Test.new("grep_text-gpufs-optimized", %W(#{GLoop::Root}/../gpufs/samples/grep_text/fs 1 60 128 input/dict.gpu out db_shakespere.txt)),
+    Test.new("grep_text-cuda", %W(#{GLoop::Root}/../gpufs/samples/grep_text/grep_text_gpu_nofs input/dict.gpu out db_shakespere.txt)),
+    Test.new("grep_text-gloop-without-shared-slots", %W(#{GLoop::Root}/nonshared/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out db_shakespere.txt)),
+    # ImagingTest.new("imaging-gloop", %W(#{GLoop::Root}/release/src/samples/img_non_mmap/img_gloop_non_mmap 0 30 512 res_in out res_o_0 res_o_1 res_o_2)),
+    # ImagingTest.new("imaging-gpufs", %W(#{GLoop::Root}/../gpufs/samples/img/fs 0 30 512 res_in out res_o_0 res_o_1 res_o_2)),
+    # ImagingTest.new("imaging-gloop-without-shared-slots", %W(#{GLoop::Root}/nonshared/src/samples/img_non_mmap/img_gloop_non_mmap 0 30 512 res_in out res_o_0 res_o_1 res_o_2)),
 ]
 
 def main
