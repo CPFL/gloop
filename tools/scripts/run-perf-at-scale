@@ -151,20 +151,22 @@ class TPACFTest < Test
 end
 
 $tests = [
-    GrepTextTest.new("grep_text", 1),
-    GrepTextTest.new("grep_text", 2),
-    GrepTextTest.new("grep_text", 4),
-    GrepTextTest.new("grep_text", 8),
-    TPACFTest.new("tpacf", 1),
-    TPACFTest.new("tpacf", 2),
-    TPACFTest.new("tpacf", 4),
-    TPACFTest.new("tpacf", 8),
+    GrepTextTest.new("grep_text1", 1),
+    GrepTextTest.new("grep_text2", 2),
+    GrepTextTest.new("grep_text4", 4),
+    GrepTextTest.new("grep_text8", 8),
+    # TPACFTest.new("tpacf1", 1),
+    # TPACFTest.new("tpacf2", 2),
+    # TPACFTest.new("tpacf4", 4),
+    # TPACFTest.new("tpacf8", 8),
 ]
 
 def main
-    $tests.each {|test|
-        test.execute
-    }
+    11.times do
+        $tests.each {|test|
+            test.execute
+        }
+    end
 end
 
 main() if __FILE__ == $0

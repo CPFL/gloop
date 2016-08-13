@@ -23,4 +23,9 @@
 
 module GLoop
     Root = File.expand_path('../../../', __FILE__)
+
+    def self.clear_buffer_cache
+        system "sudo su -c 'echo 3 > /proc/sys/vm/drop_caches'"
+        sleep 2
+    end
 end

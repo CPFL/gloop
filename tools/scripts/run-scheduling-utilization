@@ -25,6 +25,7 @@
 require 'open3'
 require 'fileutils'
 require 'tempfile'
+require 'json'
 require_relative './gloop.rb'
 require_relative './benchmark-data.rb'
 
@@ -101,8 +102,10 @@ class UtilizationResult
         }
     end
 
-    def report
-        puts @result
+    def report filename
+        File.open filename, 'wb' do |file|
+            file.write(JSON.generate(@result))
+        end
     end
 end
 
@@ -124,7 +127,6 @@ class Scheduler
         result = UtilizationResult.new(@result.read())
         @result.close
         @process = nil
-        result.report()
         result
     end
 end
@@ -141,7 +143,7 @@ class Test
         results = runBenchmark()
         teardown
         results.each {|result|
-            result.report()
+            result.report("#{@name}.json")
         }
     end
 
@@ -210,8 +212,8 @@ class GrepTextTest < SchedulingTest
             result = BenchmarkResult.new(@name, err)
         }
         throttles.kill
-        @scheduler.stop()
-        [ result ]
+        util = @scheduler.stop()
+        [ util ]
     end
 end
 
@@ -232,8 +234,8 @@ class TPACFTest < SchedulingTest
             result = StatisticsResult.new(@name, err)
         }
         throttles.kill
-        @scheduler.stop()
-        [ result ]
+        util = @scheduler.stop()
+        [ util ]
     end
 end
 
@@ -250,8 +252,8 @@ class PriorityGrepTextTest < GrepTextTest
             result = BenchmarkResult.new(@name, err)
         }
         throttles.kill
-        @scheduler.stop()
-        [ result ]
+        util = @scheduler.stop()
+        [ util ]
     end
 end
 
@@ -268,25 +270,25 @@ class PriorityTPACFTest < TPACFTest
             result = StatisticsResult.new(@name, err)
         }
         throttles.kill
-        @scheduler.stop()
-        [ result ]
+        util = @scheduler.stop()
+        [ util ]
     end
 end
 
-$period = 200
+$period = 100
 $tests = [
-    TPACFTest.new("tpacf1", 1, $period),
+    # TPACFTest.new("tpacf1", 1, $period),
     # TPACFTest.new("tpacf3", 3, $period),
     # TPACFTest.new("tpacf7", 7, $period),
     # PriorityTPACFTest.new("priority-tpacf1", 1, $period),
     # PriorityTPACFTest.new("priority-tpacf3", 3, $period),
     # PriorityTPACFTest.new("priority-tpacf7", 7, $period),
-    # GrepTextTest.new("grep_text1", 1, $period),
-    # GrepTextTest.new("grep_text3", 3, $period),
-    # GrepTextTest.new("grep_text7", 7, $period),
-    # PriorityGrepTextTest.new("priority-grep_text1", 1, $period),
-    # PriorityGrepTextTest.new("priority-grep_text3", 3, $period),
-    # PriorityGrepTextTest.new("priority-grep_text7", 7, $period),
+    GrepTextTest.new("grep_text1", 1, $period),
+    GrepTextTest.new("grep_text3", 3, $period),
+    GrepTextTest.new("grep_text7", 7, $period),
+    PriorityGrepTextTest.new("priority-grep_text1", 1, $period),
+    PriorityGrepTextTest.new("priority-grep_text3", 3, $period),
+    PriorityGrepTextTest.new("priority-grep_text7", 7, $period),
 ]
 
 def main
