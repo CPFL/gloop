@@ -25,7 +25,7 @@ require_relative './gloop.rb'
 
 module BenchmarkData
     module TPACF
-        Data = <<-EOS.gsub('\n', '').strip
+        Data = <<-EOS.gsub(/\n/, '').strip
 /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Datapnts.1,
 /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.1,
 /home/yusukesuzuki/dev/parboil2-gloop/parboil/datasets/tpacf/large/input/Randompnts.2,
