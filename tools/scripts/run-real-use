@@ -25,6 +25,7 @@
 require 'open3'
 require 'fileutils'
 require 'tempfile'
+require 'json'
 require_relative './gloop.rb'
 require_relative './benchmark-data.rb'
 
@@ -101,8 +102,10 @@ class UtilizationResult
         }
     end
 
-    def report
-        puts @result
+    def report filename
+        File.open filename, 'wb' do |file|
+            file.write(JSON.generate(@result))
+        end
     end
 end
 
@@ -124,7 +127,6 @@ class Scheduler
         result = UtilizationResult.new(@result.read())
         @result.close
         @process = nil
-        result.report()
         result
     end
 end
@@ -141,7 +143,7 @@ class Test
         results = runBenchmark()
         teardown
         results.each {|result|
-            result.report()
+            result.report("#{@name}.json")
         }
     end
 
@@ -171,7 +173,7 @@ class Throttles
         }
     end
 
-    def kill
+    def wait
         @processes.each {|pid|
             # Process.kill :INT, pid
             Process.wait pid
@@ -182,7 +184,8 @@ end
 class PriorityThrottles < Throttles
     def initialize num, count
         super(num, count)
-        @priority = num * 2 # 66%
+        # @priority = num * 2 # 66%
+        @priority = num * 100
     end
 
     def command
@@ -209,9 +212,9 @@ class GrepTextTest < SchedulingTest
             FileUtils.rm "out" if File.exists? "out"
             result = BenchmarkResult.new(@name, err)
         }
-        throttles.kill
-        @scheduler.stop()
-        [ result ]
+        throttles.wait
+        util = @scheduler.stop()
+        [ util ]
     end
 end
 
@@ -231,9 +234,83 @@ class TPACFTest < SchedulingTest
             FileUtils.rm "out" if File.exists? "out"
             result = StatisticsResult.new(@name, err)
         }
-        throttles.kill
-        @scheduler.stop()
-        [ result ]
+        throttles.wait
+        util = @scheduler.stop()
+        [ util ]
+    end
+end
+
+class ConsolidatingServers < SchedulingTest
+    def serverCommand id
+        [
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_server_fine_grained 0.0.0.0 10004 1), #5159
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_server_fine_grained 0.0.0.0 10005 1), #5415
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_server_fine_grained 0.0.0.0 10006 1), #5671
+        ][id]
+    end
+
+    def clientCommand id, times = 1000
+        [
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_client_fine_grained 0.0.0.0 5159 1 #{times} 37500),
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_client_fine_grained 0.0.0.0 5415 1 #{times} 37500),
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_client_fine_grained 0.0.0.0 5671 1 #{times} 37500),
+        ][id]
+    end
+
+    def runBenchmark
+        @scheduler.start()
+        throttles = PriorityThrottles.new(1, 64000000)
+        throttles.run
+        result = nil
+        threads = []
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            # Server.
+            threads << Thread.new {
+                out, err, status = Open3.capture3(serverCommand(0).join(" "))
+                puts out, err
+            }
+
+            # Client
+            threads << Thread.new {
+                sleep 2
+                out, err, status = Open3.capture3(clientCommand(0, 2000).join(" "))
+                puts out, err
+            }
+
+            sleep 10
+
+            # Server.
+            threads << Thread.new {
+                out, err, status = Open3.capture3(serverCommand(1).join(" "))
+                puts out, err
+            }
+
+            # Client
+            threads << Thread.new {
+                sleep 5
+                out, err, status = Open3.capture3(clientCommand(1, 1000).join(" "))
+            }
+
+            sleep 10
+
+            # Server.
+            threads << Thread.new {
+                out, err, status = Open3.capture3(serverCommand(2).join(" "))
+                puts out, err
+            }
+
+            # Client
+            threads << Thread.new {
+                sleep 5
+                out, err, status = Open3.capture3(clientCommand(2, 300).join(" "))
+            }
+        }
+        threads.each do |thread|
+            thread.join
+        end
+        throttles.wait
+        util = @scheduler.stop()
+        [ util ]
     end
 end
 
@@ -249,9 +326,9 @@ class PriorityGrepTextTest < GrepTextTest
             FileUtils.rm "out" if File.exists? "out"
             result = BenchmarkResult.new(@name, err)
         }
-        throttles.kill
-        @scheduler.stop()
-        [ result ]
+        throttles.wait
+        util = @scheduler.stop()
+        [ util ]
     end
 end
 
@@ -267,15 +344,16 @@ class PriorityTPACFTest < TPACFTest
             FileUtils.rm "out" if File.exists? "out"
             result = StatisticsResult.new(@name, err)
         }
-        throttles.kill
-        @scheduler.stop()
-        [ result ]
+        throttles.wait
+        util = @scheduler.stop()
+        [ util ]
     end
 end
 
 $period = 200
 $tests = [
-    TPACFTest.new("tpacf1", 1, $period),
+    ConsolidatingServers.new("consolidating", 1, $period)
+    # TPACFTest.new("tpacf1", 1, $period),
     # TPACFTest.new("tpacf3", 3, $period),
     # TPACFTest.new("tpacf7", 7, $period),
     # PriorityTPACFTest.new("priority-tpacf1", 1, $period),

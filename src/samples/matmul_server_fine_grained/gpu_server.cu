@@ -96,14 +96,15 @@ __device__ void matrixMulCUDA(float *C, float *A, float *B, int wA, int wB, int 
 
 class MatMulServer {
 public:
-    __device__ MatMulServer(gloop::net::Server* server)
+    __device__ MatMulServer(gloop::net::Server* server, int limit)
         : m_server(server)
+        , m_limit(limit)
     {
     }
 
     __device__ void accept(gloop::DeviceLoop<>* loop)
     {
-        if (m_count++ != 1) {
+        if (m_count++ != m_limit) {
             gloop::net::tcp::accept(loop, m_server, [=](gloop::DeviceLoop<>* loop, gloop::net::Socket* socket) {
                 if (!socket) {
                     return;
@@ -165,14 +166,15 @@ public:
     }
 
 private:
-    float m_message[MSG_SIZE];
     gloop::net::Server* m_server;
     int m_count { 0 };
+    int m_limit;
+    float m_message[MSG_SIZE];
 };
 
 __device__ gloop::net::Server* globalServer = nullptr;
 __device__ volatile gpunet::INIT_LOCK initLock;
-__device__ void gpuMain(gloop::DeviceLoop<>* loop, struct sockaddr_in* addr)
+__device__ void gpuMain(gloop::DeviceLoop<>* loop, struct sockaddr_in* addr, int limit)
 {
     __shared__ MatMulServer* matMulServer;
     __shared__ int toInit;
@@ -180,7 +182,7 @@ __device__ void gpuMain(gloop::DeviceLoop<>* loop, struct sockaddr_in* addr)
     {
         toInit = initLock.try_wait();
         if (toInit != 1)
-            matMulServer = new MatMulServer(globalServer);
+            matMulServer = new MatMulServer(globalServer, limit);
     }
     END_SINGLE_THREAD
     if (toInit == 1) {
@@ -192,7 +194,7 @@ __device__ void gpuMain(gloop::DeviceLoop<>* loop, struct sockaddr_in* addr)
                 globalServer = server;
                 __threadfence();
                 initLock.signal();
-                matMulServer = new MatMulServer(globalServer);
+                matMulServer = new MatMulServer(globalServer, limit);
             }
             END_SINGLE_THREAD
             matMulServer->accept(loop);
@@ -208,13 +210,15 @@ int main(int argc, char** argv)
     std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
     std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
 
+    int limit = 1;
     struct sockaddr* addr;
     struct sockaddr* dev_addr;
     {
-        if (argc > 2) {
+        if (argc > 3) {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
             CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1 << 30)));
             gpunet_server_init(&addr, &dev_addr, argv[2]);
+            limit = atoi(argv[3]);
             printf("address:(%x),port:(%u)\n", ((struct sockaddr_in*)addr)->sin_addr.s_addr, ((struct sockaddr_in*)addr)->sin_port);
         } else {
             gpunet_usage_client(argc, argv);
@@ -225,9 +229,9 @@ int main(int argc, char** argv)
     gloop::Benchmark benchmark;
     benchmark.begin();
     {
-        hostLoop->launch(*hostContext, blocks, THREADS_PER_TB, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, struct sockaddr* address) {
-            gpuMain(loop, (struct sockaddr_in*)address);
-        }, dev_addr);
+        hostLoop->launch(*hostContext, blocks, THREADS_PER_TB, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, struct sockaddr* address, int limit) {
+            gpuMain(loop, (struct sockaddr_in*)address, limit);
+        }, dev_addr, limit);
     }
     benchmark.end();
     printf("[%d] ", 0);
