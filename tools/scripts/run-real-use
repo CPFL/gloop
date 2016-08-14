@@ -287,8 +287,8 @@ class ConsolidatingServers < SchedulingTest
 
             # Client
             threads << Thread.new {
-                sleep 5
-                out, err, status = Open3.capture3(clientCommand(1, 1000).join(" "))
+                sleep 2
+                out, err, status = Open3.capture3(clientCommand(1, 1200).join(" "))
             }
 
             sleep 10
@@ -301,8 +301,8 @@ class ConsolidatingServers < SchedulingTest
 
             # Client
             threads << Thread.new {
-                sleep 5
-                out, err, status = Open3.capture3(clientCommand(2, 300).join(" "))
+                sleep 2
+                out, err, status = Open3.capture3(clientCommand(2, 800).join(" "))
             }
         }
         threads.each do |thread|
