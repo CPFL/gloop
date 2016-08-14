@@ -24,6 +24,7 @@
 
 #include <gloop/benchmark.h>
 #include <gloop/initialize.cuh>
+#include <gloop/statistics.h>
 #include <gloop/utility.cuh>
 
 __global__ void throttle(int count, int limit)
@@ -32,32 +33,41 @@ __global__ void throttle(int count, int limit)
     // __syncthreads();
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
 
-    if(argc<4) {
-        fprintf(stderr,"<kernel_iterations> <blocks> <threads>\n");
+    if (argc < 4) {
+        fprintf(stderr, "<kernel_iterations> <blocks> <threads>\n");
         return -1;
     }
-    int trials=atoi(argv[1]);
-    int nblocks=atoi(argv[2]);
-    int nthreads=atoi(argv[3]);
-    int id=atoi(argv[4]);
+    int trials = atoi(argv[1]);
+    int nblocks = atoi(argv[2]);
+    int nthreads = atoi(argv[3]);
+    int id = atoi(argv[4]);
 
-    fprintf(stderr," iterations: %d blocks %d threads %d id %d\n",trials, nblocks, nthreads, id);
+    fprintf(stderr, " iterations: %d blocks %d threads %d id %d\n", trials, nblocks, nthreads, id);
+
     cudaStream_t pgraph;
-    GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&pgraph));
-
-    gloop::Benchmark benchmark;
-    benchmark.begin();
-    for (int i = 0; i < trials; ++i) {
-        throttle<<<nblocks, nthreads, 0, pgraph>>>(0, i);
-        GLOOP_CUDA_SAFE_CALL(cudaGetLastError());
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
+        gloop::eagerlyInitializeContext();
+        GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&pgraph));
     }
-    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(pgraph));
-    // GLOOP_CUDA_SAFE_CALL(cudaDeviceSynchronize());
-    benchmark.end();
-    printf("[%d] ", id);
-    benchmark.report();
+
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+        for (int i = 0; i < trials; ++i) {
+            throttle<<<nblocks, nthreads, 0, pgraph>>>(0, i);
+            GLOOP_CUDA_SAFE_CALL(cudaGetLastError());
+        }
+        GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(pgraph));
+    }
+
+    {
+        gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
+        gloop::eagerlyFinalizeContext();
+    }
+    gloop::Statistics::instance().report(stderr);
 
     return 0;
 }

@@ -23,49 +23,51 @@
 */
 
 #include <gloop/benchmark.h>
-#include <gloop/initialize.cuh>
 #include <gloop/statistics.h>
-#include <gloop/utility.cuh>
+#include <gloop/gloop.h>
 
-__global__ void throttle(int count, int limit)
+__device__ void throttle(gloop::DeviceLoop<>* loop, int count, int limit)
 {
-    // printf("Block[%u] TID[%u]\n", (unsigned)GLOOP_BID(), (unsigned)GLOOP_TID());
-    // __syncthreads();
+    if (count != limit) {
+        gloop::loop::postTask(loop, [=](gloop::DeviceLoop<>* loop) {
+            throttle(loop, count + 1, limit);
+        });
+    }
 }
 
 int main(int argc, char** argv)
 {
-
-    if (argc < 4) {
-        fprintf(stderr, "<kernel_iterations> <blocks> <threads>\n");
+    if (argc < 5) {
+        fprintf(stderr, "<kernel_iterations> <blocks> <pblocks> <threads>\n");
         return -1;
     }
     int trials = atoi(argv[1]);
     int nblocks = atoi(argv[2]);
-    int nthreads = atoi(argv[3]);
-    int id = atoi(argv[4]);
+    int physblocks = atoi(argv[3]);
+    int nthreads = atoi(argv[4]);
+    int id = atoi(argv[5]);
 
     fprintf(stderr, " iterations: %d blocks %d threads %d id %d\n", trials, nblocks, nthreads, id);
 
-    cudaStream_t pgraph;
     {
         gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
-        gloop::eagerlyInitializeContext();
-        GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&pgraph));
-    }
+        uint32_t pipelinePageCount = 0;
+        dim3 blocks(nblocks);
+        dim3 psblocks(physblocks);
+        std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, psblocks, pipelinePageCount);
 
-    {
-        gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
-        for (int i = 0; i < trials; ++i) {
-            throttle<<<nblocks, nthreads, 0, pgraph>>>(0, i);
-            GLOOP_CUDA_SAFE_CALL(cudaGetLastError());
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(pgraph));
+        {
+            std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (1ULL << 20)));
         }
-    }
 
-    {
-        gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
-        gloop::eagerlyFinalizeContext();
+        {
+            gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
+            hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA(gloop::DeviceLoop<> * loop, int trials) {
+                throttle(loop, 0, trials);
+            }, trials);
+        }
     }
     gloop::Statistics::instance().report(stderr);
 
