@@ -52,8 +52,8 @@ int main(int argc, char** argv) {
     for (int i = 0; i < trials; ++i) {
         throttle<<<nblocks, nthreads, 0, pgraph>>>(0, i);
         GLOOP_CUDA_SAFE_CALL(cudaGetLastError());
-        GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(pgraph));
     }
+    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(pgraph));
     // GLOOP_CUDA_SAFE_CALL(cudaDeviceSynchronize());
     benchmark.end();
     printf("[%d] ", id);
