@@ -151,10 +151,10 @@ class TPACFTest < Test
 end
 
 $tests = [
-    GrepTextTest.new("grep_text1", 1),
-    GrepTextTest.new("grep_text2", 2),
-    GrepTextTest.new("grep_text4", 4),
-    GrepTextTest.new("grep_text8", 8),
+    # GrepTextTest.new("grep_text1", 1),
+    # GrepTextTest.new("grep_text2", 2),
+    # GrepTextTest.new("grep_text4", 4),
+    # GrepTextTest.new("grep_text8", 8),
     # TPACFTest.new("tpacf1", 1),
     # TPACFTest.new("tpacf2", 2),
     # TPACFTest.new("tpacf4", 4),

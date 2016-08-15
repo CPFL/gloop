@@ -114,6 +114,13 @@ end
 class Throttles
     def initialize num, count
         @num = num
+        if num == 1
+            count = count
+        elsif num == 3
+            count = (count * 0.8).to_i
+        elsif num == 7
+            count = (count * 0.5).to_i
+        end
         @count = count
         @processes = []
     end
@@ -128,6 +135,7 @@ class Throttles
             # Process.detach pid
             @processes << pid
         }
+        sleep 5
     end
 
     def kill
@@ -178,7 +186,7 @@ class TPACFTest < SchedulingTest
     end
 
     def runBenchmark
-        throttles = Throttles.new(@times, 6000000)
+        throttles = Throttles.new(@times, 20000000)
         throttles.run
         result = nil
         FileUtils.chdir("#{GLoop::Root}/data") {|dir|
@@ -210,7 +218,7 @@ end
 
 class PriorityTPACFTest < TPACFTest
     def runBenchmark
-        throttles = PriorityThrottles.new(@times, 6000000)
+        throttles = PriorityThrottles.new(@times, 20000000)
         throttles.run
         result = nil
         FileUtils.chdir("#{GLoop::Root}/data") {|dir|
@@ -225,18 +233,18 @@ class PriorityTPACFTest < TPACFTest
 end
 
 $tests = [
-    # TPACFTest.new("tpacf1", 1),
+    TPACFTest.new("tpacf1", 1),
     # TPACFTest.new("tpacf3", 3),
     # TPACFTest.new("tpacf7", 7),
-    # PriorityTPACFTest.new("priority-tpacf1", 1),
+    PriorityTPACFTest.new("priority-tpacf1", 1),
     # PriorityTPACFTest.new("priority-tpacf3", 3),
     # PriorityTPACFTest.new("priority-tpacf7", 7),
-    GrepTextTest.new("grep_text1", 1),
-    GrepTextTest.new("grep_text3", 3),
-    GrepTextTest.new("grep_text7", 7),
-    PriorityGrepTextTest.new("priority-grep_text1", 1),
-    PriorityGrepTextTest.new("priority-grep_text3", 3),
-    PriorityGrepTextTest.new("priority-grep_text7", 7),
+    # GrepTextTest.new("grep_text1", 1),
+    # GrepTextTest.new("grep_text3", 3),
+    # GrepTextTest.new("grep_text7", 7),
+    # PriorityGrepTextTest.new("priority-grep_text1", 1),
+    # PriorityGrepTextTest.new("priority-grep_text3", 3),
+    # PriorityGrepTextTest.new("priority-grep_text7", 7),
 ]
 
 def main
