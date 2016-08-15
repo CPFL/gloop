@@ -1,0 +1,398 @@
+#!/usr/bin/ruby
+# -*- coding: utf-8 -*-
+#  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+#  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+#  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+#  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+#  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+#  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+#  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+require 'open3'
+require 'fileutils'
+require 'tempfile'
+require 'json'
+require_relative './gloop.rb'
+require_relative './benchmark-data.rb'
+
+class Result
+    def initialize(name)
+        @name = name
+    end
+end
+
+class BenchmarkResult < Result
+    def initialize(name, data)
+        super(name)
+        @time = extractTime(data)
+    end
+
+    def report
+        puts "#{@name}: #{@time.to_s}"
+    end
+
+    private
+    def extractTime(data)
+        m = /result:us\((\d+)\)/m.match(data)
+        raise self unless m
+        m[1].to_i
+    end
+end
+
+class StatisticsResult < Result
+    def initialize(name, data)
+        super(name)
+        @name = name
+        @times = {
+            "GPUInit" => 0,
+            "DataInit" => 0,
+            "IO" => 0,
+            "Copy" => 0,
+            "Kernel" => 0,
+        }
+
+        @times.each {|key, _|
+            @times[key] = extractTime(key, data)
+        }
+    end
+
+    def report
+        result = 0
+        @times.each {|key, value|
+            result += value
+        }
+        puts "#{@name}: #{result.to_s}"
+    end
+
+    private
+    def extractTime(type, data)
+        m = /#{type} result:us\((\d+)\)/m.match(data)
+        raise self unless m
+        m[1].to_i
+    end
+end
+
+class UtilizationResult
+    def initialize data
+        @result = {}
+        epoch = 0
+        data.split("\n").each {|line|
+            if line =~ /epoch:\((\d+)\)/
+                epoch = $1.to_i
+                @result[epoch] = {}
+            elsif line =~ /id:\((\d+)\),util:\((\d+)\)/
+                id = $1.to_i
+                util = $2.to_i
+                @result[epoch][$1] = util
+            end
+        }
+    end
+
+    def report filename
+        File.open filename, 'wb' do |file|
+            file.write(JSON.generate(@result))
+        end
+    end
+end
+
+class Scheduler
+    def initialize period
+        @process = nil
+        @result = Tempfile::open()
+        @period = period
+    end
+
+    def start
+        @process = Process.spawn(%W(#{GLoop::Root}/release/src/gloop/gloop-monitor 1 #{@period}).join(" "), :in => "/dev/null", :out => "/dev/null", :err => @result.path)
+        Process.detach @process
+        sleep 5
+    end
+
+    def stop
+        Process.kill :INT, @process
+        result = UtilizationResult.new(@result.read())
+        @result.close
+        @process = nil
+        result
+    end
+end
+
+class Test
+    def initialize(name, times, period)
+        @name = name
+        @times = times
+        @scheduler = Scheduler.new period
+    end
+
+    def execute
+        setup
+        results = runBenchmark()
+        teardown
+        results.each {|result|
+            result.report("#{@name}.json")
+        }
+    end
+
+    def setup
+    end
+
+    def teardown
+    end
+end
+
+class Throttles
+    def initialize num, count
+        @num = num
+        @count = count
+        @processes = []
+    end
+
+    def command
+        %W(#{GLoop::Root}/release/src/samples/throttle/throttle #{@count} 1 1 1 1)
+    end
+
+    def run
+        @num.times {
+            pid = Process.spawn(command().join(" "), :in => "/dev/null", :out => "/dev/null", :err => "/dev/null")
+            # Process.detach pid
+            @processes << pid
+        }
+    end
+
+    def wait
+        @processes.each {|pid|
+            # Process.kill :INT, pid
+            Process.wait pid
+        }
+    end
+end
+
+class PriorityThrottles < Throttles
+    def initialize num, count
+        super(num, count)
+        # @priority = num * 2 # 66%
+        @priority = 0xfffffff # super large value
+    end
+
+    def command
+        %W(#{GLoop::Root}/release/src/samples/proportional-throttle/proportional-throttle #{@count} 1 1 1 #{@priority})
+    end
+end
+
+class SchedulingTest < Test
+end
+
+class GrepTextTest < SchedulingTest
+    def createCommand
+        %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out db_shakespere.txt)
+    end
+
+    def runBenchmark
+        @scheduler.start()
+        throttles = Throttles.new(@times, 20000000)
+        throttles.run
+        result = nil
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            out, err, status = Open3.capture3(createCommand().join(" "))
+            FileUtils.rm "out" if File.exists? "out"
+            result = BenchmarkResult.new(@name, err)
+        }
+        throttles.wait
+        util = @scheduler.stop()
+        [ util ]
+    end
+end
+
+class TPACFTest < SchedulingTest
+
+    def runBenchmark
+        @scheduler.start()
+        throttles = Throttles.new(@times, 8000000)
+        throttles.run
+        result = nil
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            out, err, status = Open3.capture3(createCommand().join(" "))
+            FileUtils.rm "out" if File.exists? "out"
+            result = StatisticsResult.new(@name, err)
+        }
+        throttles.wait
+        util = @scheduler.stop()
+        [ util ]
+    end
+end
+
+class ConsolidatingServers < SchedulingTest
+    def tpacfCommand
+        [ "#{GLoop::Root}/release/src/samples/parboil2/tpacf-gloop/tpacf-gloop", "-i", BenchmarkData::TPACF::Data, "-o", "out", "--", "-n", "100", "-p", "10391" ]
+    end
+
+    def serverCommand id
+        [
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_server_fine_grained 0.0.0.0 10004 1), #5159
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_server_fine_grained 0.0.0.0 10005 1), #5415
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_server_fine_grained 0.0.0.0 10006 1), #5671
+        ][id]
+    end
+
+    def clientCommand id, times = 1000
+        [
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_client_fine_grained 0.0.0.0 5159 1 #{times} 40000),
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_client_fine_grained 0.0.0.0 5415 1 #{times} 40000),
+            %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_client_fine_grained 0.0.0.0 5671 1 #{times} 40000),
+        ][id]
+    end
+
+    def runBenchmark
+        @scheduler.start()
+        throttles = PriorityThrottles.new(1, 64000000)
+        throttles.run
+        result = nil
+        threads = []
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            # Server.
+            threads << Thread.new {
+                out, err, status = Open3.capture3(serverCommand(0).join(" "))
+                puts out, err
+            }
+
+            # Client
+            threads << Thread.new {
+                sleep 2
+                out, err, status = Open3.capture3(clientCommand(0, 2000).join(" "))
+                puts out, err
+            }
+
+            sleep 7
+
+            # TPACF
+            thread = Thread.new {
+                out, err, status = Open3.capture3(tpacfCommand().join(" "))
+                puts out, err
+            }
+            thread.join()
+
+            sleep 1.5
+
+            thread = Thread.new {
+                out, err, status = Open3.capture3(tpacfCommand().join(" "))
+                puts out, err
+            }
+            thread.join()
+
+            sleep 1.5
+
+            thread = Thread.new {
+                out, err, status = Open3.capture3(tpacfCommand().join(" "))
+                puts out, err
+            }
+            thread.join()
+
+            sleep 1.5
+
+            thread = Thread.new {
+                out, err, status = Open3.capture3(tpacfCommand().join(" "))
+                puts out, err
+            }
+            thread.join()
+
+            sleep 1.5
+
+            thread = Thread.new {
+                out, err, status = Open3.capture3(tpacfCommand().join(" "))
+                puts out, err
+            }
+            thread.join()
+
+            sleep 1.5
+
+            thread = Thread.new {
+                out, err, status = Open3.capture3(tpacfCommand().join(" "))
+                puts out, err
+            }
+            thread.join()
+        }
+        threads.each do |thread|
+            thread.join
+        end
+        throttles.wait
+        util = @scheduler.stop()
+        [ util ]
+    end
+end
+
+class PriorityGrepTextTest < GrepTextTest
+    def runBenchmark
+        @scheduler.start()
+        throttles = PriorityThrottles.new(@times, 20000000)
+        throttles.run
+        result = nil
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            out, err, status = Open3.capture3(createCommand().join(" "))
+            FileUtils.rm "out" if File.exists? "out"
+            result = BenchmarkResult.new(@name, err)
+        }
+        throttles.wait
+        util = @scheduler.stop()
+        [ util ]
+    end
+end
+
+class PriorityTPACFTest < TPACFTest
+    def runBenchmark
+        @scheduler.start()
+        throttles = PriorityThrottles.new(@times, 8000000)
+        throttles.run
+        result = nil
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            out, err, status = Open3.capture3(createCommand().join(" "))
+            FileUtils.rm "out" if File.exists? "out"
+            result = StatisticsResult.new(@name, err)
+        }
+        throttles.wait
+        util = @scheduler.stop()
+        [ util ]
+    end
+end
+
+$period = 200
+$tests = [
+    ConsolidatingServers.new("compute", 1, $period)
+    # TPACFTest.new("tpacf1", 1, $period),
+    # TPACFTest.new("tpacf3", 3, $period),
+    # TPACFTest.new("tpacf7", 7, $period),
+    # PriorityTPACFTest.new("priority-tpacf1", 1, $period),
+    # PriorityTPACFTest.new("priority-tpacf3", 3, $period),
+    # PriorityTPACFTest.new("priority-tpacf7", 7, $period),
+    # GrepTextTest.new("grep_text1", 1, $period),
+    # GrepTextTest.new("grep_text3", 3, $period),
+    # GrepTextTest.new("grep_text7", 7, $period),
+    # PriorityGrepTextTest.new("priority-grep_text1", 1, $period),
+    # PriorityGrepTextTest.new("priority-grep_text3", 3, $period),
+    # PriorityGrepTextTest.new("priority-grep_text7", 7, $period),
+]
+
+def main
+    $tests.each {|test|
+        test.execute
+    }
+end
+
+main() if __FILE__ == $0
