@@ -185,7 +185,7 @@ class PriorityThrottles < Throttles
     def initialize num, count
         super(num, count)
         # @priority = num * 2 # 66%
-        @priority = num * 100
+        @priority = 0xfffffff # super large value
     end
 
     def command
@@ -219,9 +219,6 @@ class GrepTextTest < SchedulingTest
 end
 
 class TPACFTest < SchedulingTest
-    def createCommand
-        [ "#{GLoop::Root}/release/src/samples/parboil2/tpacf-gloop/tpacf-gloop", "-i", BenchmarkData::TPACF::Data, "-o", "out", "--", "-n", "100", "-p", "10391" ]
-    end
 
     def runBenchmark
         @scheduler.start()
@@ -241,6 +238,10 @@ class TPACFTest < SchedulingTest
 end
 
 class ConsolidatingServers < SchedulingTest
+    def tpacfCommand
+        [ "#{GLoop::Root}/release/src/samples/parboil2/tpacf-gloop/tpacf-gloop", "-i", BenchmarkData::TPACF::Data, "-o", "out", "--", "-n", "100", "-p", "10391" ]
+    end
+
     def serverCommand id
         [
             %W(#{GLoop::Root}/release/src/samples/matmul_server_fine_grained/matmul_server_fine_grained 0.0.0.0 10004 1), #5159
@@ -277,33 +278,30 @@ class ConsolidatingServers < SchedulingTest
                 puts out, err
             }
 
-            sleep 10
+            sleep 7
 
-            # Server.
-            threads << Thread.new {
-                out, err, status = Open3.capture3(serverCommand(1).join(" "))
+            # TPACF
+            thread = Thread.new {
+                out, err, status = Open3.capture3(tpacfCommand().join(" "))
                 puts out, err
             }
+            thread.join()
 
-            # Client
-            threads << Thread.new {
-                sleep 2
-                out, err, status = Open3.capture3(clientCommand(1, 2000).join(" "))
-            }
+            sleep 1
 
-            sleep 10
-
-            # Server.
-            threads << Thread.new {
-                out, err, status = Open3.capture3(serverCommand(2).join(" "))
+            thread = Thread.new {
+                out, err, status = Open3.capture3(tpacfCommand().join(" "))
                 puts out, err
             }
+            thread.join()
 
-            # Client
-            threads << Thread.new {
-                sleep 2
-                out, err, status = Open3.capture3(clientCommand(2, 2000).join(" "))
+            sleep 1
+
+            thread = Thread.new {
+                out, err, status = Open3.capture3(tpacfCommand().join(" "))
+                puts out, err
             }
+            thread.join()
         }
         threads.each do |thread|
             thread.join
@@ -352,7 +350,7 @@ end
 
 $period = 200
 $tests = [
-    ConsolidatingServers.new("consolidating", 1, $period)
+    ConsolidatingServers.new("compute", 1, $period)
     # TPACFTest.new("tpacf1", 1, $period),
     # TPACFTest.new("tpacf3", 3, $period),
     # TPACFTest.new("tpacf7", 7, $period),
