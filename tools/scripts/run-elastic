@@ -1,0 +1,236 @@
+#!/usr/bin/ruby
+# -*- coding: utf-8 -*-
+#  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+#  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+#  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+#  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+#  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+#  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+#  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+require 'open3'
+require 'fileutils'
+require_relative './gloop.rb'
+require_relative './benchmark-data.rb'
+
+class Result
+    def initialize(name)
+        @name = name
+    end
+end
+
+class BenchmarkResult < Result
+    def initialize(name, data)
+        super(name)
+        @time = extractTime(data)
+    end
+
+    def report
+        puts "#{@name}: #{@time.to_s}"
+    end
+
+    private
+    def extractTime(data)
+        m = /result:us\((\d+)\)/m.match(data)
+        unless m
+            puts data
+            raise self
+        end
+        m[1].to_i
+    end
+end
+
+class StatisticsResult < Result
+    def initialize(name, data)
+        super(name)
+        @name = name
+        @times = {
+            "GPUInit" => 0,
+            "DataInit" => 0,
+            "IO" => 0,
+            "Copy" => 0,
+            "Kernel" => 0,
+        }
+
+        @times.each {|key, _|
+            @times[key] = extractTime(key, data)
+        }
+    end
+
+    def report
+        result = 0
+        @times.each {|key, value|
+            result += value
+        }
+        puts "#{@name}: #{result.to_s}"
+    end
+
+    private
+    def extractTime(type, data)
+        m = /#{type} result:us\((\d+)\)/m.match(data)
+        raise self unless m
+        m[1].to_i
+    end
+end
+
+class Test
+    def initialize(name, times)
+        @name = name
+        @times = times
+        # @scheduler = nil
+    end
+
+    def execute
+        setup
+        results = runBenchmark()
+        teardown
+        results.each {|result|
+            result.report()
+        }
+    end
+
+    def setup
+        # @scheduler = Process.spawn(%W(#{GLoop::Root}/release/src/gloop/gloop-monitor 1).join(" "), :in => "/dev/null", :out => "/dev/null", :err => "/dev/null")
+        # sleep 1
+        # Process.detach @scheduler
+    end
+
+    def teardown
+        # Process.kill :INT, @scheduler
+    end
+end
+
+class Throttles
+    def initialize num, count
+        @num = num
+        if num == 1
+            count = count
+        elsif num == 3
+            count = (count * 0.8).to_i
+        elsif num == 7
+            count = (count * 0.5).to_i
+        end
+        @count = count
+        @processes = []
+    end
+
+    def command
+        %W(#{GLoop::Root}/release/src/samples/throttle/throttle #{@count} 1 1 1 1)
+    end
+
+    def run
+        @num.times {
+            pid = Process.spawn(command().join(" "), :in => "/dev/null", :out => "/dev/null", :err => "/dev/null")
+            # Process.detach pid
+            @processes << pid
+        }
+        sleep 5
+    end
+
+    def kill
+        @processes.each {|pid|
+            # Process.kill :INT, pid
+            Process.wait pid
+        }
+    end
+end
+
+class SchedulingTest < Test
+end
+
+class XThrottleTest < SchedulingTest
+    def createCommand ltb, ptb
+        %W(#{GLoop::Root}/release/src/samples/throttle-pre/throttle-pre 100000 #{ltb} #{ptb} 128 1)
+    end
+
+    def runBenchmark
+        # throttles = Throttles.new(@times, 20000000)
+        # throttles.run
+        result = nil
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            out, err, status = Open3.capture3(createCommand(@times, @times).join(" "))
+            result = BenchmarkResult.new(@name, out)
+        }
+        # throttles.kill
+        [ result ]
+    end
+end
+
+class ThrottleTest < SchedulingTest
+    def createCommand ltb, ptb
+        %W(#{GLoop::Root}/release/src/samples/throttle-pre/throttle-pre 100000 #{ltb} #{ptb} 128 1)
+    end
+
+    def runBenchmark
+        # throttles = Throttles.new(@times, 20000000)
+        # throttles.run
+        result = nil
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            out, err, status = Open3.capture3(createCommand(@times, 240).join(" "))
+            result = BenchmarkResult.new(@name, out)
+        }
+        # throttles.kill
+        [ result ]
+    end
+end
+
+$tests = [
+    ThrottleTest.new("elastic", 15),
+    ThrottleTest.new("elastic", 30),
+    ThrottleTest.new("elastic", 60),
+    ThrottleTest.new("elastic", 120),
+    ThrottleTest.new("elastic", 240),
+    ThrottleTest.new("elastic", 480),
+    ThrottleTest.new("elastic", 960),
+    ThrottleTest.new("elastic", 1920),
+    ThrottleTest.new("elastic", 3840),
+    ThrottleTest.new("elastic", 7680),
+    # ThrottleTest.new("elastic", 15360),
+
+    XThrottleTest.new("nonelastic", 15),
+    XThrottleTest.new("nonelastic", 30),
+    XThrottleTest.new("nonelastic", 60),
+    XThrottleTest.new("nonelastic", 120),
+    XThrottleTest.new("nonelastic", 240),
+    XThrottleTest.new("nonelastic", 480),
+    XThrottleTest.new("nonelastic", 960),
+    XThrottleTest.new("nonelastic", 1920),
+    XThrottleTest.new("nonelastic", 3840),
+    XThrottleTest.new("nonelastic", 7680),
+    # XThrottleTest.new("nonelastic", 15360),
+
+    # PriorityTPACFTest.new("priority-tpacf3", 3),
+    # PriorityTPACFTest.new("priority-tpacf7", 7),
+    # GrepTextTest.new("grep_text1", 1),
+    # GrepTextTest.new("grep_text3", 3),
+    # GrepTextTest.new("grep_text7", 7),
+    # PriorityGrepTextTest.new("priority-grep_text1", 1),
+    # PriorityGrepTextTest.new("priority-grep_text3", 3),
+    # PriorityGrepTextTest.new("priority-grep_text7", 7),
+]
+
+def main
+    11.times do
+        $tests.each {|test|
+            test.execute
+        }
+    end
+end
+
+main() if __FILE__ == $0
