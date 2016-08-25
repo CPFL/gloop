@@ -24,12 +24,12 @@
 
 #pragma once
 
-#include <utility>
 #include "device_loop_inlines.cuh"
+#include <utility>
 namespace gloop {
 namespace loop {
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto postTask(DeviceLoop* loop, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -41,7 +41,7 @@ inline __device__ auto postTask(DeviceLoop* loop, Lambda callback) -> void
     END_SINGLE_THREAD
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto forceExit(DeviceLoop* loop, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -54,7 +54,7 @@ inline __device__ auto forceExit(DeviceLoop* loop, Lambda callback) -> void
     END_SINGLE_THREAD
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto postTaskIfNecessary(DeviceLoop* loop, Lambda callback) -> int
 {
     // CAUTION: Do not use shared memory to broadcast the result.
@@ -73,6 +73,5 @@ inline __device__ auto postTaskIfNecessary(DeviceLoop* loop, Lambda callback) ->
     END_SINGLE_THREAD_WITHOUT_BARRIER
     return __syncthreads_or(posted);
 }
-
-
-} }  // namespace gloop::loop
+}
+} // namespace gloop::loop

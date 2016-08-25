@@ -24,12 +24,13 @@
 
 #pragma once
 
+#include "hash_tuple.h"
+#include "noncopyable.h"
+#include "spinlock.h"
 #include <memory>
+#include <mutex>
 #include <tuple>
 #include <unordered_map>
-#include "noncopyable.h"
-#include "hash_tuple.h"
-#include "spinlock.h"
 namespace gloop {
 
 struct File {
@@ -51,10 +52,10 @@ typedef std::tuple<int, size_t, size_t> MmapRequest;
 struct MmapResult {
     MmapResult(MmapRequest);
 
-    void* host { nullptr };
-    void* device { nullptr };
-    size_t size { 0 };
-    int refCount { 1 };
+    void* host{nullptr};
+    void* device{nullptr};
+    size_t size{0};
+    int refCount{1};
     MmapRequest request;
 };
 
@@ -64,11 +65,11 @@ inline MmapResult::MmapResult(MmapRequest request)
 }
 
 class FileDescriptorTable {
-GLOOP_NONCOPYABLE(FileDescriptorTable)
+    GLOOP_NONCOPYABLE(FileDescriptorTable)
 public:
     typedef Spinlock Mutex;
 
-    FileDescriptorTable() { };
+    FileDescriptorTable(){};
     ~FileDescriptorTable();
 
     int open(std::string fileName, int mode);
@@ -93,7 +94,7 @@ private:
     typedef std::unordered_map<MmapRequest, std::shared_ptr<MmapResult>, hash_tuple::hash<MmapRequest>> MmapRequests;
     MmapRequests m_mmapRequestsTable;
 
-    Mutex m_mutex { };
+    Mutex m_mutex{};
 };
 
-}  // namespace gloop
+} // namespace gloop

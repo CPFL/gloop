@@ -21,10 +21,10 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include <cuda_runtime_api.h>
-#include <cstdio>
 #include "copy_worker.cuh"
 #include "utility.h"
+#include <cstdio>
+#include <cuda_runtime_api.h>
 namespace gloop {
 
 CopyWorker::CopyWorker()
@@ -37,4 +37,4 @@ CopyWorker::~CopyWorker()
     GLOOP_CUDA_SAFE_CALL(cudaStreamDestroy(m_stream));
 }
 
-}  // namespace gloop
+} // namespace gloop

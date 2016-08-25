@@ -22,8 +22,8 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <cuda_runtime.h>
 #include "mapped_memory.cuh"
+#include <cuda_runtime.h>
 namespace gloop {
 
 MappedMemory::MappedMemory(std::size_t size)
@@ -31,4 +31,4 @@ MappedMemory::MappedMemory(std::size_t size)
 {
 }
 
-}  // namespace gloop
+} // namespace gloop

@@ -26,27 +26,31 @@
 
 #include <cstdio>
 
-#define GLOOP_RAW_FPRINTF(stream, fmt, args...) do {\
-        std::fprintf(stream, "[GLOOP] " fmt, ##args);\
-        std::fflush(stream);\
+#define GLOOP_RAW_FPRINTF(stream, fmt, args...)       \
+    do {                                              \
+        std::fprintf(stream, "[GLOOP] " fmt, ##args); \
+        std::fflush(stream);                          \
     } while (0)
 
 #define GLOOP_FPRINTF(stream, fmt, args...) \
     GLOOP_RAW_FPRINTF(stream, "%s:%d - " fmt, __func__, __LINE__, ##args)
 
-#define GLOOP_FATAL(stream, fmt, args...) do {\
-        std::fprintf(stream, "[GLOOP] %s:%d - " fmt, __func__, __LINE__, ##args);\
-        std::fflush(stream);\
+#define GLOOP_FATAL(stream, fmt, args...)                                         \
+    do {                                                                          \
+        std::fprintf(stream, "[GLOOP] %s:%d - " fmt, __func__, __LINE__, ##args); \
+        std::fflush(stream);                                                      \
     } while (0)
 
 #define GLOOP_DATA_LOG(fmt, args...) GLOOP_FPRINTF(stderr, fmt, ##args)
 
 #if defined(NDEBUG)
-    #define GLOOP_DEBUG(fmt, args...) do { } while (0)
+#define GLOOP_DEBUG(fmt, args...) \
+    do {                          \
+    } while (0)
 #else
-    #define GLOOP_DEBUG(fmt, args...) GLOOP_FPRINTF(stderr, fmt, ##args)
+#define GLOOP_DEBUG(fmt, args...) GLOOP_FPRINTF(stderr, fmt, ##args)
 #endif
 
 namespace gloop {
 
-}  // namespae gloop
+} // namespae gloop

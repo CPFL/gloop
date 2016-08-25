@@ -24,6 +24,14 @@
 
 #pragma once
 
+#include "config.h"
+#include "device_context.cuh"
+#include "io.cuh"
+#include "mapped_memory.cuh"
+#include "noncopyable.h"
+#include "rpc.cuh"
+#include "spinlock.h"
+#include "utility.cuh"
 #include <boost/thread.hpp>
 #include <cuda.h>
 #include <memory>
@@ -31,21 +39,14 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "config.h"
-#include "device_context.cuh"
-#include "rpc.cuh"
-#include "io.cuh"
-#include "mapped_memory.cuh"
-#include "noncopyable.h"
-#include "spinlock.h"
-#include "utility.cuh"
 namespace gloop {
 
 class HostLoop;
 struct RPC;
 
 class HostContext {
-GLOOP_NONCOPYABLE(HostContext);
+    GLOOP_NONCOPYABLE(HostContext);
+
 public:
     friend struct RPC;
 
@@ -53,22 +54,42 @@ public:
 
     __host__ static std::unique_ptr<HostContext> create(HostLoop&, dim3 maxPhysicalBlocks, uint32_t pageCount = GLOOP_SHARED_PAGE_COUNT);
 
-    __host__ DeviceContext deviceContext() { return m_context; }
+    __host__ DeviceContext deviceContext()
+    {
+        return m_context;
+    }
 
-    dim3 maxPhysicalBlocks() const { return m_maxPhysicalBlocks; }
-    dim3 physicalBlocks() const { return dim3(m_physicalBlocks); }
-    size_t sharedMemorySize() const { return m_sharedMemorySize; }
+    dim3 maxPhysicalBlocks() const
+    {
+        return m_maxPhysicalBlocks;
+    }
+    dim3 physicalBlocks() const
+    {
+        return dim3(m_physicalBlocks);
+    }
+    size_t sharedMemorySize() const
+    {
+        return m_sharedMemorySize;
+    }
 
-    template<typename Callback>
+    template <typename Callback>
     __host__ bool tryPeekRequest(Callback callback);
 
-    FileDescriptorTable& table() { return m_table; }
+    FileDescriptorTable& table()
+    {
+        return m_table;
+    }
 
     typedef Spinlock Mutex;
     typedef boost::condition_variable_any Condition;
-    Mutex& mutex() { return m_mutex; }
-    Condition& condition() { return m_condition; }
-
+    Mutex& mutex()
+    {
+        return m_mutex;
+    }
+    Condition& condition()
+    {
+        return m_condition;
+    }
 
     void prepareForLaunch();
 
@@ -95,31 +116,31 @@ private:
     HostContext(HostLoop& hostLoop, dim3 maxPhysicalBlocks, uint32_t pageCount);
     bool initialize(HostLoop&);
 
-    template<typename Callback>
+    template <typename Callback>
     void forEachRPC(Callback callback);
 
     void pollerMain();
 
     HostLoop& m_hostLoop;
-    Mutex m_mutex { };
-    Condition m_condition { };
-    FileDescriptorTable m_table { };
-    std::shared_ptr<MappedMemory> m_codesMemory { nullptr };
-    std::shared_ptr<MappedMemory> m_payloadsMemory { nullptr };
-    std::shared_ptr<MappedMemory> m_kernel { nullptr };
-    std::shared_ptr<MappedMemory> m_hostContextMemory { nullptr };
-    DeviceContext m_context { nullptr };
+    Mutex m_mutex{};
+    Condition m_condition{};
+    FileDescriptorTable m_table{};
+    std::shared_ptr<MappedMemory> m_codesMemory{nullptr};
+    std::shared_ptr<MappedMemory> m_payloadsMemory{nullptr};
+    std::shared_ptr<MappedMemory> m_kernel{nullptr};
+    std::shared_ptr<MappedMemory> m_hostContextMemory{nullptr};
+    DeviceContext m_context{nullptr};
     int32_t* m_codes;
-    PerBlockHostContext* m_hostContext { nullptr };
+    PerBlockHostContext* m_hostContext{nullptr};
     request::Payload* m_payloads;
-    dim3 m_logicalBlocks { };
-    dim3 m_maxPhysicalBlocks { };
-    std::atomic<uint64_t> m_physicalBlocks { 0 };
-    size_t m_sharedMemorySize { 0 };
-    uint32_t m_pageCount { };
+    dim3 m_logicalBlocks{};
+    dim3 m_maxPhysicalBlocks{};
+    std::atomic<uint64_t> m_physicalBlocks{0};
+    size_t m_sharedMemorySize{0};
+    uint32_t m_pageCount{};
     std::vector<RPC> m_exitRequired;
     std::unordered_set<std::shared_ptr<MmapResult>> m_unmapRequests;
-    bool m_exitHandlerScheduled { false };
+    bool m_exitHandlerScheduled{false};
     std::unique_ptr<boost::thread> m_poller;
 };
 
@@ -138,20 +159,20 @@ GLOOP_ALWAYS_INLINE __host__ request::Payload* RPC::request(HostContext& hostCon
     return &hostContext.m_payloads[position];
 }
 
-template<typename Callback>
+template <typename Callback>
 inline void HostContext::forEachRPC(Callback callback)
 {
     uint64_t blocks = m_physicalBlocks;
     for (uint64_t i = 0; i < blocks; ++i) {
         for (uint32_t j = 0; j < GLOOP_SHARED_SLOT_SIZE; ++j) {
-            const RPC rpc { i * GLOOP_SHARED_SLOT_SIZE + j };
+            const RPC rpc{i * GLOOP_SHARED_SLOT_SIZE + j};
             // fprintf(stderr, "target position %llu\n", rpc.position);
             callback(rpc);
         }
     }
 }
 
-template<typename Callback>
+template <typename Callback>
 inline bool HostContext::tryPeekRequest(Callback callback)
 {
     bool found = false;
@@ -165,4 +186,4 @@ inline bool HostContext::tryPeekRequest(Callback callback)
     return found;
 }
 
-}  // namespace gloop
+} // namespace gloop

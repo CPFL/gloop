@@ -21,13 +21,13 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include "io.cuh"
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <fcntl.h>
 #include <mutex>
 #include <unistd.h>
-#include "io.cuh"
 namespace gloop {
 
 FileDescriptorTable::~FileDescriptorTable()
@@ -132,4 +132,4 @@ void FileDescriptorTable::dropMmapResult(std::shared_ptr<MmapResult> result)
     dropMmapResult(locker, result);
 }
 
-}  // namespace gloop
+} // namespace gloop

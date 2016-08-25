@@ -21,9 +21,9 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include "copy_work_pool.cuh"
 #include <mutex>
 #include <thread>
-#include "copy_work_pool.cuh"
 namespace gloop {
 
 CopyWork* CopyWorkPool::acquire()
@@ -62,4 +62,4 @@ void CopyWorkPool::registerCopyWork(std::shared_ptr<CopyWork> work)
     m_works.push_back(work.get());
 }
 
-}  // namespace gloop
+} // namespace gloop

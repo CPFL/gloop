@@ -24,31 +24,44 @@
 
 #pragma once
 
+#include "monitor_server.h"
+#include "monitor_service.grpc.pb.h"
+#include "monitor_service.pb.h"
+#include "noncopyable.h"
 #include <atomic>
 #include <boost/asio.hpp>
 #include <grpc++/grpc++.h>
-#include "monitor_server.h"
-#include "monitor_service.pb.h"
-#include "monitor_service.grpc.pb.h"
-#include "noncopyable.h"
 namespace gloop {
 namespace monitor {
 
 #define GLOOP_MONITOR_ENDPOINT "/tmp/gloop_monitor_endpoint"
 
 class Monitor final : private proto::Monitor::Service {
-GLOOP_NONCOPYABLE(Monitor);
+    GLOOP_NONCOPYABLE(Monitor);
+
 public:
     Monitor(uint32_t gpus, int enableUtilizationMonitorInMS);
 
-    boost::asio::io_service& ioService() { return m_ioService; }
+    boost::asio::io_service& ioService()
+    {
+        return m_ioService;
+    }
 
     void run();
 
-    uint32_t nextId() { return m_nextId++; }
+    uint32_t nextId()
+    {
+        return m_nextId++;
+    }
 
-    bool enableUtilizationMonitor() const { return m_enableUtilizationMonitorInMS != 0; }
-    int enableUtilizationMonitorInMS() const { return m_enableUtilizationMonitorInMS; }
+    bool enableUtilizationMonitor() const
+    {
+        return m_enableUtilizationMonitorInMS != 0;
+    }
+    int enableUtilizationMonitorInMS() const
+    {
+        return m_enableUtilizationMonitorInMS;
+    }
 
 private:
     grpc::Status listSessions(grpc::ServerContext* context, const proto::ListSessionRequest* request, grpc::ServerWriter<proto::Session>* writer) override;
@@ -56,8 +69,8 @@ private:
     uint32_t m_gpus;
     int m_enableUtilizationMonitorInMS;
     boost::asio::io_service m_ioService;
-    std::atomic<uint32_t> m_nextId { 0 };
+    std::atomic<uint32_t> m_nextId{0};
     std::vector<std::shared_ptr<Server>> m_servers;
 };
-
-} }  // namsepace gloop::monitor
+}
+} // namsepace gloop::monitor

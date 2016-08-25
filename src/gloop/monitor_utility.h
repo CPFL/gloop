@@ -34,7 +34,5 @@ namespace monitor {
 std::string createName(const std::string& prefix, uint32_t id);
 std::unique_ptr<boost::interprocess::message_queue> createQueue(const std::string& prefix, uint32_t id, bool create);
 std::unique_ptr<boost::interprocess::shared_memory_object> createMemory(const std::string& prefix, uint32_t id, std::size_t sharedMemorySize, bool create);
-
-
-
-} }  // namsepace gloop::monitor
+}
+} // namsepace gloop::monitor

@@ -24,43 +24,43 @@
 
 #pragma once
 
-#include "host_context.cuh"
-#include "host_loop.cuh"
 #include "data_log.h"
 #include "entry.cuh"
+#include "host_context.cuh"
+#include "host_loop.cuh"
 namespace gloop {
 
-template<typename DeviceLambda, class... Args>
+template <typename DeviceLambda, class... Args>
 inline void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
     launchWithSharedMemory<Shared>(hostContext, logicalBlocks, threads, 0, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
-template<typename DeviceLambda, class... Args>
+template <typename DeviceLambda, class... Args>
 inline void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
     launchWithSharedMemory<Shared>(hostContext, physicalBlocks, logicalBlocks, threads, 0, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
-template<typename Policy, typename DeviceLambda, class... Args>
+template <typename Policy, typename DeviceLambda, class... Args>
 inline void HostLoop::launch(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
     launchWithSharedMemory<Policy>(hostContext, logicalBlocks, threads, 0, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
-template<typename Policy, typename DeviceLambda, class... Args>
+template <typename Policy, typename DeviceLambda, class... Args>
 inline void HostLoop::launch(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, DeviceLambda&& callback, Args&&... args)
 {
     launchWithSharedMemory<Policy>(hostContext, physicalBlocks, logicalBlocks, threads, 0, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
-template<typename Policy, typename DeviceLambda, class... Args>
+template <typename Policy, typename DeviceLambda, class... Args>
 inline void HostLoop::launchWithSharedMemory(HostContext& hostContext, dim3 logicalBlocks, dim3 threads, size_t sharedMemorySize, DeviceLambda&& callback, Args&&... args)
 {
     launchWithSharedMemory<Policy>(hostContext, logicalBlocks, logicalBlocks, threads, sharedMemorySize, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
-template<typename Policy, typename DeviceLambda, class... Args>
+template <typename Policy, typename DeviceLambda, class... Args>
 inline void HostLoop::launchWithSharedMemory(HostContext& hostContext, dim3 preferredPhysicalBlocks, dim3 logicalBlocks, dim3 threads, size_t sharedMemorySize, DeviceLambda&& callback, Args&&... args)
 {
     dim3 physicalBlocks = hostContext.maxPhysicalBlocks();
@@ -75,11 +75,11 @@ inline void HostLoop::launchWithSharedMemory(HostContext& hostContext, dim3 pref
     return launchInternal<Policy>(hostContext, dim3(resultBlocksNumber), logicalBlocks, threads, sharedMemorySize, std::forward<DeviceLambda&&>(callback), std::forward<Args&&>(args)...);
 }
 
-template<typename Policy, typename DeviceLambda, class... Args>
+template <typename Policy, typename DeviceLambda, class... Args>
 inline void HostLoop::launchInternal(HostContext& hostContext, dim3 physicalBlocks, dim3 logicalBlocks, dim3 threads, size_t sharedMemorySize, DeviceLambda callback, Args... args)
 {
-//     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
-//     benchmark->begin();
+    //     std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
+    //     benchmark->begin();
     hostContext.prologue(logicalBlocks, physicalBlocks, sharedMemorySize);
 
 #if 0
@@ -117,7 +117,7 @@ inline void HostLoop::launchInternal(HostContext& hostContext, dim3 physicalBloc
     hostContext.epilogue();
 }
 
-template<typename Policy, typename DeviceLambda, typename... Args>
+template <typename Policy, typename DeviceLambda, typename... Args>
 void HostLoop::resume(HostContext& hostContext, dim3 threads, DeviceLambda callback, Args... args)
 {
     // GLOOP_DEBUG("resume\n");
@@ -166,23 +166,21 @@ void HostLoop::resume(HostContext& hostContext, dim3 threads, DeviceLambda callb
 
 void HostLoop::lockLaunch()
 {
-    unsigned int priority { };
-    std::size_t size { };
-    Command command {
+    unsigned int priority{};
+    std::size_t size{};
+    Command command{
         .type = Command::Type::Lock,
-        .payload = 0
-    };
+        .payload = 0};
     m_requestQueue->send(&command, sizeof(Command), 0);
     m_responseQueue->receive(&command, sizeof(Command), size, priority);
 }
 
 void HostLoop::unlockLaunch(Command::ReleaseStatus releaseStatus)
 {
-    Command command {
+    Command command{
         .type = Command::Type::Unlock,
-        .payload = static_cast<uint64_t>(releaseStatus)
-    };
+        .payload = static_cast<uint64_t>(releaseStatus)};
     m_requestQueue->send(&command, sizeof(Command), 0);
 }
 
-}  // namespace gloop
+} // namespace gloop

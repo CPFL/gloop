@@ -24,9 +24,9 @@
 
 #pragma once
 
+#include "utility.h"
 #include <cstdio>
 #include <cuda.h>
-#include "utility.h"
 
 namespace gloop {
 

@@ -24,9 +24,9 @@
 
 #pragma once
 
+#include "net_socket.h"
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include "net_socket.h"
 namespace gloop {
 namespace request {
 
@@ -272,5 +272,5 @@ struct Payload {
 };
 
 typedef Payload Request;
-
-} }  // namespace gloop::request
+}
+} // namespace gloop::request

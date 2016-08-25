@@ -21,13 +21,12 @@ typedef unsigned char uchar;
 #define SOC_TABLE_SIZE (512) /* related to GPUDirect limit. */
 
 /* must be power of 2 */
-#define TASK_ARRAY_SIZE  SOC_TABLE_SIZE  /* number of entries in the RPC queue */
+#define TASK_ARRAY_SIZE SOC_TABLE_SIZE /* number of entries in the RPC queue */
 
-
-#define CPU_IO_BUF_SIZE ((1 << 20))  /* size of a single send/recv buffer */
-#define SYSBUF_SIZE ((1 << 18))  /* size of a single send/recv buffer */
+#define CPU_IO_BUF_SIZE ((1 << 20)) /* size of a single send/recv buffer */
+#define SYSBUF_SIZE ((1 << 18)) /* size of a single send/recv buffer */
 
 #define IPPROTO_IBP 254
 
 #define GPU_LOCAL_FNAME_MAX_SIZE 64 /* max len of kernel name to launch */
-#define EKERN		(-4) // Kernel invocation error
+#define EKERN (-4) // Kernel invocation error

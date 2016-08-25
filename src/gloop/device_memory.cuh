@@ -24,12 +24,12 @@
 
 #pragma once
 
-#include <memory>
 #include "noncopyable.h"
+#include <memory>
 namespace gloop {
 
 class DeviceMemory {
-GLOOP_NONCOPYABLE(DeviceMemory)
+    GLOOP_NONCOPYABLE(DeviceMemory)
 public:
     static std::shared_ptr<DeviceMemory> create(std::size_t size)
     {
@@ -38,16 +38,25 @@ public:
 
     ~DeviceMemory();
 
-    void* devicePointer() { return m_devicePointer; }
-    const void* devicePointer() const { return m_devicePointer; }
+    void* devicePointer()
+    {
+        return m_devicePointer;
+    }
+    const void* devicePointer() const
+    {
+        return m_devicePointer;
+    }
 
-    std::size_t size() const { return m_size; }
+    std::size_t size() const
+    {
+        return m_size;
+    }
 
 private:
     DeviceMemory(std::size_t size);
 
-    void* m_devicePointer { nullptr };
+    void* m_devicePointer{nullptr};
     std::size_t m_size;
 };
 
-}  // namespace gloop
+} // namespace gloop

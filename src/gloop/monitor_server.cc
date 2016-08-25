@@ -22,9 +22,9 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "monitor.h"
 #include "data_log.h"
 #include "make_unique.h"
-#include "monitor.h"
 #include "monitor_server.h"
 #include "monitor_session.h"
 #include "monitor_utility.h"
@@ -139,5 +139,5 @@ Session* Server::calculateNextSession(const std::lock_guard<Lock>& locker)
     return target;
 #endif
 }
-
-} }  // namsepace gloop::monitor
+}
+} // namsepace gloop::monitor

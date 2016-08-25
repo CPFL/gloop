@@ -24,10 +24,10 @@
 
 #pragma once
 
-#include <cstdint>
-#include <type_traits>
 #include "config.h"
 #include "device_callback.cuh"
+#include <cstdint>
+#include <type_traits>
 namespace gloop {
 
 // DeviceLoop policy.
@@ -109,4 +109,4 @@ struct PerBlockHostContext {
     uint32_t wakeupSlots;
 };
 
-}  // namespace gloop
+} // namespace gloop

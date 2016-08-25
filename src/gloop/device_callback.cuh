@@ -31,4 +31,4 @@ namespace gloop {
 
 typedef std::aligned_storage<sizeof(gloop::OneShotFunction<void(void*, volatile request::Request*)>), alignof(gloop::OneShotFunction<void(void*, volatile request::Request*)>)>::type UninitializedDeviceCallbackStorage;
 
-}  // namespace gloop
+} // namespace gloop

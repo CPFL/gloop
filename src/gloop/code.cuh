@@ -75,4 +75,4 @@ inline bool IsOperationCode(Code code)
     return static_cast<int32_t>(code) > 0;
 }
 
-}  // namespace gloop
+} // namespace gloop

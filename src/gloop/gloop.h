@@ -26,10 +26,10 @@
 
 #include "device_loop_inlines.cuh"
 #include "entry.cuh"
-#include "loop.cuh"
 #include "fs.cuh"
 #include "global.cuh"
 #include "host_context.cuh"
 #include "host_loop_inlines.cuh"
+#include "loop.cuh"
 #include "net.cuh"
 #include "utility/util.cu.h"

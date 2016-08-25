@@ -22,9 +22,9 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <cuda_runtime.h>
 #include "device_memory.cuh"
 #include "utility.h"
+#include <cuda_runtime.h>
 namespace gloop {
 
 DeviceMemory::DeviceMemory(std::size_t size)
@@ -38,4 +38,4 @@ DeviceMemory::~DeviceMemory()
     GLOOP_CUDA_SAFE_CALL(cudaFree(m_devicePointer));
 }
 
-}  // namespace gloop
+} // namespace gloop

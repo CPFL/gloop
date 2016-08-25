@@ -52,4 +52,4 @@
 #define GLOOP_LAMBDA_SIZE 48
 
 namespace gloop {
-}  // namespace gloop
+} // namespace gloop

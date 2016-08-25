@@ -29,7 +29,8 @@
 namespace gloop {
 
 class CopyWorker {
-GLOOP_NONCOPYABLE(CopyWorker);
+    GLOOP_NONCOPYABLE(CopyWorker);
+
 public:
     CopyWorker();
     ~CopyWorker();
@@ -39,10 +40,13 @@ public:
         return make_unique<CopyWorker>();
     }
 
-    cudaStream_t stream() { return m_stream; }
+    cudaStream_t stream()
+    {
+        return m_stream;
+    }
 
 private:
     cudaStream_t m_stream;
 };
 
-}  // namespace gloop
+} // namespace gloop

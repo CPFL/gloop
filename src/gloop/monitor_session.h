@@ -24,6 +24,11 @@
 
 #pragma once
 
+#include "benchmark.h"
+#include "command.h"
+#include "config.h"
+#include "monitor_lock.h"
+#include "noncopyable.h"
 #include <atomic>
 #include <boost/asio.hpp>
 #include <boost/asio/high_resolution_timer.hpp>
@@ -36,18 +41,14 @@
 #include <mutex>
 #include <string>
 #include <type_traits>
-#include "benchmark.h"
-#include "command.h"
-#include "config.h"
-#include "monitor_lock.h"
-#include "noncopyable.h"
 namespace gloop {
 namespace monitor {
 
 class Server;
 
 class Session : public boost::intrusive::list_base_hook<> {
-GLOOP_NONCOPYABLE(Session);
+    GLOOP_NONCOPYABLE(Session);
+
 public:
     typedef std::chrono::microseconds Duration;
     Session(Server&, uint32_t id);
@@ -58,14 +59,26 @@ public:
         return std::chrono::microseconds(GLOOP_ROUGH_TIMESLICE);
     }
 
-    boost::asio::local::stream_protocol::socket& socket() { return m_socket; }
-    uint32_t id() const { return m_id; }
+    boost::asio::local::stream_protocol::socket& socket()
+    {
+        return m_socket;
+    }
+    uint32_t id() const
+    {
+        return m_id;
+    }
 
     typedef std::aligned_storage<sizeof(Command), std::alignment_of<Command>::value>::type CommandBuffer;
 
-    bool isAttemptingToLaunch() const { return m_attemptToLaunch.load(); }
+    bool isAttemptingToLaunch() const
+    {
+        return m_attemptToLaunch.load();
+    }
 
-    bool isScheduledDuringIO() const { return m_scheduledDuringIO.load(); }
+    bool isScheduledDuringIO() const
+    {
+        return m_scheduledDuringIO.load();
+    }
     void setScheduledDuringIO()
     {
         m_scheduledDuringIO.store(true);
@@ -73,12 +86,21 @@ public:
 
     void handShake();
 
-    const Duration& used() const { return m_used; }
-    Duration& used() { return m_used; }
+    const Duration& used() const
+    {
+        return m_used;
+    }
+    Duration& used()
+    {
+        return m_used;
+    }
 
     void burnUsed(const Duration&);
 
-    uint64_t costPerBit() const { return m_costPerBit; }
+    uint64_t costPerBit() const
+    {
+        return m_costPerBit;
+    }
 
     int64_t readAndClearUtil()
     {
@@ -88,7 +110,10 @@ public:
     }
 
 private:
-    Command* buffer() { return reinterpret_cast<Command*>(&m_buffer); }
+    Command* buffer()
+    {
+        return reinterpret_cast<Command*>(&m_buffer);
+    }
 
     void configureTick(boost::asio::high_resolution_timer& timer);
 
@@ -101,8 +126,8 @@ private:
 
     void kill();
 
-    std::atomic<bool> m_attemptToLaunch { false };
-    std::atomic<bool> m_scheduledDuringIO { false };
+    std::atomic<bool> m_attemptToLaunch{false};
+    std::atomic<bool> m_scheduledDuringIO{false};
     uint32_t m_id;
     Server& m_server;
     Lock m_lock;
@@ -118,13 +143,13 @@ private:
 
     // Scheduler members.
     TimeWatch m_timeWatch;
-    Duration m_used { 0 };
-    Duration m_burned { 0 };
-    Duration m_util { 0 };
-    uint64_t m_costPerBit { 1 };
+    Duration m_used{0};
+    Duration m_burned{0};
+    Duration m_util{0};
+    uint64_t m_costPerBit{1};
 
-    bool m_killed { false };
+    bool m_killed{false};
     TimeWatch m_killTimer;
 };
-
-} }  // namsepace gloop::monitor
+}
+} // namsepace gloop::monitor

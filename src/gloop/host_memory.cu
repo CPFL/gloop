@@ -22,9 +22,9 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <cuda_runtime.h>
 #include "host_memory.cuh"
 #include "utility.h"
+#include <cuda_runtime.h>
 namespace gloop {
 
 HostMemory::HostMemory(std::size_t size, unsigned flags)
@@ -39,5 +39,4 @@ HostMemory::~HostMemory()
     GLOOP_CUDA_SAFE_CALL(cudaFreeHost(m_hostPointer));
 }
 
-
-}  // namespace gloop
+} // namespace gloop

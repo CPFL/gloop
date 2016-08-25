@@ -24,14 +24,15 @@
 
 #pragma once
 
+#include "copy_work.cuh"
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
-#include "copy_work.cuh"
 namespace gloop {
 
 class CopyWorkPool {
-GLOOP_NONCOPYABLE(CopyWorkPool);
+    GLOOP_NONCOPYABLE(CopyWorkPool);
+
 public:
     CopyWorkPool(boost::asio::io_service& ioService)
         : m_ioService(ioService)
@@ -52,4 +53,4 @@ private:
     std::vector<CopyWork*> m_works;
 };
 
-}  // namespace gloop
+} // namespace gloop

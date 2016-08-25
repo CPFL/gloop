@@ -31,8 +31,9 @@ __host__ __device__ static inline void* memcpyIO(volatile void* s1, volatile con
     volatile char* out = (volatile char*)s1;
     const volatile char* in = (const volatile char*)s2;
     size_t i;
-    for (i = 0; i < n; ++i) out[i] = in[i];
+    for (i = 0; i < n; ++i)
+        out[i] = in[i];
     return (void*)s1;
 }
 
-}  // namespace gloop
+} // namespace gloop

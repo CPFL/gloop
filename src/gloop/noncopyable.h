@@ -24,8 +24,7 @@
 
 #pragma once
 
-
-#define GLOOP_NONCOPYABLE(ClassName) \
-private: \
+#define GLOOP_NONCOPYABLE(ClassName)      \
+private:                                  \
     ClassName(ClassName const&) = delete; \
     ClassName& operator=(ClassName const&) = delete;

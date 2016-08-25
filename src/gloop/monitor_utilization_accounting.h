@@ -26,6 +26,7 @@
 
 #include "noncopyable.h"
 #include <boost/thread.hpp>
+#include <chrono>
 #include <memory>
 
 namespace gloop {
@@ -34,7 +35,8 @@ namespace monitor {
 class Server;
 
 class UtilizationAccounting {
-GLOOP_NONCOPYABLE(UtilizationAccounting);
+    GLOOP_NONCOPYABLE(UtilizationAccounting);
+
 public:
     UtilizationAccounting(Server&, int epochInMS);
 
@@ -49,5 +51,5 @@ private:
     std::chrono::milliseconds m_epoch;
     std::unique_ptr<boost::thread> m_thread;
 };
-
-} }  // namsepace gloop::monitor
+}
+} // namsepace gloop::monitor

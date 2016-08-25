@@ -28,7 +28,7 @@
 
 namespace gloop {
 
-template<typename ToType, typename FromType>
+template <typename ToType, typename FromType>
 inline ToType bitwise_cast(FromType from)
 {
     static_assert(sizeof(FromType) == sizeof(ToType), "bitwise_cast size of FromType and ToType must be equal!");
@@ -40,4 +40,4 @@ inline ToType bitwise_cast(FromType from)
     return u.to;
 }
 
-}  // namespace gloop
+} // namespace gloop

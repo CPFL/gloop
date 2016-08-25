@@ -24,19 +24,18 @@
 
 #pragma once
 
-#include <array>
 #include "benchmark.h"
+#include <array>
 
 namespace gloop {
 
 #define GLOOP_STATISTICS_TYPE(V) \
-    V(IO, 0) \
-    V(Kernel, 1) \
-    V(Copy, 2) \
-    V(DataInit, 3) \
-    V(GPUInit, 4) \
-    V(None, -1) \
-
+    V(IO, 0)                     \
+    V(Kernel, 1)                 \
+    V(Copy, 2)                   \
+    V(DataInit, 3)               \
+    V(GPUInit, 4)                \
+    V(None, -1)
 
 class Statistics {
 public:
@@ -47,13 +46,13 @@ public:
     };
     static constexpr const size_t NumberOfTypes = 5;
 
-    template<Type type>
+    template <Type type>
     void begin()
     {
         begin(type);
     }
 
-    template<Type type>
+    template <Type type>
     void end()
     {
         end(type);
@@ -73,15 +72,15 @@ public:
 
     void report(FILE* file)
     {
-#define GLOOP_REPORT(type, value)\
-        if (Type::type != Type::None) {\
-            report(file, Type::type, #type " ");\
-        }
+#define GLOOP_REPORT(type, value)            \
+    if (Type::type != Type::None) {          \
+        report(file, Type::type, #type " "); \
+    }
         GLOOP_STATISTICS_TYPE(GLOOP_REPORT)
 #undef GLOOP_REPORT
     }
 
-    template<Type type, typename Functor>
+    template <Type type, typename Functor>
     void bench(Functor functor)
     {
         begin<type>();
@@ -95,7 +94,7 @@ public:
         return statistics;
     }
 
-    template<Type type>
+    template <Type type>
     void switchTo()
     {
         switchTo(type);
@@ -112,7 +111,7 @@ public:
         m_currentType = type;
     }
 
-    template<Type type>
+    template <Type type>
     class Scope {
     public:
         Scope()
@@ -127,7 +126,7 @@ public:
         }
 
     private:
-        Type m_previousType { Type::None };
+        Type m_previousType{Type::None};
     };
 
 private:
@@ -141,9 +140,9 @@ private:
         std::fprintf(file, "%sresult:us(%lld)\n", prefix.c_str(), static_cast<long long>(m_times[static_cast<int32_t>(type)].count()));
     }
 
-    Type m_currentType { Type::None };
-    std::array<std::chrono::microseconds, NumberOfTypes> m_times { };
-    std::array<gloop::Benchmark, NumberOfTypes> m_benchmarks { };
+    Type m_currentType{Type::None};
+    std::array<std::chrono::microseconds, NumberOfTypes> m_times{};
+    std::array<gloop::Benchmark, NumberOfTypes> m_benchmarks{};
 };
 
 } // namespace gloop

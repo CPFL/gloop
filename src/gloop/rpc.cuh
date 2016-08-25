@@ -24,13 +24,13 @@
 
 #pragma once
 
-#include <cstdint>
 #include "code.cuh"
 #include "mapped.cuh"
 #include "noncopyable.h"
 #include "request.h"
 #include "sync_read_write.h"
 #include "utility.h"
+#include <cstdint>
 
 namespace gloop {
 
@@ -39,11 +39,11 @@ class HostContext;
 struct RPC {
     uint32_t position;
 
-    template<typename DeviceLoop>
+    template <typename DeviceLoop>
     __device__ Code peek(DeviceLoop*);
-    template<typename DeviceLoop>
+    template <typename DeviceLoop>
     __device__ void emit(DeviceLoop*, Code code);
-    template<typename DeviceLoop>
+    template <typename DeviceLoop>
     __device__ request::Payload* request(DeviceLoop*);
 
     __host__ Code peek(HostContext&);
@@ -51,4 +51,4 @@ struct RPC {
     __host__ request::Payload* request(HostContext&) const;
 };
 
-}  // namespace gloop
+} // namespace gloop

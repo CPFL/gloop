@@ -21,16 +21,16 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include "monitor_session.h"
+#include "data_log.h"
+#include "make_unique.h"
+#include "monitor_server.h"
+#include "monitor_utility.h"
+#include "sync_read_write.h"
 #include <boost/bind.hpp>
 #include <chrono>
 #include <mutex>
 #include <vector>
-#include "data_log.h"
-#include "make_unique.h"
-#include "monitor_server.h"
-#include "monitor_session.h"
-#include "monitor_utility.h"
-#include "sync_read_write.h"
 
 namespace gloop {
 namespace monitor {
@@ -51,7 +51,7 @@ Session::~Session()
     m_server.unregisterSession(*this);
     GLOOP_DEBUG("server:(%u),close:(%u)\n", m_server.id(), static_cast<unsigned>(id()));
     if (m_thread) {
-        Command command { Command::Type::Shutdown };
+        Command command{Command::Type::Shutdown};
         m_requestQueue->send(&command, sizeof(Command), 0);
         // m_thread->interrupt();
         m_thread->join();
@@ -228,19 +228,18 @@ bool Session::initialize(Command& command)
     m_server.registerSession(*this);
     m_thread = make_unique<boost::thread>(&Session::main, this);
 
-    command = (Command) {
+    command = (Command){
         .type = Command::Type::Initialize,
-        .payload = id()
-    };
+        .payload = id()};
     return true;
 }
 
 void Session::main()
 {
     while (true) {
-        unsigned int priority { };
-        std::size_t size { };
-        Command command { };
+        unsigned int priority{};
+        std::size_t size{};
+        Command command{};
 
 #if 1
         m_requestQueue->receive(&command, sizeof(Command), size, priority);
@@ -271,5 +270,5 @@ void Session::burnUsed(const Duration& currentVirtualTime)
         m_used = Duration(0);
     }
 }
-
-} }  // namsepace gloop::monitor
+}
+} // namsepace gloop::monitor

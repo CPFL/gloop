@@ -24,16 +24,16 @@
 
 #pragma once
 
-#include <atomic>
-#include <boost/asio.hpp>
-#include <boost/intrusive/list.hpp>
-#include <boost/thread.hpp>
-#include <queue>
 #include "monitor_lock.h"
 #include "monitor_session.h"
 #include "monitor_utilization_accounting.h"
 #include "noncopyable.h"
 #include "utility.h"
+#include <atomic>
+#include <boost/asio.hpp>
+#include <boost/intrusive/list.hpp>
+#include <boost/thread.hpp>
+#include <queue>
 namespace gloop {
 namespace monitor {
 
@@ -47,21 +47,40 @@ struct SessionPriorityFunctor {
 };
 
 class Server {
-GLOOP_NONCOPYABLE(Server);
+    GLOOP_NONCOPYABLE(Server);
+
 public:
     typedef boost::intrusive::list<Session> SessionList;
 
-    constexpr static uint32_t anySessionAllowed() { return UINT32_MAX; }
+    constexpr static uint32_t anySessionAllowed()
+    {
+        return UINT32_MAX;
+    }
 
     Server(Monitor& monitor, uint32_t serverId);
 
-    uint32_t id() const { return m_id; }
+    uint32_t id() const
+    {
+        return m_id;
+    }
 
-    boost::asio::io_service& ioService() { return m_ioService; }
-    const boost::asio::io_service& ioService() const { return m_ioService; }
+    boost::asio::io_service& ioService()
+    {
+        return m_ioService;
+    }
+    const boost::asio::io_service& ioService() const
+    {
+        return m_ioService;
+    }
 
-    ServerLock& kernelLock() { return m_kernelLock; }
-    SessionList& sessionList() { return m_sessionList; }
+    ServerLock& kernelLock()
+    {
+        return m_kernelLock;
+    }
+    SessionList& sessionList()
+    {
+        return m_sessionList;
+    }
 
     static std::string createEndpoint(const std::string& prefix, uint32_t id);
 
@@ -70,10 +89,16 @@ public:
 
     bool isAllowed(Session& session) const;
 
-    boost::condition_variable_any& condition() { return m_condition; }
+    boost::condition_variable_any& condition()
+    {
+        return m_condition;
+    }
 
     Session* calculateNextSession(const std::lock_guard<Lock>&);
-    Lock& serverStatusLock() { return m_serverStatusLock; }
+    Lock& serverStatusLock()
+    {
+        return m_serverStatusLock;
+    }
 
 private:
     void accept();
@@ -82,14 +107,14 @@ private:
 
     Monitor& m_monitor;
     uint32_t m_id;
-    std::atomic<uint32_t> m_waitingCount { 0 };
+    std::atomic<uint32_t> m_waitingCount{0};
     ServerLock m_kernelLock;
     Lock m_serverStatusLock;
     SessionList m_sessionList;
     boost::asio::io_service& m_ioService;
     boost::asio::local::stream_protocol::acceptor m_acceptor;
     boost::condition_variable_any m_condition;
-    uint32_t m_toBeAllowed { anySessionAllowed() };
+    uint32_t m_toBeAllowed{anySessionAllowed()};
     std::unique_ptr<UtilizationAccounting> m_utilizationAccounting;
     // std::priority_queue<Session*, std::vector<Session*>, SessionPriorityFunctor> m_priorityQueue;
 };
@@ -98,5 +123,5 @@ GLOOP_ALWAYS_INLINE bool Server::isAllowed(Session& session) const
 {
     return m_toBeAllowed == anySessionAllowed() || m_toBeAllowed == session.id();
 }
-
-} }  // namsepace gloop::monitor
+}
+} // namsepace gloop::monitor

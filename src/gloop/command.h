@@ -52,4 +52,4 @@ struct Command {
     request::Request request;
 };
 
-}  // namespace gloop
+} // namespace gloop

@@ -58,14 +58,20 @@ public:
         std::fprintf(file, "%sresult:us(%lld)\n", prefix.c_str(), (long long)ticks().count());
     }
 
-    inline Clock::time_point beginPoint() const { return m_begin; }
-    inline Clock::time_point endPoint() const { return m_end; }
+    inline Clock::time_point beginPoint() const
+    {
+        return m_begin;
+    }
+    inline Clock::time_point endPoint() const
+    {
+        return m_end;
+    }
 
 private:
-    Clock::time_point m_begin { };
-    Clock::time_point m_end { };
+    Clock::time_point m_begin{};
+    Clock::time_point m_end{};
 };
 
 typedef Benchmark TimeWatch;
 
-}  // namespace gloop
+} // namespace gloop

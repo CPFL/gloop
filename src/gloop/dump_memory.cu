@@ -22,12 +22,12 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <cstdio>
-#include <cuda.h>
-#include <cuda_runtime.h>
 #include "dump_memory.cuh"
 #include "utility.h"
 #include "utility/util.cu.h"
+#include <cstdio>
+#include <cuda.h>
+#include <cuda_runtime.h>
 namespace gloop {
 
 __device__ void dumpMemoryInternal(const void* ptr, std::size_t size)
@@ -46,4 +46,4 @@ __device__ void dumpMemoryInternal(const void* ptr, std::size_t size)
     END_SINGLE_THREAD
 }
 
-}  // namespace gloop
+} // namespace gloop

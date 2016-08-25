@@ -24,20 +24,21 @@
 
 #pragma once
 
-#include <atomic>
 #include "noncopyable.h"
+#include <atomic>
 namespace gloop {
 
 // spinlock. Not considering thundering herd etc.
 // http://stackoverflow.com/questions/26583433/c11-implementation-of-spinlock-using-atomic
 class Spinlock {
-GLOOP_NONCOPYABLE(Spinlock)
+    GLOOP_NONCOPYABLE(Spinlock)
 public:
     Spinlock() = default;
 
     void lock()
     {
-        while (m_locked.test_and_set(std::memory_order_acquire));
+        while (m_locked.test_and_set(std::memory_order_acquire))
+            ;
     }
 
     void unlock()
@@ -51,7 +52,7 @@ public:
     }
 
 private:
-    std::atomic_flag m_locked { ATOMIC_FLAG_INIT };
+    std::atomic_flag m_locked{ATOMIC_FLAG_INIT};
 };
 
-}  // namespace gloop
+} // namespace gloop

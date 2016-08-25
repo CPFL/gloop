@@ -24,13 +24,13 @@
 
 #pragma once
 
-#include <boost/thread/mutex.hpp>
 #include "spinlock.h"
+#include <boost/thread/mutex.hpp>
 namespace gloop {
 namespace monitor {
 
 // typedef boost::mutex Lock;
 typedef Spinlock Lock;
 typedef boost::mutex ServerLock;
-
-} }  // namespace gloop::monitor
+}
+} // namespace gloop::monitor

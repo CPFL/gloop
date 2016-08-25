@@ -27,10 +27,10 @@
 namespace gloop {
 namespace helper {
 
-template<typename DeviceLambda, class... Args>
+template <typename DeviceLambda, class... Args>
 inline __global__ void launch(const DeviceLambda& callback, Args... args)
 {
     callback(std::forward<Args>(args)...);
 }
-
-} }  // namespace gloop::helper
+}
+} // namespace gloop::helper

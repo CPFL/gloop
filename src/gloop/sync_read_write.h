@@ -27,29 +27,32 @@
 #include "utility.h"
 namespace gloop {
 
-template<typename T, typename U>
+template <typename T, typename U>
 #if defined(__CUDACC__)
 __host__ __device__
 #endif
-GLOOP_ALWAYS_INLINE T readNoCache(volatile const U* ptr)
+    GLOOP_ALWAYS_INLINE T
+    readNoCache(volatile const U* ptr)
 {
     return *reinterpret_cast<volatile const T*>(ptr);
 }
 
-template<typename T, typename U>
+template <typename T, typename U>
 #if defined(__CUDACC__)
 __host__ __device__
 #endif
-GLOOP_ALWAYS_INLINE void writeNoCache(volatile U* ptr, T value)
+    GLOOP_ALWAYS_INLINE void
+    writeNoCache(volatile U* ptr, T value)
 {
     *reinterpret_cast<volatile T*>(ptr) = value;
 }
 
-template<typename T>
+template <typename T>
 #if defined(__CUDACC__)
 __host__ __device__
 #endif
-GLOOP_ALWAYS_INLINE void syncWrite(volatile T* pointer, T value)
+    GLOOP_ALWAYS_INLINE void
+    syncWrite(volatile T* pointer, T value)
 {
 #if defined(__CUDA_ARCH__)
     __threadfence_system();
@@ -62,4 +65,4 @@ GLOOP_ALWAYS_INLINE void syncWrite(volatile T* pointer, T value)
 #endif
 }
 
-}  // namespace gloop
+} // namespace gloop

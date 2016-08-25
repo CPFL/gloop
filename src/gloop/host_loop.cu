@@ -21,14 +21,6 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/thread.hpp>
-#include <cassert>
-#include <cstdio>
-#include <cuda.h>
-#include <memory>
-#include <sys/mman.h>
 #include "benchmark.h"
 #include "bitwise_cast.h"
 #include "command.h"
@@ -40,14 +32,22 @@
 #include "host_loop_inlines.cuh"
 #include "initialize.cuh"
 #include "io.cuh"
-#include "rpc.cuh"
 #include "make_unique.h"
 #include "memcpy_io.cuh"
 #include "monitor_utility.h"
 #include "request.h"
+#include "rpc.cuh"
 #include "sync_read_write.h"
 #include "system_initialize.h"
 #include "utility.h"
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/thread.hpp>
+#include <cassert>
+#include <cstdio>
+#include <cuda.h>
+#include <memory>
+#include <sys/mman.h>
 namespace gloop {
 
 GLOOP_ALWAYS_INLINE static void emit(const std::lock_guard<HostContext::Mutex>&, HostContext& context, RPC rpc, Code code)
@@ -76,7 +76,7 @@ HostLoop::HostLoop(int deviceNumber, uint64_t costPerBit)
             .type = Command::Type::Initialize,
             .payload = costPerBit,
         };
-        Command result { };
+        Command result{};
         while (true) {
             boost::system::error_code error;
             boost::asio::write(
@@ -340,7 +340,8 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
     }
 
     case Code::Fstat: {
-        struct stat buf { };
+        struct stat buf {
+        };
         ::fstat(req.u.fstat.fd, &buf);
         // GLOOP_DEBUG("Fstat %d %u\n", req.u.fstat.fd, buf.st_size);
         rpc.request(context)->u.fstatResult.size = buf.st_size;
@@ -500,8 +501,8 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
     }
 
     case Code::NetTCPReceive: {
-//         std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
-//         benchmark->begin();
+        //         std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
+        //         benchmark->begin();
         // GLOOP_DATA_LOG("net::tcp::receive:socket:(%p),count:(%u),buffer:(%p)\n", req.u.netTCPReceive.socket, req.u.netTCPReceive.count, req.u.netTCPReceive.buffer);
         assert(reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPReceive.socket));
         // FIXME: This should be reconsidered.
@@ -523,8 +524,8 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
             }
             releaseCopyWork(copyWork);
             emit(context, rpc, Code::Complete);
-//             benchmark->end();
-//             GLOOP_DATA_LOG("receive: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
+            //             benchmark->end();
+            //             GLOOP_DATA_LOG("receive: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
         };
         if (req.u.netTCPReceive.flags & MSG_WAITALL) {
             boost::asio::async_read(*socket, boost::asio::buffer(copyWork->hostMemory().hostPointer(), count), boost::asio::transfer_all(), callback);
@@ -544,8 +545,8 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
             CopyWork* copyWork = acquireCopyWork();
             assert(count <= copyWork->hostMemory().size());
 
-//             std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
-//             benchmark->begin();
+            //             std::shared_ptr<gloop::Benchmark> benchmark = std::make_shared<gloop::Benchmark>();
+            //             benchmark->begin();
             GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(copyWork->hostMemory().hostPointer(), req.u.netTCPSend.buffer, count, cudaMemcpyDeviceToHost, copyWork->stream()));
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
             boost::asio::ip::tcp::socket* socket = reinterpret_cast<boost::asio::ip::tcp::socket*>(req.u.netTCPSend.socket);
@@ -561,8 +562,8 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
                     rpc.request(context)->u.netTCPSendResult.sentCount = sentCount;
                 }
                 emit(context, rpc, Code::Complete);
-//                 benchmark->end();
-//                 GLOOP_DATA_LOG("send: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
+                //                 benchmark->end();
+                //                 GLOOP_DATA_LOG("send: count:(%u),ticks:(%u)\n", count, benchmark->ticks().count());
             });
         });
         break;
@@ -585,9 +586,8 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
         context.addExitRequired(guard, rpc);
         break;
     }
-
     }
     return false;
 }
 
-}  // namespace gloop
+} // namespace gloop

@@ -29,5 +29,5 @@ namespace net {
 
 struct Socket;
 struct Server;
-
-} }  // namespace gloop::net
+}
+} // namespace gloop::net

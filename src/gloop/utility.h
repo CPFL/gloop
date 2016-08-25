@@ -29,16 +29,15 @@
 #define GLOOP_CONCAT1(x, y) x##y
 #define GLOOP_CONCAT(x, y) GLOOP_CONCAT1(x, y)
 
-#define GLOOP_SINGLE_THREAD() \
-    __syncthreads();\
-    for (\
-        bool GLOOP_CONCAT(context, __LINE__) { false };\
-        threadIdx.x+threadIdx.y+threadIdx.z ==0 && (GLOOP_CONCAT(context, __LINE__) = !GLOOP_CONCAT(context, __LINE__));\
-        __syncthreads()\
-    )
+#define GLOOP_SINGLE_THREAD()                                                                                                 \
+    __syncthreads();                                                                                                          \
+    for (                                                                                                                     \
+        bool GLOOP_CONCAT(context, __LINE__){false};                                                                          \
+        threadIdx.x + threadIdx.y + threadIdx.z == 0 && (GLOOP_CONCAT(context, __LINE__) = !GLOOP_CONCAT(context, __LINE__)); \
+        __syncthreads())
 
 // see http://www5d.biglobe.ne.jp/~noocyte/Programming/BigAlignmentBlock.html
-#define GLOOP_ALIGNED_SIZE(size, alignment) ((size) + (alignment) - 1)
+#define GLOOP_ALIGNED_SIZE(size, alignment) ((size) + (alignment)-1)
 #define GLOOP_ALIGNED_ADDRESS(address, alignment) ((address + (alignment - 1)) & ~(alignment - 1))
 
 // only 2^n and unsigned
@@ -50,7 +49,9 @@
 #ifndef RELEASE
 #define GLOOP_ASSERT(x) assert(x)
 #else
-#define GLOOP_ASSERT(x) do { } while (0)
+#define GLOOP_ASSERT(x) \
+    do {                \
+    } while (0)
 #endif
 
 #if defined(__NVCC__) && !defined(__clang__)
@@ -61,28 +62,30 @@
 
 #define GLOOP_UNREACHABLE() GLOOP_ASSERT(0)
 
-#define GLOOP_ASSERT_SINGLE_THREAD() GLOOP_ASSERT(threadIdx.x+threadIdx.y+threadIdx.z ==0)
+#define GLOOP_ASSERT_SINGLE_THREAD() GLOOP_ASSERT(threadIdx.x + threadIdx.y + threadIdx.z == 0)
 
-#define GLOOP_CUDA_SAFE_CALL(x) if((x) != cudaSuccess) {\
-        fprintf(stderr, "CUDA ERROR %s: %d %s\n", __FILE__, __LINE__, cudaGetErrorString(cudaGetLastError()));\
-        exit(-1);\
+#define GLOOP_CUDA_SAFE_CALL(x)                                                                                \
+    if ((x) != cudaSuccess) {                                                                                  \
+        fprintf(stderr, "CUDA ERROR %s: %d %s\n", __FILE__, __LINE__, cudaGetErrorString(cudaGetLastError())); \
+        exit(-1);                                                                                              \
     }
 
-#define GLOOP_CUDA_SAFE(x) if((x) != cudaSuccess) {\
-        fprintf(stderr, "CUDA ERROR %s: %d %s\n", __FILE__, __LINE__, cudaGetErrorString(x));\
-        exit(-1);\
+#define GLOOP_CUDA_SAFE(x)                                                                    \
+    if ((x) != cudaSuccess) {                                                                 \
+        fprintf(stderr, "CUDA ERROR %s: %d %s\n", __FILE__, __LINE__, cudaGetErrorString(x)); \
+        exit(-1);                                                                             \
     }
 
 #if defined(__CUDACC__)
-    #define GLOOP_ALWAYS_INLINE __forceinline__  /* inline __attribute__((__always_inline__)) */
+#define GLOOP_ALWAYS_INLINE __forceinline__ /* inline __attribute__((__always_inline__)) */
 #else
-    #define GLOOP_ALWAYS_INLINE inline __attribute__((__always_inline__))
+#define GLOOP_ALWAYS_INLINE inline __attribute__((__always_inline__))
 #endif
 
 #if defined(__CUDACC__)
-    #define GLOOP_NEVER_INLINE __noinline__  /* inline __attribute__((__noinline__)) */
+#define GLOOP_NEVER_INLINE __noinline__ /* inline __attribute__((__noinline__)) */
 #else
-    #define GLOOP_NEVER_INLINE inline __attribute__((__noinline__))
+#define GLOOP_NEVER_INLINE inline __attribute__((__noinline__))
 #endif
 
 #define GLOOP_VISIBILITY_HIDDEN __attribute__((visibility("hidden")))

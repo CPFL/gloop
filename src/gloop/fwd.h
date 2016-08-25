@@ -29,4 +29,4 @@ namespace gloop {
 class HostContext;
 class HostLoop;
 
-}  // namespace gloop
+} // namespace gloop

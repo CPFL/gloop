@@ -22,18 +22,18 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "monitor.h"
+#include "config.h"
+#include "make_unique.h"
+#include "monitor_server.h"
+#include "monitor_service.grpc.pb.h"
+#include "monitor_service.pb.h"
+#include "monitor_session.h"
+#include "monitor_utility.h"
 #include <atomic>
 #include <boost/thread.hpp>
 #include <grpc++/grpc++.h>
 #include <unistd.h>
-#include "config.h"
-#include "make_unique.h"
-#include "monitor.h"
-#include "monitor_server.h"
-#include "monitor_service.pb.h"
-#include "monitor_service.grpc.pb.h"
-#include "monitor_session.h"
-#include "monitor_utility.h"
 namespace gloop {
 namespace monitor {
 
@@ -81,5 +81,5 @@ grpc::Status Monitor::listSessions(grpc::ServerContext* context, const proto::Li
     }
     return grpc::Status::OK;
 }
-
-} }  // namsepace gloop::monitor
+}
+} // namsepace gloop::monitor

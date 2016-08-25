@@ -22,19 +22,18 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "monitor_utilization_accounting.h"
 #include "benchmark.h"
 #include "data_log.h"
+#include "make_unique.h"
 #include "monitor_lock.h"
 #include "monitor_server.h"
-#include "monitor_utilization_accounting.h"
-#include "make_unique.h"
 #include <algorithm>
 #include <mutex>
 #include <thread>
 
 namespace gloop {
 namespace monitor {
-
 
 UtilizationAccounting::UtilizationAccounting(Server& server, int epochInMS)
     : m_server(server)
@@ -82,5 +81,5 @@ void UtilizationAccounting::dump(uint64_t epoch, Data& data)
     }
     fflush(stderr);
 }
-
-} }  // namsepace gloop::monitor
+}
+} // namsepace gloop::monitor

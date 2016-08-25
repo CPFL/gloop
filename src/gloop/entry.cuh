@@ -24,14 +24,14 @@
 
 #pragma once
 
-#include <type_traits>
-#include <utility>
 #include "device_context.cuh"
 #include "device_loop_inlines.cuh"
+#include <type_traits>
+#include <utility>
 
 namespace gloop {
 
-template<typename DeviceLoop, typename DeviceLambda, class... Args>
+template <typename DeviceLoop, typename DeviceLambda, class... Args>
 inline __device__ void mainLoop(DeviceLoop* loop, int isInitialExecution, DeviceContext& context, const DeviceLambda& callback, Args&&... args)
 {
     int callbackKicked = 0;
@@ -68,18 +68,18 @@ inline __device__ void mainLoop(DeviceLoop* loop, int isInitialExecution, Device
 #endif
 }
 
-template<typename DeviceLambda, class... Args>
+template <typename DeviceLambda, class... Args>
 inline __global__ void resume(Global, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     DeviceLoop<Global>* loop = reinterpret_cast<DeviceLoop<Global>*>(context.deviceLoopStorage + GLOOP_BID());
     return mainLoop(loop, isInitialExecution, context, callback, std::forward<Args&&>(args)...);
 }
 
-template<typename DeviceLambda, class... Args>
+template <typename DeviceLambda, class... Args>
 inline __global__ void resume(Shared, int isInitialExecution, DeviceContext context, const DeviceLambda& callback, Args... args)
 {
     __shared__ DeviceLoop<Shared> sharedDeviceLoop;
     return mainLoop(&sharedDeviceLoop, isInitialExecution, context, callback, std::forward<Args&&>(args)...);
 }
 
-}  // namespace gloop
+} // namespace gloop

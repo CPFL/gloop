@@ -32,69 +32,69 @@ namespace gloop {
 // http://stackoverflow.com/questions/687490/how-do-i-expand-a-tuple-into-variadic-template-functions-arguments
 
 // ------------- UTILITY---------------
-template<int...> struct index_tuple{};
+template <int...>
+struct index_tuple {
+};
 
-template<int I, typename IndexTuple, typename... Types>
+template <int I, typename IndexTuple, typename... Types>
 struct make_indexes_impl;
 
-template<int I, int... Indexes, typename T, typename ... Types>
-struct make_indexes_impl<I, index_tuple<Indexes...>, T, Types...>
-{
+template <int I, int... Indexes, typename T, typename... Types>
+struct make_indexes_impl<I, index_tuple<Indexes...>, T, Types...> {
     typedef typename make_indexes_impl<I + 1, index_tuple<Indexes..., I>, Types...>::type type;
 };
 
-template<int I, int... Indexes>
-struct make_indexes_impl<I, index_tuple<Indexes...> >
-{
+template <int I, int... Indexes>
+struct make_indexes_impl<I, index_tuple<Indexes...>> {
     typedef index_tuple<Indexes...> type;
 };
 
-template<typename ... Types>
-struct make_indexes : make_indexes_impl<0, index_tuple<>, Types...>
-{};
+template <typename... Types>
+struct make_indexes : make_indexes_impl<0, index_tuple<>, Types...> {
+};
 
 // Function pointers.
-template<class Ret, class... Args, int... Indexes >
+template <class Ret, class... Args, int... Indexes>
 __device__ __host__
-Ret apply_helper( Ret (*pf)(Args...), index_tuple< Indexes... >, thrust::tuple<Args...>&& tup)
+    Ret
+    apply_helper(Ret (*pf)(Args...), index_tuple<Indexes...>, thrust::tuple<Args...>&& tup)
 {
-    return pf(std::forward<Args>( thrust::get<Indexes>(tup))... );
+    return pf(std::forward<Args>(thrust::get<Indexes>(tup))...);
 }
 
-template<class Ret, class ... Args>
+template <class Ret, class... Args>
 __device__ __host__
-Ret apply(Ret (*pf)(Args...), const thrust::tuple<Args...>&  tup)
+    Ret
+    apply(Ret (*pf)(Args...), const thrust::tuple<Args...>& tup)
 {
     return apply_helper(pf, typename make_indexes<Args...>::type(), thrust::tuple<Args...>(tup));
 }
 
-template<class Ret, class ... Args>
+template <class Ret, class... Args>
 __device__ __host__
-Ret apply(Ret (*pf)(Args...), thrust::tuple<Args...>&&  tup)
+    Ret
+    apply(Ret (*pf)(Args...), thrust::tuple<Args...>&& tup)
 {
     return apply_helper(pf, typename make_indexes<Args...>::type(), std::forward<thrust::tuple<Args...>>(tup));
 }
 
 // Lambdas.
-template<class Lambda, class... Args, int... Indexes >
-__device__ __host__
-auto apply_helper(Lambda lambda, index_tuple< Indexes... >, thrust::tuple<Args...>&& tup) -> typename std::result_of<decltype(lambda(std::forward<Args>( thrust::get<Indexes>(tup))... ))>::type
+template <class Lambda, class... Args, int... Indexes>
+__device__ __host__ auto apply_helper(Lambda lambda, index_tuple<Indexes...>, thrust::tuple<Args...>&& tup) -> typename std::result_of<decltype(lambda(std::forward<Args>(thrust::get<Indexes>(tup))...))>::type
 {
-    return lambda(std::forward<Args>( thrust::get<Indexes>(tup))... );
+    return lambda(std::forward<Args>(thrust::get<Indexes>(tup))...);
 }
 
-template<class Lambda, class ... Args>
-__device__ __host__
-auto apply(Lambda lambda, const thrust::tuple<Args...>&  tup) -> typename std::result_of<decltype(apply_helper(lambda, typename make_indexes<Args...>::type(), thrust::tuple<Args...>(tup)))>::type
+template <class Lambda, class... Args>
+__device__ __host__ auto apply(Lambda lambda, const thrust::tuple<Args...>& tup) -> typename std::result_of<decltype(apply_helper(lambda, typename make_indexes<Args...>::type(), thrust::tuple<Args...>(tup)))>::type
 {
     return apply_helper(lambda, typename make_indexes<Args...>::type(), thrust::tuple<Args...>(tup));
 }
 
-template<class Lambda, class ... Args>
-__device__ __host__
-auto apply(Lambda lambda, thrust::tuple<Args...>&&  tup) -> typename std::result_of<decltype(apply_helper(lambda, typename make_indexes<Args...>::type(), std::forward<thrust::tuple<Args...>>(tup)))>::type
+template <class Lambda, class... Args>
+__device__ __host__ auto apply(Lambda lambda, thrust::tuple<Args...>&& tup) -> typename std::result_of<decltype(apply_helper(lambda, typename make_indexes<Args...>::type(), std::forward<thrust::tuple<Args...>>(tup)))>::type
 {
     return apply_helper(lambda, typename make_indexes<Args...>::type(), std::forward<thrust::tuple<Args...>>(tup));
 }
 
-}  // namespace gloop
+} // namespace gloop

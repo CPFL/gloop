@@ -22,9 +22,9 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "monitor_utility.h"
 #include "command.h"
 #include "make_unique.h"
-#include "monitor_utility.h"
 namespace gloop {
 namespace monitor {
 
@@ -63,6 +63,5 @@ std::unique_ptr<boost::interprocess::shared_memory_object> createMemory(const st
     memory->truncate(sharedMemorySize);
     return memory;
 }
-
-
-} }  // namsepace gloop::monitor
+}
+} // namsepace gloop::monitor

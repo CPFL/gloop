@@ -28,4 +28,4 @@ namespace gloop {
 
 void initialize();
 
-}  // namespace gloop
+} // namespace gloop

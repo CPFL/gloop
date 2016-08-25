@@ -26,4 +26,4 @@
 
 namespace gloop {
 
-}  // namespae gloop
+} // namespae gloop

@@ -21,15 +21,15 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include <cassert>
-#include <mutex>
 #include "data_log.h"
 #include "device_context.cuh"
-#include "rpc.cuh"
 #include "host_context.cuh"
 #include "host_loop_inlines.cuh"
 #include "make_unique.h"
+#include "rpc.cuh"
 #include "sync_read_write.h"
+#include <cassert>
+#include <mutex>
 
 namespace gloop {
 
@@ -153,7 +153,7 @@ bool HostContext::isReadyForResume(const std::unique_lock<Mutex>&)
                     continue;
                 }
 
-                RPC rpc { i * GLOOP_SHARED_SLOT_SIZE + j };
+                RPC rpc{i * GLOOP_SHARED_SLOT_SIZE + j};
                 Code code = rpc.peek(*this);
                 if (code == Code::Complete) {
                     return true;
@@ -196,7 +196,7 @@ void HostContext::pollerMain()
     uint32_t count = 0;
     while (true) {
         bool found = tryPeekRequest([&](RPC rpc) {
-            request::Request req { };
+            request::Request req{};
             Code code = rpc.peek(*this);
             memcpy(&req, (request::Request*)rpc.request(*this), sizeof(request::Request));
             {
@@ -211,7 +211,7 @@ void HostContext::pollerMain()
             continue;
         }
         // if ((++count % 100000) == 0) {
-            boost::this_thread::interruption_point();
+        boost::this_thread::interruption_point();
         // }
     }
 }
@@ -232,4 +232,4 @@ void HostContext::epilogue()
     m_sharedMemorySize = 0;
 }
 
-}  // namespace gloop
+} // namespace gloop

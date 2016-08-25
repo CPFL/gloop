@@ -24,25 +24,25 @@
 
 #pragma once
 
-#include <cstdint>
-#include <type_traits>
 #include "code.cuh"
 #include "config.h"
 #include "device_callback.cuh"
 #include "device_data.cuh"
-#include "rpc.cuh"
 #include "request.h"
-#include "utility.h"
+#include "rpc.cuh"
 #include "utility.cuh"
+#include "utility.h"
 #include "utility/util.cu.h"
+#include <cstdint>
+#include <type_traits>
 namespace gloop {
 
 struct DeviceContext;
 
-template<typename Policy>
+template <typename Policy>
 struct DeviceLoopSpecialData;
 
-template<>
+template <>
 struct DeviceLoopSpecialData<Shared> {
 #if defined(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY)
     uint32_t m_scratchIndex1;
@@ -52,13 +52,13 @@ struct DeviceLoopSpecialData<Shared> {
 #endif
 };
 
-template<>
+template <>
 struct DeviceLoopSpecialData<Global> {
     void* m_nextCallback;
     request::Payload* m_nextPayload;
 };
 
-template<typename Policy = Shared>
+template <typename Policy = Shared>
 class DeviceLoop {
 public:
     typedef gloop::OneShotFunction<void(DeviceLoop<Policy>*, volatile request::Request*)> DeviceCallback;
@@ -69,12 +69,12 @@ public:
     inline __device__ int initialize(const DeviceContext&, ResumeTag);
     inline __device__ void initialize(const DeviceContext&);
 
-    template<typename Lambda>
+    template <typename Lambda>
     inline __device__ RPC enqueueRPC(Lambda&& lambda);
-    template<typename Lambda>
+    template <typename Lambda>
     inline __device__ void enqueueLater(Lambda&& lambda);
 
-    template<typename Lambda>
+    template <typename Lambda>
     inline __device__ void allocOnePage(Lambda&& lambda);
     inline __device__ void freeOnePage(void* page);
 
@@ -84,26 +84,34 @@ public:
 
     GLOOP_ALWAYS_INLINE __device__ const uint2& logicalGridDim() const;
 
-    GLOOP_ALWAYS_INLINE __device__ unsigned logicalBlocksCount() const { return m_control.logicalBlocksCount; }
+    GLOOP_ALWAYS_INLINE __device__ unsigned logicalBlocksCount() const
+    {
+        return m_control.logicalBlocksCount;
+    }
 
-    GLOOP_ALWAYS_INLINE __device__ int isLastLogicalBlock() const { return m_control.logicalBlocksCount == 1; }
+    GLOOP_ALWAYS_INLINE __device__ int isLastLogicalBlock() const
+    {
+        return m_control.logicalBlocksCount == 1;
+    }
 
     GLOOP_ALWAYS_INLINE __device__ int shouldPostTask();
 
-    GLOOP_ALWAYS_INLINE __device__ void*& scratch() { return m_control.scratch; }
+    GLOOP_ALWAYS_INLINE __device__ void*& scratch()
+    {
+        return m_control.scratch;
+    }
 
 private:
     GLOOP_ALWAYS_INLINE __device__ uint2& logicalBlockIdxInternal();
 
     GLOOP_ALWAYS_INLINE __device__ uint2& logicalGridDimInternal();
 
-
     inline __device__ void initializeImpl(const DeviceContext&);
 
-    template<typename Lambda>
+    template <typename Lambda>
     inline __device__ uint32_t enqueueSleep(Lambda&& lambda);
 
-    template<typename Lambda>
+    template <typename Lambda>
     inline __device__ uint32_t allocate(Lambda&& lambda);
 
     inline __device__ void deallocate(uint32_t pos);
@@ -124,8 +132,14 @@ private:
     GLOOP_ALWAYS_INLINE __device__ OnePage* pages() const;
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(OnePage*);
 
-    __device__ static constexpr uint32_t shouldExitPosition() { return UINT32_MAX - 1; }
-    __device__ static constexpr uint32_t invalidPosition() { return UINT32_MAX; }
+    __device__ static constexpr uint32_t shouldExitPosition()
+    {
+        return UINT32_MAX - 1;
+    }
+    __device__ static constexpr uint32_t invalidPosition()
+    {
+        return UINT32_MAX;
+    }
     GLOOP_ALWAYS_INLINE __device__ static bool isValidPosition(uint32_t position);
 
     const DeviceContext* m_deviceContext;
@@ -152,4 +166,4 @@ static_assert(std::is_trivially_destructible<DeviceLoop<Shared>>::value, "Device
 
 extern __device__ volatile uint32_t* signal;
 
-}  // namespace gloop
+} // namespace gloop

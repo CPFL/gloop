@@ -24,12 +24,13 @@
 
 #pragma once
 
-#include <redirector.cuh>
 #include "noncopyable.h"
+#include <redirector.cuh>
 namespace gloop {
 
 class Process : public Redirector {
-GLOOP_NONCOPYABLE(Process);
+    GLOOP_NONCOPYABLE(Process);
+
 public:
     Process() = default;
     static Process& instance()
@@ -41,4 +42,4 @@ public:
 private:
 };
 
-}  // namespace gloop
+} // namespace gloop

@@ -31,7 +31,8 @@ namespace gloop {
 class HostLoop;
 
 class CopyWork {
-GLOOP_NONCOPYABLE(CopyWork);
+    GLOOP_NONCOPYABLE(CopyWork);
+
 public:
     CopyWork(HostLoop& hostLoop);
 
@@ -40,9 +41,18 @@ public:
         return std::make_shared<CopyWork>(hostLoop);
     }
 
-    HostLoop& hostLoop() { return m_hostLoop; }
-    HostMemory& hostMemory() { return *m_hostMemory; }
-    cudaStream_t stream() { return m_worker->stream(); }
+    HostLoop& hostLoop()
+    {
+        return m_hostLoop;
+    }
+    HostMemory& hostMemory()
+    {
+        return *m_hostMemory;
+    }
+    cudaStream_t stream()
+    {
+        return m_worker->stream();
+    }
 
 private:
     HostLoop& m_hostLoop;
@@ -50,4 +60,4 @@ private:
     std::unique_ptr<CopyWorker> m_worker;
 };
 
-}  // namespace gloop
+} // namespace gloop

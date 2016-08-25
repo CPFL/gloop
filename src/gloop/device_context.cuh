@@ -24,11 +24,11 @@
 
 #pragma once
 
-#include <cstdint>
-#include <type_traits>
 #include "config.h"
 #include "device_data.cuh"
 #include "device_loop.cuh"
+#include <cstdint>
+#include <type_traits>
 namespace gloop {
 
 typedef std::aligned_storage<sizeof(DeviceLoop<Global>), alignof(DeviceLoop<Global>)>::type UninitializedDeviceLoopStorage;
@@ -45,4 +45,4 @@ struct DeviceContext {
     uint3 logicalBlocks;
 };
 
-}  // namespace gloop
+} // namespace gloop

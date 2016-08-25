@@ -24,11 +24,15 @@
 
 #pragma once
 
-#include <cstdint>
 #include "utility.h"
+#include <cstdint>
 
-#define BEGIN_SINGLE_THREAD_WITHOUT_BARRIER if(FIRST_THREAD_IN_BLOCK()) { {
-#define END_SINGLE_THREAD_WITHOUT_BARRIER } }
+#define BEGIN_SINGLE_THREAD_WITHOUT_BARRIER \
+    if (FIRST_THREAD_IN_BLOCK()) {          \
+        {
+#define END_SINGLE_THREAD_WITHOUT_BARRIER \
+    }                                     \
+    }
 
 namespace gloop {
 
@@ -42,4 +46,4 @@ static inline unsigned long long sumOfBlocks(dim3 dim)
     return dim.x * dim.y * dim.z;
 }
 
-}  // namespace gloop
+} // namespace gloop

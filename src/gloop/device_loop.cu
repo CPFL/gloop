@@ -27,4 +27,4 @@ namespace gloop {
 // Initialize a device loop per thread block.
 __device__ volatile uint32_t* signal;
 
-}  // namespace gloop
+} // namespace gloop

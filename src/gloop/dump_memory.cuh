@@ -27,10 +27,10 @@
 namespace gloop {
 
 __device__ void dumpMemoryInternal(const void* ptr, std::size_t size);
-template<typename T>
+template <typename T>
 __device__ void dumpMemory(const T* ptr, std::size_t size)
 {
     dumpMemoryInternal(static_cast<const void*>(ptr), size);
 }
 
-}  // namespace gloop
+} // namespace gloop

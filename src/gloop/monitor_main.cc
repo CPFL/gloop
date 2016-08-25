@@ -22,9 +22,9 @@
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "monitor.h"
 #include "config.h"
 #include "data_log.h"
-#include "monitor.h"
 
 int main(int argc, char** argv)
 {

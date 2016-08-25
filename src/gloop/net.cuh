@@ -24,14 +24,14 @@
 
 #pragma once
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <type_traits>
-#include <utility>
 #include "device_loop_inlines.cuh"
 #include "net_socket.h"
 #include "request.h"
 #include "utility/util.cu.h"
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <type_traits>
+#include <utility>
 
 namespace gloop {
 namespace net {
@@ -39,7 +39,7 @@ namespace tcp {
 
 static_assert(sizeof(void*) == sizeof(uint64_t), "In both the host and the device, the size of the pointer should be 64bit.");
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto connect(DeviceLoop* loop, struct sockaddr_in* addr, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -54,7 +54,7 @@ inline __device__ auto connect(DeviceLoop* loop, struct sockaddr_in* addr, Lambd
     END_SINGLE_THREAD
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto bind(DeviceLoop* loop, struct sockaddr_in* addr, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -69,7 +69,7 @@ inline __device__ auto bind(DeviceLoop* loop, struct sockaddr_in* addr, Lambda c
     END_SINGLE_THREAD
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto unbind(DeviceLoop* loop, Server* server, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -84,7 +84,7 @@ inline __device__ auto unbind(DeviceLoop* loop, Server* server, Lambda callback)
     END_SINGLE_THREAD
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto accept(DeviceLoop* loop, net::Server* server, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -99,7 +99,7 @@ inline __device__ auto accept(DeviceLoop* loop, net::Server* server, Lambda call
     END_SINGLE_THREAD
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto receiveOnePage(DeviceLoop* loop, net::Socket* socket, size_t count, int flags, Lambda callback) -> void
 {
     GPU_ASSERT(count <= GLOOP_SHARED_PAGE_SIZE);
@@ -121,7 +121,7 @@ inline __device__ auto receiveOnePage(DeviceLoop* loop, net::Socket* socket, siz
     });
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto performOnePageReceive(DeviceLoop* loop, net::Socket* socket, ssize_t requestedCount, int flags, size_t count, unsigned char* buffer, size_t requestedOffset, ssize_t receiveCount, void* page, Lambda callback) -> void
 {
     ssize_t accumulatedCount = requestedOffset + receiveCount;
@@ -155,7 +155,7 @@ inline __device__ auto performOnePageReceive(DeviceLoop* loop, net::Socket* sock
     }
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, int flags, Lambda callback) -> void
 {
     ssize_t requestedCount = min(count, GLOOP_SHARED_PAGE_SIZE);
@@ -164,7 +164,7 @@ inline __device__ auto receive(DeviceLoop* loop, net::Socket* socket, size_t cou
     });
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto receiveDirect(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, int flags, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -183,7 +183,7 @@ inline __device__ auto receiveDirect(DeviceLoop* loop, net::Socket* socket, size
     END_SINGLE_THREAD
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto sendOnePage(DeviceLoop* loop, net::Socket* socket, size_t transferringSize, unsigned char* buffer, Lambda callback) -> void
 {
     loop->allocOnePage([=](DeviceLoop* loop, void* page) {
@@ -208,7 +208,7 @@ inline __device__ auto sendOnePage(DeviceLoop* loop, net::Socket* socket, size_t
     });
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto performOnePageSend(DeviceLoop* loop, net::Socket* socket, ssize_t requestedCount, size_t count, unsigned char* buffer, ssize_t requestedOffset, ssize_t sentCount, Lambda callback) -> void
 {
     ssize_t accumulatedCount = requestedOffset + sentCount;
@@ -231,7 +231,7 @@ inline __device__ auto performOnePageSend(DeviceLoop* loop, net::Socket* socket,
     callback(loop, accumulatedCount);
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     // __threadfence_system();
@@ -241,7 +241,7 @@ inline __device__ auto send(DeviceLoop* loop, net::Socket* socket, size_t count,
     });
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto sendDirect(DeviceLoop* loop, net::Socket* socket, size_t count, unsigned char* buffer, Lambda callback) -> void
 {
     // __threadfence_system();
@@ -259,7 +259,7 @@ inline __device__ auto sendDirect(DeviceLoop* loop, net::Socket* socket, size_t 
     END_SINGLE_THREAD
 }
 
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto close(DeviceLoop* loop, Socket* socket, Lambda callback) -> void
 {
     BEGIN_SINGLE_THREAD
@@ -274,5 +274,6 @@ inline __device__ auto close(DeviceLoop* loop, Socket* socket, Lambda callback) 
     END_SINGLE_THREAD
 }
 
-}  // namespace gloop::net::tcp
-} }  // namespace gloop::net
+} // namespace gloop::net::tcp
+}
+} // namespace gloop::net

@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include <utility>
 #include "device_loop_inlines.cuh"
+#include <utility>
 // Global primitives can be used only when elastic kernel is enabled.
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
 
@@ -33,12 +33,12 @@ namespace gloop {
 namespace global {
 
 // Perform global synchronization.
-template<typename DeviceLoop, typename Lambda>
+template <typename DeviceLoop, typename Lambda>
 inline __device__ auto synchronize(DeviceLoop* loop, Lambda callback) -> void
 {
     __threadfence();
 }
-
-} }  // namespace gloop::global
+}
+} // namespace gloop::global
 
 #endif

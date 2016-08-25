@@ -24,12 +24,12 @@
 
 #pragma once
 
-#include <memory>
 #include "noncopyable.h"
+#include <memory>
 namespace gloop {
 
 class HostMemory {
-GLOOP_NONCOPYABLE(HostMemory)
+    GLOOP_NONCOPYABLE(HostMemory)
 public:
     static std::shared_ptr<HostMemory> create(std::size_t size, unsigned flags)
     {
@@ -38,17 +38,26 @@ public:
 
     ~HostMemory();
 
-    void* hostPointer() { return m_hostPointer; }
-    const void* hostPointer() const { return m_hostPointer; }
+    void* hostPointer()
+    {
+        return m_hostPointer;
+    }
+    const void* hostPointer() const
+    {
+        return m_hostPointer;
+    }
 
-    std::size_t size() const { return m_size; }
+    std::size_t size() const
+    {
+        return m_size;
+    }
 
 protected:
     HostMemory(std::size_t size, unsigned flags);
 
-    void* m_hostPointer { nullptr };
+    void* m_hostPointer{nullptr};
     std::size_t m_size;
     unsigned m_flags;
 };
 
-}  // namespace gloop
+} // namespace gloop

@@ -24,10 +24,10 @@
 
 #pragma once
 
-#include <cuda_runtime.h>
-#include <cstdlib>
-#include <cstdio>
 #include "utility.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cuda_runtime.h>
 namespace gloop {
 
 class Mapped {
@@ -57,4 +57,4 @@ public:
     }
 };
 
-}  // namespace gloop
+} // namespace gloop
