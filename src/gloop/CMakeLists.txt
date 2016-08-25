@@ -131,3 +131,15 @@ target_link_libraries(gloop-monitor
     protobuf
 )
 add_dependencies(gloop-monitor monitor-service)
+
+
+file(GLOB_RECURSE ALL_CXX_SOURCE_FILES
+    *.[chi]pp *.[chi]xx *.cc *.hh *.ii *.[CHI] *.cu *.cuh
+)
+
+add_custom_target(
+    format
+    COMMAND /usr/bin/clang-format
+    -i
+    ${ALL_CXX_SOURCE_FILES}
+)
