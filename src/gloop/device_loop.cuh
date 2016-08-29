@@ -161,8 +161,6 @@ private:
 
     DeviceLoopSpecialData<Policy> m_special;
 };
-static_assert(std::is_trivially_destructible<DeviceLoop<Global>>::value, "DeviceLoop is trivially destructible");
-static_assert(std::is_trivially_destructible<DeviceLoop<Shared>>::value, "DeviceLoop is trivially destructible");
 
 extern __device__ volatile uint32_t* signal;
 

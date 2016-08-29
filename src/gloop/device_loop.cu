@@ -27,4 +27,7 @@ namespace gloop {
 // Initialize a device loop per thread block.
 __device__ volatile uint32_t* signal;
 
+static_assert(std::is_trivially_destructible<DeviceLoop<Global>>::value, "DeviceLoop is trivially destructible");
+static_assert(std::is_trivially_destructible<DeviceLoop<Shared>>::value, "DeviceLoop is trivially destructible");
+
 } // namespace gloop
