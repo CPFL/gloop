@@ -606,25 +606,25 @@ inline __device__ void DeviceLoop<Policy>::freeOnePage(void* aPage)
 template <typename Policy>
 GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Policy>::logicalBlockIdx() const
 {
-    return m_logicalBlockIdx;
+    return m_currentBlock->m_logicalBlockIdx;
 }
 
 template <typename Policy>
 GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Policy>::logicalGridDim() const
 {
-    return m_logicalGridDim;
+    return m_currentBlock->m_logicalGridDim;
 }
 
 template <typename Policy>
 GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Policy>::logicalBlockIdxInternal()
 {
-    return m_logicalBlockIdx;
+    return m_currentBlock->m_logicalBlockIdx;
 }
 
 template <typename Policy>
 GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Policy>::logicalGridDimInternal()
 {
-    return m_logicalGridDim;
+    return m_currentBlock->m_logicalGridDim;
 }
 
 } // namespace gloop

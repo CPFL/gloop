@@ -58,6 +58,11 @@ struct DeviceLoopSpecialData<Global> {
     request::Payload* m_nextPayload;
 };
 
+struct DeviceThreadBlock {
+    uint2 m_logicalGridDim;
+    uint2 m_logicalBlockIdx;
+};
+
 template <typename Policy = Shared>
 class DeviceLoop {
 public:
@@ -156,8 +161,9 @@ private:
     DeviceCallback* m_slots;
     DeviceLoopControl m_control;
 
-    uint2 m_logicalGridDim;
-    uint2 m_logicalBlockIdx;
+    DeviceThreadBlock m_block1;
+    DeviceThreadBlock m_block2;
+    DeviceThreadBlock* m_currentBlock;
 
     DeviceLoopSpecialData<Policy> m_special;
 };
