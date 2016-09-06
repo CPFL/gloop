@@ -196,6 +196,11 @@ inline __device__ uint32_t DeviceLoop<Policy>::allocate(Lambda&& lambda)
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
     GPU_ASSERT(m_control.freeSlots & (1U << pos));
     m_control.freeSlots &= ~(1U << pos);
+    if (m_currentBlock == &m_block1) {
+        m_control.blockIndicators |= (1U << pos);
+    } else {
+        m_control.blockIndicators &= ~(1U << pos);
+    }
 
     void* target = allocateSharedSlotIfNecessary(pos);
 
@@ -337,6 +342,7 @@ inline __device__ int DeviceLoop<Global>::drain()
             if (isValidPosition(position)) {
                 m_special.m_nextCallback = slots(position);
                 m_special.m_nextPayload = &m_payloads[position];
+                m_currentBlock = (m_control.blockIndicators & (1U << position)) ? &m_block1 : &m_block2;
             } else {
                 m_special.m_nextCallback = nullptr;
             }
@@ -401,6 +407,7 @@ inline __device__ int DeviceLoop<Shared>::drain()
             position = dequeue();
             if (isValidPosition(position)) {
                 callback = slots(position);
+                m_currentBlock = (m_control.blockIndicators & (1U << position)) ? &m_block1 : &m_block2;
             }
         next:
         }

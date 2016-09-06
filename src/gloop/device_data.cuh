@@ -56,6 +56,7 @@ struct DeviceLoopControl {
         sleepSlots = 0;
         wakeupSlots = 0;
         pageSleepSlots = 0;
+        blockIndicators = 0;
 
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
         // Calculate the logical blocks per physical blocks.
@@ -80,6 +81,7 @@ struct DeviceLoopControl {
     uint32_t sleepSlots;
     uint32_t wakeupSlots;
     uint32_t pageSleepSlots;
+    uint32_t blockIndicators;
 
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     uint32_t logicalBlocksCount;
