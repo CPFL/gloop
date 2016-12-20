@@ -150,15 +150,45 @@ class TPACFTest < Test
     end
 end
 
+class ThrottleTest < Test
+    def createCommand i
+        ["#{GLoop::Root}/release/src/samples/throttle-statistics/throttle-statistics", "1000000", "1", "1", "1", "1"]
+    end
+
+    def runBenchmark
+        results = []
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            @times.times {|i|
+                threads << Thread.new {
+                    Thread.pass
+                    out, err, status = Open3.capture3(createCommand(i).join(" "))
+                    FileUtils.rm "out#{i}" if File.exists? "out#{i}"
+                    results[i] = StatisticsResult.new(@name + i.to_s, err)
+                }
+            }
+
+            threads.each {|thread|
+                thread.join
+            }
+        }
+        results
+    end
+end
+
 $tests = [
     # GrepTextTest.new("grep_text1", 1),
     # GrepTextTest.new("grep_text2", 2),
     # GrepTextTest.new("grep_text4", 4),
     # GrepTextTest.new("grep_text8", 8),
-    # TPACFTest.new("tpacf1", 1),
-    # TPACFTest.new("tpacf2", 2),
-    # TPACFTest.new("tpacf4", 4),
-    # TPACFTest.new("tpacf8", 8),
+    TPACFTest.new("tpacf1", 1),
+    TPACFTest.new("tpacf2", 2),
+    TPACFTest.new("tpacf4", 4),
+    TPACFTest.new("tpacf8", 8),
+    # ThrottleTest.new("throttle1", 1),
+    # ThrottleTest.new("throttle2", 2),
+    # ThrottleTest.new("throttle4", 4),
+    # ThrottleTest.new("throttle8", 8),
 ]
 
 def main
