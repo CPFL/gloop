@@ -151,8 +151,13 @@ class TPACFTest < Test
 end
 
 class ThrottleTest < Test
+    def initialize(name, times, nthreads = 1)
+        super(name, times)
+        @nthreads = nthreads
+    end
+
     def createCommand i
-        ["#{GLoop::Root}/release/src/samples/throttle-statistics/throttle-statistics", "1000000", "1", "1", "1", "1"]
+        ["#{GLoop::Root}/release/src/samples/throttle-statistics/throttle-statistics", "1000000", "1", "1", @nthreads.to_s, "1"]
     end
 
     def runBenchmark
@@ -181,15 +186,21 @@ $tests = [
     # GrepTextTest.new("grep_text2", 2),
     # GrepTextTest.new("grep_text4", 4),
     # GrepTextTest.new("grep_text8", 8),
-    TPACFTest.new("tpacf1", 1),
-    TPACFTest.new("tpacf2", 2),
-    TPACFTest.new("tpacf4", 4),
-    TPACFTest.new("tpacf8", 8),
+    # TPACFTest.new("tpacf1", 1),
+    # TPACFTest.new("tpacf2", 2),
+    # TPACFTest.new("tpacf4", 4),
+    # TPACFTest.new("tpacf8", 8),
     # ThrottleTest.new("throttle1", 1),
     # ThrottleTest.new("throttle2", 2),
     # ThrottleTest.new("throttle4", 4),
     # ThrottleTest.new("throttle8", 8),
 ]
+
+[1, 128, 256, 512, 1024].each {|nthreads|
+    [1, 2, 4, 8].each {|instances|
+        $tests.push(ThrottleTest.new("throttle#{instances}-#{nthreads}", instances, nthreads))
+    }
+}
 
 def main
     11.times do
