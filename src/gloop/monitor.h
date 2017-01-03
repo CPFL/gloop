@@ -65,6 +65,7 @@ public:
 
 private:
     grpc::Status listSessions(grpc::ServerContext* context, const proto::ListSessionRequest* request, grpc::ServerWriter<proto::Session>* writer) override;
+    grpc::Status listSwitchCount(grpc::ServerContext* context, const proto::SwitchCountRequest* request, grpc::ServerWriter<proto::SwitchCount>* writer) override;
 
     uint32_t m_gpus;
     int m_enableUtilizationMonitorInMS;

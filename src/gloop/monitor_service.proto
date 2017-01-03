@@ -27,9 +27,18 @@ package proto;
 
 service Monitor {
     rpc listSessions(ListSessionRequest) returns (stream Session) {};
+    rpc listSwitchCount(SwitchCountRequest) returns (stream SwitchCount) {};
 }
 
 message ListSessionRequest {
+}
+
+message SwitchCountRequest {
+}
+
+message SwitchCount {
+    int64 server = 1;
+    int64 value = 2;
 }
 
 message Session {

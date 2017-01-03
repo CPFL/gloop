@@ -24,6 +24,7 @@
 
 var grpc = require('grpc');
 
+/*
 var proto = grpc.load('../../src/gloop/monitor_service.proto').proto;
 var monitor = new proto.Monitor('unix:/tmp/gloop_monitor_endpoint', grpc.credentials.createInsecure());
 var call = monitor.listSessions({});
@@ -34,6 +35,18 @@ call.on('end', function () { });
 call.on('status', function (status) {
     console.log(status);
 });
+*/
 
+
+var proto = grpc.load('../../src/gloop/monitor_service.proto').proto;
+var monitor = new proto.Monitor('unix:/tmp/gloop_monitor_endpoint', grpc.credentials.createInsecure());
+var call = monitor.listSwitchCount({});
+call.on('data', function (count) {
+    console.log(count);
+});
+call.on('end', function () { });
+call.on('status', function (status) {
+    console.log(status);
+});
 
 /* vim: set sw=4 ts=4 et tw=80 : */

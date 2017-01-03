@@ -24,7 +24,7 @@
   ],
   "scripts": {},
   "dependencies": {
-    "grpc": "^0.13.0"
+    "grpc": "^1.0.1"
   },
   "devDependencies": {},
   "keywords": [],
