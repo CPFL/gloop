@@ -81,5 +81,18 @@ grpc::Status Monitor::listSessions(grpc::ServerContext* context, const proto::Li
     }
     return grpc::Status::OK;
 }
+
+grpc::Status Monitor::listSwitchCount(grpc::ServerContext* context, const proto::SwitchCountRequest* request, grpc::ServerWriter<proto::SwitchCount>* writer)
+{
+    for (auto& server : m_servers) {
+        std::lock_guard<Lock> locker(server->serverStatusLock());
+        proto::SwitchCount result;
+        result.set_server(server->id());
+        result.set_value(server->switchCount());
+        writer->Write(result);
+    }
+    return grpc::Status::OK;
+}
+
 }
 } // namsepace gloop::monitor

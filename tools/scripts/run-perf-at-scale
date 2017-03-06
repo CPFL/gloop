@@ -150,6 +150,64 @@ class TPACFTest < Test
     end
 end
 
+class HybridsortTest < Test
+    def createCommand i
+        ["#{GLoop::Root}/debug/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r", ">", "out#{i}"]
+    end
+
+    def runBenchmark
+        results = []
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            @times.times {|i|
+                threads << Thread.new {
+                    Thread.pass
+                    out, err, status = Open3.capture3(createCommand(i).join(" "))
+                    FileUtils.rm "out#{i}" if File.exists? "out#{i}"
+                    results[i] = StatisticsResult.new(@name + i.to_s, err)
+                }
+            }
+
+            threads.each {|thread|
+                thread.join
+            }
+        }
+        results
+    end
+end
+
+class ThrottleTest < Test
+    def initialize(name, times, nthreads = 1, nblocks = 1)
+        super(name, times)
+        @nthreads = nthreads
+        @nblocks = nblocks
+    end
+
+    def createCommand i
+        ["#{GLoop::Root}/release/src/samples/throttle-statistics/throttle-statistics", "1000000", @nblocks.to_s, "240", @nthreads.to_s, "1"]
+    end
+
+    def runBenchmark
+        results = []
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            @times.times {|i|
+                threads << Thread.new {
+                    Thread.pass
+                    out, err, status = Open3.capture3(createCommand(i).join(" "))
+                    FileUtils.rm "out#{i}" if File.exists? "out#{i}"
+                    results[i] = StatisticsResult.new(@name + i.to_s, err)
+                }
+            }
+
+            threads.each {|thread|
+                thread.join
+            }
+        }
+        results
+    end
+end
+
 $tests = [
     # GrepTextTest.new("grep_text1", 1),
     # GrepTextTest.new("grep_text2", 2),
@@ -159,7 +217,21 @@ $tests = [
     # TPACFTest.new("tpacf2", 2),
     # TPACFTest.new("tpacf4", 4),
     # TPACFTest.new("tpacf8", 8),
+    ThrottleTest.new("throttle1", 1),
+    ThrottleTest.new("throttle2", 2),
+    ThrottleTest.new("throttle4", 4),
+    ThrottleTest.new("throttle8", 8),
+    # HybridsortTest.new("hybridsort1", 1),
+    # HybridsortTest.new("hybridsort2", 2),
+    # HybridsortTest.new("hybridsort4", 4),
+    # HybridsortTest.new("hybridsort8", 8),
 ]
+
+# [1, 240, 480, 960, 1920, 3840, 7680].each {|nblocks|
+#     [1, 2, 4, 8].each {|instances|
+#         $tests.push(ThrottleTest.new("throttle#{instances}-#{nblocks}", instances, 1, nblocks))
+#     }
+# }
 
 def main
     11.times do

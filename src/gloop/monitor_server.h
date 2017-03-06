@@ -100,6 +100,13 @@ public:
         return m_serverStatusLock;
     }
 
+    void countSwitch()
+    {
+        m_switchCount++;
+    }
+
+    uint64_t switchCount() const { return m_switchCount; }
+
 private:
     void accept();
 
@@ -116,6 +123,7 @@ private:
     boost::condition_variable_any m_condition;
     uint32_t m_toBeAllowed{anySessionAllowed()};
     std::unique_ptr<UtilizationAccounting> m_utilizationAccounting;
+    uint64_t m_switchCount { 0 };
     // std::priority_queue<Session*, std::vector<Session*>, SessionPriorityFunctor> m_priorityQueue;
 };
 

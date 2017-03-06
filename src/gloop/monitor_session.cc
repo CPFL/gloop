@@ -153,6 +153,7 @@ bool Session::handle(Command& command)
                 std::lock_guard<Lock> guard(m_lock);
                 // GLOOP_DATA_LOG("[%u] Lock kernel token.\n", m_id);
 
+                m_server.countSwitch();
                 m_killed = false;
                 m_timeWatch.begin();
                 m_attemptToLaunch.store(false);
