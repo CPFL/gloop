@@ -58,10 +58,6 @@ struct DeviceLoopSpecialData<Global> {
     request::Payload* m_nextPayload;
 };
 
-struct DeviceThreadBlock {
-    uint2 m_logicalBlockIdx;
-};
-
 template <typename Policy = Shared>
 class DeviceLoop {
 public:
@@ -147,6 +143,8 @@ private:
         return UINT32_MAX;
     }
     GLOOP_ALWAYS_INLINE __device__ static bool isValidPosition(uint32_t position);
+
+    bool dequeueThreadBlock(DeviceThreadBlock&);
 
     const DeviceContext* m_deviceContext;
 

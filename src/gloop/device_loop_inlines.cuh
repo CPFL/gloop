@@ -261,8 +261,15 @@ inline __device__ auto DeviceLoop<Policy>::dequeue(ThreadBlock threadBlock) -> u
     }
 
     // Ad-hoc thread block destructuring.
-    if (blocks == 0b01) {
-    } else if (blocks == 0b10) {
+    if (blocks != 0b11) {
+        if (blocks == 0b01) {
+            m_currentBlock = &m_block2;
+        } else {
+            m_currentBlock = &m_block1;
+        }
+        if (dequeueThreadBlock(*m_currentBlock)) {
+            threadBlock(this);
+        }
     }
 
     if (shouldExit) {
@@ -481,15 +488,7 @@ inline __device__ int DeviceLoop<Policy>::suspend()
     }
 
     // This logical thread block is done.
-    if (--m_control.logicalBlocksCount != 0) {
-        // There is some remaining logical thread blocks.
-        // Let's increment the logical block index.
-        logicalBlockIdxInternal().x += 1;
-        if (logicalBlockIdxInternal().x == logicalGridDimInternal().x) {
-            logicalBlockIdxInternal().x = 0;
-            logicalBlockIdxInternal().y += 1;
-        }
-
+    if (dequeueThreadBlock(*m_currentBlock)) {
         uint64_t now = clock64();
         if (((now - m_start) > m_killClock)) {
             m_start = ((now / m_killClock) * m_killClock);
@@ -573,8 +572,8 @@ inline __device__ void DeviceLoop<Policy>::initialize(const DeviceContext& devic
     uint3 logicalBlocksDim = deviceContext.logicalBlocks;
     m_control.initialize(logicalBlocksDim);
     m_currentBlock = &m_block1;
-    logicalBlockIdxInternal() = make_uint2(m_control.currentLogicalBlockCount % logicalBlocksDim.x, m_control.currentLogicalBlockCount / logicalBlocksDim.x);
     logicalGridDimInternal() = make_uint2(logicalBlocksDim.x, logicalBlocksDim.y);
+    logicalBlockIdxInternal() = m_control.newOne.m_logicalBlockIdx;
 }
 
 template <typename Policy>
@@ -635,6 +634,27 @@ template <typename Policy>
 GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Policy>::logicalGridDimInternal()
 {
     return m_logicalGridDim;
+}
+
+template <typename Policy>
+GLOOP_ALWAYS_INLINE __device__ bool DeviceLoop<Policy>::dequeueThreadBlock(DeviceThreadBlock& block)
+{
+    // This logical thread block is done.
+    if (m_control.logicalBlocksCount <= 1) {
+        m_control.logicalBlocksCount = 0;
+        return false;
+    }
+
+    --m_control.logicalBlocksCount;
+    // There is some remaining logical thread blocks.
+    // Let's increment the logical block index.
+    m_control.newOne.m_logicalBlockIdx.x += 1;
+    if (m_control.newOne.m_logicalBlockIdx.x == logicalGridDimInternal().x) {
+        m_control.newOne.m_logicalBlockIdx.x = 0;
+        m_control.newOne.m_logicalBlockIdx.y += 1;
+    }
+    block = m_control.newOne;
+    return true;
 }
 
 } // namespace gloop
