@@ -468,7 +468,6 @@ inline __device__ int DeviceLoop<Policy>::suspend()
         return /* stop the loop */ 1;
     }
 
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     // This logical thread block is done.
     if (--m_control.logicalBlocksCount != 0) {
         // There is some remaining logical thread blocks.
@@ -502,7 +501,6 @@ inline __device__ int DeviceLoop<Policy>::suspend()
 
         return /* continue the next loop */ 0;
     }
-#endif
 
     // Save the control state. We need to save the control state since
     // the other thread block may not stop yet. In that case, this
@@ -563,10 +561,8 @@ inline __device__ void DeviceLoop<Policy>::initialize(const DeviceContext& devic
     uint3 logicalBlocksDim = deviceContext.logicalBlocks;
     m_control.initialize(logicalBlocksDim);
     m_currentBlock = &m_block1;
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     logicalBlockIdxInternal() = make_uint2(m_control.currentLogicalBlockCount % logicalBlocksDim.x, m_control.currentLogicalBlockCount / logicalBlocksDim.x);
     logicalGridDimInternal() = make_uint2(logicalBlocksDim.x, logicalBlocksDim.y);
-#endif
 }
 
 template <typename Policy>
@@ -575,11 +571,7 @@ inline __device__ int DeviceLoop<Policy>::initialize(const DeviceContext& device
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);
     resume();
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     return m_control.freeSlots != DeviceLoopControl::allFilledFreeSlots();
-#else
-    return 1;
-#endif
 }
 
 template <typename Policy>
@@ -590,10 +582,8 @@ inline __device__ void DeviceLoop<Policy>::resume()
     PerBlockContext* blockContext = context();
     m_control = blockContext->control;
 
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     logicalBlockIdxInternal() = blockContext->logicalBlockIdx;
     logicalGridDimInternal() = blockContext->logicalGridDim;
-#endif
 
     // __threadfence_system();  // FIXME
 }

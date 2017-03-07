@@ -46,26 +46,20 @@ inline __device__ void mainLoop(DeviceLoop* loop, int isInitialExecution, Device
     END_SINGLE_THREAD
     int suspended = 0;
     {
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
         if (loop->logicalBlocksCount() == 0)
             return;
-#endif
 
         if (__syncthreads_or(callbackKicked)) {
             suspended = loop->drain();
         }
     }
 
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     while (__syncthreads_and(!suspended)) {
-#endif
         {
             callback(loop, args...);
             suspended = loop->drain();
         }
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     }
-#endif
 }
 
 template <typename DeviceLambda, class... Args>

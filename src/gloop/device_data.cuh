@@ -58,7 +58,6 @@ struct DeviceLoopControl {
         pageSleepSlots = 0;
         blockIndicators = 0;
 
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
         // Calculate the logical blocks per physical blocks.
         uint32_t logicalBlocks = logicalBlocksDim.x * logicalBlocksDim.y;
         uint32_t physicalBlocks = GLOOP_BMAX();
@@ -72,7 +71,6 @@ struct DeviceLoopControl {
             currentLogicalBlockCount = count * bid + remaining;
         }
         logicalBlocksCount = count;
-#endif
         scratch = nullptr;
     }
 
@@ -83,10 +81,8 @@ struct DeviceLoopControl {
     uint32_t pageSleepSlots;
     uint32_t blockIndicators;
 
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     uint32_t logicalBlocksCount;
     uint32_t currentLogicalBlockCount;
-#endif
     void* scratch;
 };
 
