@@ -256,10 +256,11 @@ inline __device__ auto DeviceLoop<Policy>::dequeue(ThreadBlock threadBlock) -> u
                 shouldExit = true;
             }
 
-            blocks |= ((m_control.blockIndicators & bit) ? 0b01 : 0b10);
+            blocks |= (1U << !!(m_control.blockIndicators & bit));
         }
     }
 
+    // Ad-hoc thread block destructuring.
     if (blocks == 0b01) {
     } else if (blocks == 0b10) {
     }
@@ -621,7 +622,7 @@ GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Policy>::logicalBlockIdx(
 template <typename Policy>
 GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Policy>::logicalGridDim() const
 {
-    return m_currentBlock->m_logicalGridDim;
+    return m_logicalGridDim;
 }
 
 template <typename Policy>
@@ -633,7 +634,7 @@ GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Policy>::logicalBlockIdxInterna
 template <typename Policy>
 GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Policy>::logicalGridDimInternal()
 {
-    return m_currentBlock->m_logicalGridDim;
+    return m_logicalGridDim;
 }
 
 } // namespace gloop

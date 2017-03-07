@@ -59,7 +59,6 @@ struct DeviceLoopSpecialData<Global> {
 };
 
 struct DeviceThreadBlock {
-    uint2 m_logicalGridDim;
     uint2 m_logicalBlockIdx;
 };
 
@@ -166,6 +165,7 @@ private:
     DeviceThreadBlock m_block1;
     DeviceThreadBlock m_block2;
     DeviceThreadBlock* m_currentBlock;
+    uint2 m_logicalGridDim;
 
     DeviceLoopSpecialData<Policy> m_special;
 };
