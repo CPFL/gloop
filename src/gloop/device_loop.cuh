@@ -83,7 +83,8 @@ public:
     inline __device__ void allocOnePage(Lambda&& lambda);
     inline __device__ void freeOnePage(void* page);
 
-    inline __device__ int drain();
+    template<typename ThreadBlock>
+    inline __device__ int drain(ThreadBlock);
 
     GLOOP_ALWAYS_INLINE __device__ const uint2& logicalBlockIdx() const;
 
@@ -121,7 +122,8 @@ private:
 
     inline __device__ void deallocate(uint32_t pos);
 
-    inline __device__ uint32_t dequeue();
+    template <typename ThreadBlock>
+    inline __device__ uint32_t dequeue(ThreadBlock);
 
     inline __device__ void resume();
     inline __device__ int suspend();

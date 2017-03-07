@@ -44,20 +44,25 @@ inline __device__ void mainLoop(DeviceLoop* loop, int isInitialExecution, Device
         }
     }
     END_SINGLE_THREAD
+
+    auto threadBlock = [=] (DeviceLoop* loop) {
+        callback(loop, args...);
+    };
+
     int suspended = 0;
     {
         if (loop->logicalBlocksCount() == 0)
             return;
 
         if (__syncthreads_or(callbackKicked)) {
-            suspended = loop->drain();
+            suspended = loop->drain(threadBlock);
         }
     }
 
     while (__syncthreads_and(!suspended)) {
         {
-            callback(loop, args...);
-            suspended = loop->drain();
+            threadBlock(loop);
+            suspended = loop->drain(threadBlock);
         }
     }
 }

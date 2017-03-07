@@ -210,7 +210,8 @@ inline __device__ uint32_t DeviceLoop<Policy>::allocate(Lambda&& lambda)
 }
 
 template <typename Policy>
-inline __device__ auto DeviceLoop<Policy>::dequeue() -> uint32_t
+template <typename ThreadBlock>
+inline __device__ auto DeviceLoop<Policy>::dequeue(ThreadBlock threadBlock) -> uint32_t
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
@@ -233,6 +234,8 @@ inline __device__ auto DeviceLoop<Policy>::dequeue() -> uint32_t
 
     allocatedSlots &= ~m_control.sleepSlots;
 
+    uint32_t blocks = 0;
+
     bool shouldExit = false;
     for (uint32_t i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
         // Look into ICP status to run callbacks.
@@ -252,7 +255,13 @@ inline __device__ auto DeviceLoop<Policy>::dequeue() -> uint32_t
             if (code == Code::ExitRequired) {
                 shouldExit = true;
             }
+
+            blocks |= ((m_control.blockIndicators & bit) ? 0b01 : 0b10);
         }
+    }
+
+    if (blocks == 0b01) {
+    } else if (blocks == 0b10) {
     }
 
     if (shouldExit) {
@@ -301,7 +310,8 @@ inline __device__ int DeviceLoop<Policy>::shouldPostTask()
 }
 
 template <>
-inline __device__ int DeviceLoop<Global>::drain()
+template<typename ThreadBlock>
+inline __device__ int DeviceLoop<Global>::drain(ThreadBlock threadBlock)
 {
     uint32_t position = shouldExitPosition();
 
@@ -338,7 +348,7 @@ inline __device__ int DeviceLoop<Global>::drain()
                 }
             }
 
-            position = dequeue();
+            position = dequeue(threadBlock);
             if (isValidPosition(position)) {
                 m_special.m_nextCallback = slots(position);
                 m_special.m_nextPayload = &m_payloads[position];
@@ -364,7 +374,8 @@ inline __device__ int DeviceLoop<Global>::drain()
 }
 
 template <>
-inline __device__ int DeviceLoop<Shared>::drain()
+template<typename ThreadBlock>
+inline __device__ int DeviceLoop<Shared>::drain(ThreadBlock threadBlock)
 {
     __shared__ uint32_t position;
     __shared__ DeviceCallback* callback;
@@ -404,7 +415,7 @@ inline __device__ int DeviceLoop<Shared>::drain()
             }
 
             callback = nullptr;
-            position = dequeue();
+            position = dequeue(threadBlock);
             if (isValidPosition(position)) {
                 callback = slots(position);
                 m_currentBlock = (m_control.blockIndicators & (1U << position)) ? &m_block1 : &m_block2;
