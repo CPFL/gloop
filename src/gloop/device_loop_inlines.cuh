@@ -562,6 +562,7 @@ inline __device__ void DeviceLoop<Policy>::initialize(const DeviceContext& devic
     initializeImpl(deviceContext);
     uint3 logicalBlocksDim = deviceContext.logicalBlocks;
     m_control.initialize(logicalBlocksDim);
+    m_currentBlock = &m_block1;
 #if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     logicalBlockIdxInternal() = make_uint2(m_control.currentLogicalBlockCount % logicalBlocksDim.x, m_control.currentLogicalBlockCount / logicalBlocksDim.x);
     logicalGridDimInternal() = make_uint2(logicalBlocksDim.x, logicalBlocksDim.y);
