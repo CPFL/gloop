@@ -14,7 +14,7 @@
 #include <gloop/gloop.h>
 #include <gloop/benchmark.h>
 
-__device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, int, int);
+__device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, int, int, int);
 
 #define MAIN_FS_FILE
 
@@ -110,7 +110,7 @@ int main( int argc, char** argv)
     size_t total_size;
 
     std::memset(time_res,0,MAX_TRIALS*sizeof(double));
-    for(int i=1;i<trials+1;i++){
+    {
         dim3 blocks(nblocks);
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(global_devicenum);
         std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
@@ -131,9 +131,9 @@ int main( int argc, char** argv)
         gloop::Benchmark benchmark;
         benchmark.begin();
         {
-            hostLoop->launch(*hostContext, blocks, nthreads, [] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, int ioSize, int loopCount, char* src) {
-                gpuMain(loop, src, ioSize, loopCount);
-            }, ioSize, loopCount, d_filenames[0]);
+            hostLoop->launch(*hostContext, blocks, nthreads, [] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, int ioSize, int loopCount, int trials, char* src) {
+                gpuMain(loop, src, trials, ioSize, loopCount);
+            }, trials, ioSize, loopCount, d_filenames[0]);
         }
         benchmark.end();
         printf("[%d] ", id);
@@ -141,6 +141,3 @@ int main( int argc, char** argv)
     }
     return 0;
 }
-
-
-
