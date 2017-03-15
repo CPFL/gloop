@@ -26,6 +26,8 @@
 #include <gloop/statistics.h>
 #include <gloop/gloop.h>
 
+__device__ static const char* const filename = "tmp/dump";
+
 __device__ void gmain(gloop::DeviceLoop<>* loop, int fd, unsigned char* buffer, int count, int limit, int ioSize, int loopCount)
 {
     volatile int res = 20;
@@ -34,10 +36,12 @@ __device__ void gmain(gloop::DeviceLoop<>* loop, int fd, unsigned char* buffer, 
 
     if (count != limit) {
         gloop::fs::read(loop, fd, 0, ioSize, buffer, [=](gloop::DeviceLoop<>* loop, int) {
+            printf("hello\n");
             gmain(loop, fd, buffer, count + 1, limit, ioSize, loopCount);
         });
         return;
     }
+    printf("close\n");
     gloop::fs::close(loop, fd, [=](gloop::DeviceLoop<>* loop, int error) { });
 }
 
@@ -73,8 +77,13 @@ int main(int argc, char** argv)
         {
             gloop::Statistics::Scope<gloop::Statistics::Type::Kernel> scope;
             hostLoop->launch(*hostContext, blocks, nthreads, [] GLOOP_DEVICE_LAMBDA(gloop::DeviceLoop<> * loop, int trials, int ioSize, int loopCount) {
-                gloop::fs::open(loop, "tmp/dump", O_RDONLY, [=](gloop::DeviceLoop<>* loop, int fd) {
-                    unsigned char* buffer = static_cast<unsigned char*>(malloc(ioSize));
+                gloop::fs::open(loop, filename, O_RDONLY, [=](gloop::DeviceLoop<>* loop, int fd) {
+                    __shared__ unsigned char* buffer;
+                    BEGIN_SINGLE_THREAD
+                    {
+                        buffer = static_cast<unsigned char*>(malloc(ioSize));
+                        }
+                    END_SINGLE_THREAD
                     gmain(loop, fd, buffer, 0, trials, ioSize, loopCount);
                 });
             }, trials, ioSize, loopCount);
