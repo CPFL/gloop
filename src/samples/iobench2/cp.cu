@@ -1,6 +1,6 @@
 #include <gloop/gloop.h>
 
-__device__ void performCopy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd, size_t me, size_t filesize, int ioSize, int loopCount)
+__device__ void performCopy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd, size_t me, size_t filesize, int trials, int ioSize, int loopCount)
 {
     volatile int res = 0;
     for (int i = 0; i < loopCount; ++i) {
@@ -14,7 +14,7 @@ __device__ void performCopy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd, 
                 assert(NULL);
             }
 
-            performCopy(loop, scratch, zfd, me + GLOOP_SHARED_PAGE_SIZE * loop->logicalGridDim().x, filesize, ioSize, loopCount);
+            performCopy(loop, scratch, zfd, me + GLOOP_SHARED_PAGE_SIZE * loop->logicalGridDim().x, filesize, trials, ioSize, loopCount);
         });
         return;
     }
@@ -22,7 +22,7 @@ __device__ void performCopy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd, 
     gloop::fs::close(loop, zfd, [=](gloop::DeviceLoop<>* loop, int err) {});
 }
 
-__device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, int ioSize, int loopCount)
+__device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, int trials, int ioSize, int loopCount)
 {
     __shared__ uchar* scratch;
 
@@ -34,7 +34,7 @@ __device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, int ioSize, int lo
     gloop::fs::open(loop, src, O_RDONLY, [=](gloop::DeviceLoop<>* loop, int zfd) {
         gloop::fs::fstat(loop, zfd, [=](gloop::DeviceLoop<>* loop, int filesize) {
             size_t me = loop->logicalBlockIdx().x * GLOOP_SHARED_PAGE_SIZE;
-            performCopy(loop, scratch, zfd, me, filesize, ioSize, loopCount);
+            performCopy(loop, scratch, zfd, me, filesize, trials, ioSize, loopCount);
         });
     });
 }
