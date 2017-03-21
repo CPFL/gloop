@@ -94,13 +94,14 @@ int main( int argc, char** argv)
     }
     int trials=atoi(argv[1]);
     assert(trials<=MAX_TRIALS);
-    int nblocks=atoi(argv[2]);
-    int nthreads=atoi(argv[3]);
-    int id = atoi(argv[4]);
-    int ioSize = atoi(argv[5]);
-    int loopCount = atoi(argv[6]);
+    int vblocks=atoi(argv[2]);
+    int pblocks=atoi(argv[3]);
+    int nthreads=atoi(argv[4]);
+    int id = atoi(argv[5]);
+    int ioSize = atoi(argv[6]);
+    int loopCount = atoi(argv[7]);
 
-    fprintf(stderr, " iterations: %d blocks %d threads %d id %d ioSize %d, loops %d\n", trials, nblocks, nthreads, id, ioSize, loopCount);
+    fprintf(stderr, " trials: %d vblocks %d pblocks %d threads %d id %d ioSize %d, loops %d file %s\n", trials, vblocks, pblocks, nthreads, id, ioSize, loopCount, argv[8]);
 
     int num_files=1;
     char** d_filenames=NULL;
@@ -111,9 +112,10 @@ int main( int argc, char** argv)
 
     std::memset(time_res,0,MAX_TRIALS*sizeof(double));
     {
-        dim3 blocks(nblocks);
+        dim3 virtualBlocks(vblocks);
+        dim3 physicalBlocks(pblocks);
         std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(global_devicenum);
-        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, blocks);
+        std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, physicalBlocks);
 
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
@@ -122,8 +124,8 @@ int main( int argc, char** argv)
             if (num_files>0){
                 d_filenames=(char**)malloc(sizeof(char*)*num_files);
                 for(int i=0;i<num_files;i++){
-                    d_filenames[i]=update_filename(argv[i+7]);
-                    fprintf(stderr,"file -%s\n",argv[i+7]);
+                    d_filenames[i]=update_filename(argv[i+8]);
+                    fprintf(stderr,"file -%s\n",argv[i+8]);
                 }
             }
         }
@@ -131,7 +133,7 @@ int main( int argc, char** argv)
         gloop::Benchmark benchmark;
         benchmark.begin();
         {
-            hostLoop->launch(*hostContext, blocks, nthreads, [] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, int ioSize, int loopCount, int trials, char* src) {
+            hostLoop->launch(*hostContext, virtualBlocks, nthreads, [] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, int ioSize, int loopCount, int trials, char* src) {
                 gpuMain(loop, src, trials, ioSize, loopCount);
             }, trials, ioSize, loopCount, d_filenames[0]);
         }
