@@ -18,7 +18,13 @@ __device__ void performCopy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd, 
         return;
     }
 
-    gloop::fs::close(loop, zfd, [=](gloop::DeviceLoop<>* loop, int err) {});
+    gloop::fs::close(loop, zfd, [=](gloop::DeviceLoop<>* loop, int err) {
+        BEGIN_SINGLE_THREAD
+        {
+            free(scratch);
+        }
+        END_SINGLE_THREAD
+    });
 }
 
 __device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, int trials, int ioSize, int loopCount)

@@ -119,7 +119,7 @@ int main( int argc, char** argv)
 
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
-            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (2 << 20) * 256));
+            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (256UL << 22)));
 
             if (num_files>0){
                 d_filenames=(char**)malloc(sizeof(char*)*num_files);

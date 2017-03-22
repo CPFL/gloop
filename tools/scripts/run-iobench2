@@ -67,6 +67,7 @@ class Test
         err = nil
         out = nil
         FileUtils.chdir(cwd()) {|dir|
+            # puts args.join(" ")
             out, err, status = Open3.capture3(args.join(" "))
             FileUtils.rm "out" if File.exists? "out"
         }
@@ -74,13 +75,30 @@ class Test
     end
 end
 
+$tests = []
+
 # release/src/samples/iobench2/iobench2 1 60 30 1024 1 4194304 40000 tmp/random.dat
 
-size = 4194304
-loopCount = 40000
-$tests = [
-    Test.new("#{size}", %W(#{GLoop::Root}/release/src/samples/iobench2/iobench2 1 60 30 1024 1 #{size} #{loopCount} tmp/random.dat)),
+# ioSize = 4194304
+ioSize = 4194304 * 2
+loopCounts = [
+#     0,
+#     100,
+#     400,
+#     1000,
+#     4000,
+#     10000,
+#     40000,
+    100000,
+#     400000,
+#    1000000,
+#    4000000,
+#    8000000,
 ]
+loopCounts.each do |loopCount|
+    $tests.push(Test.new("#{ioSize}-#{loopCount}-normal", %W(#{GLoop::Root}/release/src/samples/iobench2/iobench2 1 60 60 1024 1 #{ioSize} #{loopCount} tmp/random.dat)))
+    $tests.push(Test.new("#{ioSize}-#{loopCount}-double", %W(#{GLoop::Root}/release/src/samples/iobench2/iobench2 1 60 30 1024 2 #{ioSize} #{loopCount} tmp/random.dat)))
+end
 
 def main
     11.times do
