@@ -101,7 +101,7 @@ int main( int argc, char** argv)
     int ioSize = atoi(argv[6]);
     int loopCount = atoi(argv[7]);
 
-    fprintf(stderr, " trials: %d vblocks %d pblocks %d threads %d id %d ioSize %d, loops %d file %s\n", trials, vblocks, pblocks, nthreads, id, ioSize, loopCount, argv[8]);
+    fprintf(stderr, " trials:(%d),vblocks:(%d),pblocks:(%d),threads:(%d),id:(%d),ioSize:(%d),loops:(%d),file:(%s)\n", trials, vblocks, pblocks, nthreads, id, ioSize, loopCount, argv[8]);
 
     int num_files=1;
     char** d_filenames=NULL;
@@ -133,7 +133,7 @@ int main( int argc, char** argv)
         gloop::Benchmark benchmark;
         benchmark.begin();
         {
-            hostLoop->launch(*hostContext, virtualBlocks, nthreads, [] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, int ioSize, int loopCount, int trials, char* src) {
+            hostLoop->launch(*hostContext, virtualBlocks, nthreads, [] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, int trials, int ioSize, int loopCount, char* src) {
                 gpuMain(loop, src, trials, ioSize, loopCount);
             }, trials, ioSize, loopCount, d_filenames[0]);
         }

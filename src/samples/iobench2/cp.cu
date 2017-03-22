@@ -1,8 +1,8 @@
 #include <gloop/gloop.h>
 
-__device__ void performCopy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd, size_t filesize, int trials, int ioSize, int loopCount, int count)
+__device__ void performCopy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd, int trials, int ioSize, int loopCount, int count, int res)
 {
-    volatile int res = 0;
+    res = 0;
     for (int i = 0; i < loopCount; ++i) {
         res += i;
     }
@@ -13,7 +13,7 @@ __device__ void performCopy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd, 
                 assert(NULL);
             }
 
-            performCopy(loop, scratch, zfd, filesize, trials, ioSize, loopCount, count + 1);
+            performCopy(loop, scratch, zfd, trials, ioSize, loopCount, count + 1, res);
         });
         return;
     }
@@ -33,8 +33,6 @@ __device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, int trials, int io
     END_SINGLE_THREAD
 
     gloop::fs::open(loop, src, O_RDONLY, [=](gloop::DeviceLoop<>* loop, int zfd) {
-        gloop::fs::fstat(loop, zfd, [=](gloop::DeviceLoop<>* loop, int filesize) {
-            performCopy(loop, scratch, zfd, filesize, trials, ioSize, loopCount, 0);
-        });
+        performCopy(loop, scratch, zfd, trials, ioSize, loopCount, 0, 0);
     });
 }
