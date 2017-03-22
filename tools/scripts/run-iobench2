@@ -1,0 +1,93 @@
+#!/usr/bin/ruby
+# -*- coding: utf-8 -*-
+#  Copyright (C) 2017 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+#  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+#  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+#  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+#  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+#  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+#  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+require 'open3'
+require 'fileutils'
+require_relative './gloop.rb'
+
+class Result
+    def initialize(name, data)
+        @name = name
+        @time = extractTime(data)
+    end
+
+    def report
+        puts "#{@name}: #{@time.to_s}"
+    end
+
+    private
+    def extractTime(data)
+        m = /result:us\((\d+)\)/m.match(data)
+        unless m
+            puts "INVALID", data
+            raise self unless m
+        end
+        m[1].to_i
+    end
+end
+
+class Test
+    def initialize(name, args)
+        @name = name
+        @args = args
+    end
+
+    def execute
+        args = @args.collect {|arg| arg.gsub("\n", "") }
+        result = runBenchmark(args)
+        result.report()
+    end
+
+    def cwd
+        "#{GLoop::Root}"
+    end
+
+    def runBenchmark args
+        err = nil
+        out = nil
+        FileUtils.chdir(cwd()) {|dir|
+            out, err, status = Open3.capture3(args.join(" "))
+            FileUtils.rm "out" if File.exists? "out"
+        }
+        Result.new(@name, out)
+    end
+end
+
+# release/src/samples/iobench2/iobench2 1 60 30 1024 1 4194304 40000 tmp/random.dat
+
+size = 4194304
+loopCount = 40000
+$tests = [
+    Test.new("#{size}", %W(#{GLoop::Root}/release/src/samples/iobench2/iobench2 1 60 30 1024 1 #{size} #{loopCount} tmp/random.dat)),
+]
+
+def main
+    11.times do
+        $tests.each {|test|
+            test.execute
+        }
+    end
+end
+
+main() if __FILE__ == $0
