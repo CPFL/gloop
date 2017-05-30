@@ -65,9 +65,6 @@ char*  update_filename(const char* h_filename){
 
 #include <assert.h>
 
-// size of the output used for data staging
-int output_size=GLOOP_SHARED_PAGE_SIZE;
-
 #define MAX_TRIALS (10)
 double time_res[MAX_TRIALS];
 
@@ -119,7 +116,7 @@ int main( int argc, char** argv)
 
         {
             std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
-            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (256UL << 22)));
+            CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, (256UL << 23)));
 
             if (num_files>0){
                 d_filenames=(char**)malloc(sizeof(char*)*num_files);
