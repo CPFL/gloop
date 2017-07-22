@@ -32,5 +32,6 @@ namespace monitor {
 // typedef boost::mutex Lock;
 typedef Spinlock Lock;
 typedef boost::mutex ServerLock;
+// typedef Spinlock ServerLock;
 }
 } // namespace gloop::monitor

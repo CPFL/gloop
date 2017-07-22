@@ -276,10 +276,10 @@ $tests = [
     # HybridsortTest.new("hybridsort4", 4),
     # HybridsortTest.new("hybridsort8", 8),
 
-    LavaMDCUDATest.new("lavaMD-cuda2", 2),
-    LavaMDTest.new("lavaMD-gloop2", 2),
-    # LavaMDCUDATest.new("lavaMD-cuda4", 4),
-    # LavaMDTest.new("lavaMD-gloop4", 4),
+    # LavaMDCUDATest.new("lavaMD-cuda2", 2),
+    # LavaMDTest.new("lavaMD-gloop2", 2),
+    LavaMDCUDATest.new("lavaMD-cuda4", 4),
+    LavaMDTest.new("lavaMD-gloop4", 4),
 
     # LavaMDCUDATest.new("lavaMD-cuda4", 1),
     # LavaMDTest.new("lavaMD-gloop4", 1),
