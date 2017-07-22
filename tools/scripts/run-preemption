@@ -68,12 +68,22 @@ class StatisticsResult < Result
         }
     end
 
-    def report
+    def reportSum
         result = 0
         @times.each {|key, value|
             result += value
         }
         puts "#{@name}: #{result.to_s}"
+    end
+
+    def reportEach
+        @times.each {|key, value|
+            puts "#{@name}: #{key}: #{value.to_s}"
+        }
+    end
+
+    def report
+        reportEach
     end
 
     private
@@ -259,33 +269,12 @@ class LavaMDCUDATest < Test
 end
 
 $tests = [
-    # GrepTextTest.new("grep_text1", 1),
-    # GrepTextTest.new("grep_text2", 2),
-    # GrepTextTest.new("grep_text4", 4),
-    # GrepTextTest.new("grep_text8", 8),
-    # TPACFTest.new("tpacf1", 1),
-    # TPACFTest.new("tpacf2", 2),
-    # TPACFTest.new("tpacf4", 4),
-    # TPACFTest.new("tpacf8", 8),
-    # ThrottleTest.new("throttle1", 1),
-    # ThrottleTest.new("throttle2", 2),
-    # ThrottleTest.new("throttle4", 4),
-    # ThrottleTest.new("throttle8", 8),
-    # HybridsortTest.new("hybridsort1", 1),
-    # HybridsortTest.new("hybridsort2", 2),
-    # HybridsortTest.new("hybridsort4", 4),
-    # HybridsortTest.new("hybridsort8", 8),
-
+    LavaMDCUDATest.new("lavaMD-cuda1", 1),
+    LavaMDTest.new("lavaMD-gloop1", 1),
     LavaMDCUDATest.new("lavaMD-cuda2", 2),
     LavaMDTest.new("lavaMD-gloop2", 2),
-    # LavaMDCUDATest.new("lavaMD-cuda4", 4),
-    # LavaMDTest.new("lavaMD-gloop4", 4),
-
-    # LavaMDCUDATest.new("lavaMD-cuda4", 1),
-    # LavaMDTest.new("lavaMD-gloop4", 1),
-
-    # LavaMDtest.new("throttle4", 4),
-    # LavaMDtest.new("throttle8", 8),
+    LavaMDCUDATest.new("lavaMD-cuda4", 4),
+    LavaMDTest.new("lavaMD-gloop4", 4),
 ]
 
 # [1, 240, 480, 960, 1920, 3840, 7680].each {|nblocks|
