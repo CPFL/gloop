@@ -59,6 +59,10 @@ int main(int argc, char** argv)
         for (int i = 0; i < trials; ++i) {
             throttle<<<nblocks, nthreads, 0, pgraph>>>(0, i);
             GLOOP_CUDA_SAFE_CALL(cudaGetLastError());
+            // We need to wait GPU kernel completion here. Asynchronously queuing GPU kernel launches does not
+            // offer software-controlled schedulability to a GPGPU framework. To make fair comparison with
+            // GLoop, we wait for the completion here (If we have a way to software-control queued GPU kernel
+            // dispatching, GLoop should be able to use it too.).
             GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(pgraph));
         }
     }
