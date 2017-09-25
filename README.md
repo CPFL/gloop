@@ -1,4 +1,4 @@
-# GLoop: Event-driven programming in GPUs
+# GLoop: An Event-driven Runtime for Consolidating GPGPU Applications
 
 ## Requirements
 
