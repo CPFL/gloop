@@ -62,7 +62,7 @@ public:
 
     uint64_t killClock() const
     {
-        return m_deviceProperties.clockRate * GLOOP_KILL_TIME / 1000;
+        return static_cast<uint64_t>(static_cast<double>(m_deviceProperties.clockRate) * GLOOP_KILL_TIME / 1000);
     }
 
     cudaStream_t pgraph() const
