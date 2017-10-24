@@ -9,6 +9,7 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 option(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY "Enable hierarchical slot memory" ON)
 option(GLOOP_ENABLE_ELASTIC_KERNELS "Enable elastic kernels" ON)
 option(GLOOP_ENABLE_IO_BOOSTING "Enable IO boosting" ON)
+option(GLOOP_ENABLE_CLOCK_CHECK "Enable clock checking" ON)
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/generated_config.h.in
