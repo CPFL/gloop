@@ -100,7 +100,7 @@ end
 
 class GrepTextTest < Test
     def createCommand i
-        %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out#{i} db_shakespere.txt)
+        %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 224 224 128 input/dict.gpu out#{i} db_shakespere.txt)
     end
 
     def runBenchmark
@@ -259,12 +259,12 @@ class LavaMDCUDATest < Test
 end
 
 $tests = [
-    # GrepTextTest.new("grep_text1", 1),
-    # GrepTextTest.new("grep_text2", 2),
-    # GrepTextTest.new("grep_text4", 4),
-    # GrepTextTest.new("grep_text8", 8),
-    TPACFTest.new("tpacf1", 1),
-    TPACFTest.new("tpacf2", 2),
+    GrepTextTest.new("grep_text1", 1),
+    GrepTextTest.new("grep_text2", 2),
+    GrepTextTest.new("grep_text4", 4),
+    GrepTextTest.new("grep_text8", 8),
+    # TPACFTest.new("tpacf1", 1),
+    # TPACFTest.new("tpacf2", 2),
     # TPACFTest.new("tpacf4", 4),
     # TPACFTest.new("tpacf8", 8),
     # ThrottleTest.new("throttle1", 1),
