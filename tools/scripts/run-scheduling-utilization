@@ -197,7 +197,7 @@ end
 
 class GrepTextTest < SchedulingTest
     def createCommand
-        %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out db_shakespere.txt)
+        %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 224 224 128 input/dict.gpu out db_shakespere.txt)
     end
 
     def runBenchmark
@@ -277,12 +277,12 @@ end
 
 $period = 100
 $tests = [
-    # TPACFTest.new("tpacf1", 1, $period),
-    # TPACFTest.new("tpacf3", 3, $period),
-    # TPACFTest.new("tpacf7", 7, $period),
-    # PriorityTPACFTest.new("priority-tpacf1", 1, $period),
-    # PriorityTPACFTest.new("priority-tpacf3", 3, $period),
-    # PriorityTPACFTest.new("priority-tpacf7", 7, $period),
+    TPACFTest.new("tpacf1", 1, $period),
+    TPACFTest.new("tpacf3", 3, $period),
+    TPACFTest.new("tpacf7", 7, $period),
+    PriorityTPACFTest.new("priority-tpacf1", 1, $period),
+    PriorityTPACFTest.new("priority-tpacf3", 3, $period),
+    PriorityTPACFTest.new("priority-tpacf7", 7, $period),
     GrepTextTest.new("grep_text1", 1, $period),
     GrepTextTest.new("grep_text3", 3, $period),
     GrepTextTest.new("grep_text7", 7, $period),

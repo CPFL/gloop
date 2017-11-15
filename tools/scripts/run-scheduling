@@ -234,17 +234,17 @@ end
 
 $tests = [
     TPACFTest.new("tpacf1", 1),
-    # TPACFTest.new("tpacf3", 3),
-    # TPACFTest.new("tpacf7", 7),
+    TPACFTest.new("tpacf3", 3),
+    TPACFTest.new("tpacf7", 7),
     PriorityTPACFTest.new("priority-tpacf1", 1),
-    # PriorityTPACFTest.new("priority-tpacf3", 3),
-    # PriorityTPACFTest.new("priority-tpacf7", 7),
-    # GrepTextTest.new("grep_text1", 1),
-    # GrepTextTest.new("grep_text3", 3),
-    # GrepTextTest.new("grep_text7", 7),
-    # PriorityGrepTextTest.new("priority-grep_text1", 1),
-    # PriorityGrepTextTest.new("priority-grep_text3", 3),
-    # PriorityGrepTextTest.new("priority-grep_text7", 7),
+    PriorityTPACFTest.new("priority-tpacf3", 3),
+    PriorityTPACFTest.new("priority-tpacf7", 7),
+    GrepTextTest.new("grep_text1", 1),
+    GrepTextTest.new("grep_text3", 3),
+    GrepTextTest.new("grep_text7", 7),
+    PriorityGrepTextTest.new("priority-grep_text1", 1),
+    PriorityGrepTextTest.new("priority-grep_text3", 3),
+    PriorityGrepTextTest.new("priority-grep_text7", 7),
 ]
 
 def main
