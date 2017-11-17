@@ -192,7 +192,7 @@ void HostLoop::initialize()
         GLOOP_CUDA_SAFE_CALL(cudaMemcpyToSymbol(gloop::signal, &m_deviceSignal, sizeof(m_deviceSignal)));
         // m_deviceProperties.clockRate = static_cast<uint32_t>(m_deviceProperties.clockRate * 0.646);
         // m_deviceProperties.clockRate = static_cast<uint32_t>(m_deviceProperties.clockRate * 0.646);
-        GLOOP_DATA_LOG("clock rate:(%d)\n", m_deviceProperties.clockRate);
+        // GLOOP_DATA_LOG("clock rate:(%d)\n", m_deviceProperties.clockRate);
     }
 
     // Since kernel work is already held by kernel executing thread,
