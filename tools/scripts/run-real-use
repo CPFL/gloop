@@ -272,7 +272,7 @@ class ConsolidatingServers < SchedulingTest
 
             # Client
             threads << Thread.new {
-                sleep 2
+                sleep 5
                 out, err, status = Open3.capture3(clientCommand(0, 2000).join(" "))
                 puts out, err
             }
@@ -287,7 +287,7 @@ class ConsolidatingServers < SchedulingTest
 
             # Client
             threads << Thread.new {
-                sleep 2
+                sleep 5
                 out, err, status = Open3.capture3(clientCommand(1, 2000).join(" "))
             }
 
@@ -301,7 +301,7 @@ class ConsolidatingServers < SchedulingTest
 
             # Client
             threads << Thread.new {
-                sleep 2
+                sleep 5
                 out, err, status = Open3.capture3(clientCommand(2, 2000).join(" "))
             }
         }
