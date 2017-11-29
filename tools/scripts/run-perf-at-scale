@@ -259,10 +259,10 @@ class LavaMDCUDATest < Test
 end
 
 $tests = [
-    GrepTextTest.new("grep_text1", 1),
-    GrepTextTest.new("grep_text2", 2),
-    GrepTextTest.new("grep_text4", 4),
-    GrepTextTest.new("grep_text8", 8),
+    # GrepTextTest.new("grep_text1", 1),
+    # GrepTextTest.new("grep_text2", 2),
+    # GrepTextTest.new("grep_text4", 4),
+    # GrepTextTest.new("grep_text8", 8),
     # TPACFTest.new("tpacf1", 1),
     # TPACFTest.new("tpacf2", 2),
     # TPACFTest.new("tpacf4", 4),
@@ -299,6 +299,12 @@ $tests = [
 # [1, 240, 480, 960, 1920, 3840, 7680].each {|nblocks|
 #     [1, 2, 4, 8].each {|instances|
 #         $tests.push(ThrottleTest.new("throttle#{instances}-#{nblocks}", instances, 1, nblocks))
+#     }
+# }
+
+# [1, 128, 256, 512, 1024].each {|nthreads|
+#     [1, 2, 4, 8].each {|instances|
+#         $tests.push(ThrottleTest.new("throttle#{instances}-#{nthreads}", instances, nthreads, 1))
 #     }
 # }
 
