@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <gloop/gloop.h>
+#include <gloop/debug.h>
 #include <gloop/utility/util.cu.h>
 #include "img.cuh"
 
@@ -155,7 +156,6 @@ void GLOOP_NEVER_INLINE __device__ process_one_db(gloop::DeviceLoop<>* loop, Con
                 size_t db_rows=(db_size/context->src_row_len)>>2;
 
                 get_row(loop, context->ph_db.page, &context->ph_db.file_offset, &context->ph_db.isFilled, 0, db_size, zfd_db, [=](gloop::DeviceLoop<>* loop, float* ptr_row_db) {
-
                     process_one_row(loop, context, data_idx, db_idx, out_count, db_size, zfd_db, 0, db_rows, ptr_row_db, [=](gloop::DeviceLoop<>* loop, float* ptr_row_db, int found) {
                         context->ph_db.file_offset = 0;
                         context->ph_db.isFilled = false;
@@ -300,6 +300,7 @@ void init_device_app()
 {
     // GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitPrintfFifoSize, 1<<25));
     GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize, ((512) <<20)));
+    GLOOP_CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitStackSize, 4096));
 }
 
 void init_app()
