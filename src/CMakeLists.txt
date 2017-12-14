@@ -12,7 +12,7 @@ set(CMAKE_CUDA_FLAGS "\
     ${CMAKE_CUDA_FLAGS}\
     -maxrregcount 32\
     -rdc=true\
-    --generate-code code=sm_60,arch=compute_60\
+    --generate-code code=sm_35,arch=compute_35\
     --expt-extended-lambda\
     -std=c++11\
     -Xptxas -v,--warn-on-spills,--warn-on-local-memory-usage\
