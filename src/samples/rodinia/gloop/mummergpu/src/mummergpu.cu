@@ -322,7 +322,7 @@ extern "C" int createMatchContext(Reference* ref,
         // gloop initialization.
         ctx->hostLoop = gloop::HostLoop::create(0).release();
         // FIXME, choose appropriate physical TBs.
-        ctx->hostContext = gloop::HostContext::create(*ctx->hostLoop, dim3(448)).release();
+        ctx->hostContext = gloop::HostContext::create(*ctx->hostLoop, dim3(120)).release();
     }
     return 0;
 }

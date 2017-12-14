@@ -197,7 +197,7 @@ end
 
 class GrepTextTest < SchedulingTest
     def createCommand
-        %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 224 224 128 input/dict.gpu out db_shakespere.txt)
+        %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out db_shakespere.txt)
     end
 
     def runBenchmark
