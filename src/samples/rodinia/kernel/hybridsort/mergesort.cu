@@ -264,6 +264,9 @@ float4* runMergeSort(Context* ctx, int listsize, int divisions,
             cudaThreadSynchronize();
 
 #if 1
+            // We need to do in this way. Merge sort kernel can be stopped if it completes the calculation.
+            // To align to the original implementation and GLoop's implementation, kernel-split version
+            // also needs to stop computation if merge sort is done.
             for (int i = 0; gloop::readNoCache<unsigned int>(ctx->continuing); ++i) {
                 gloop::syncWrite<unsigned int>(ctx->continuing, 0);
                 mergeSortPassSecondKernel<<<grid, threads>>>(*ctx, d_resultList, nrElems, threadsPerDiv, i);

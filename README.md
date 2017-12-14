@@ -1,4 +1,4 @@
-# GLoop: Event-driven programming in GPUs
+# GLoop: An Event-driven Runtime for Consolidating GPGPU Applications
 
 ## Requirements
 
@@ -13,4 +13,5 @@
 
 ## Publications
 
-- Yusuke Suzuki, Hiroshi Yamada, Shinpei Kato and Kenji Kono: __Towards Multi-tenant GPGPU: Event-driven Programming Model for System-wide Scheduling on Shared GPUs__, In The 2016 Workshop on Multicore and Rack-scale Systems (MaRS '16), 2016.
+- Yusuke Suzuki, Hiroshi Yamada, Shinpei Kato and Kenji Kono: **GLoop: An Event-driven Runtime for Consolidating GPGPU Applications**, In Proceedings of the 8th ACM Symposium on Cloud Computing (SoCC '17), 2017.
+- Yusuke Suzuki, Hiroshi Yamada, Shinpei Kato and Kenji Kono: __Towards Multi-tenant GPGPU: Event-driven Programming Model for System-wide Scheduling on Shared GPUs__, In The 2017 Workshop on Multicore and Rack-scale Systems (MaRS '16), 2016.
