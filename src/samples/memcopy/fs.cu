@@ -87,7 +87,7 @@ int main( int argc, char** argv)
     fprintf(stderr,"Match threshold is %f\n",match_threshold);
 
     char* gpudev=getenv("GPUDEVICE");
-    global_devicenum=0;
+    global_devicenum=GLOOP_DEVICE;
     if (gpudev!=NULL) global_devicenum=atoi(gpudev);
 
     fprintf(stderr,"GPU device chosen %d\n",global_devicenum);

@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     struct pb_TimerSet timers;
     struct pb_Parameters* parameters;
 
-    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(GLOOP_DEVICE);
 
     printf("CUDA accelerated 7 points stencil codes****\n");
     printf("Original version by Li-Wen Chang <lchang20@illinois.edu> and I-Jui Sung<sung10@illinois.edu>\n");

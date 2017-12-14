@@ -51,5 +51,11 @@
 // sizeof(uint64_t) * GLOOP_LAMBDA_SIZE.
 #define GLOOP_LAMBDA_SIZE 48
 
+#define GLOOP_DEVICE 0
+// For Tesla K40c
+#define GLOOP_SM 15
+// For Tesla P100
+// #define GLOOP_SM 56
+
 namespace gloop {
 } // namespace gloop

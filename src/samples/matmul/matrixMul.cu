@@ -566,7 +566,7 @@ void runTest(int argc, char** argv)
 
     double total_time=0;
     for(int zzz=0;zzz<NUM_ITERATIONS;zzz++){
-        std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+        std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(GLOOP_DEVICE);
         std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, grid);
 
         char fn[]="mtx_c";

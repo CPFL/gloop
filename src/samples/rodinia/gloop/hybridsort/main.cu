@@ -124,7 +124,7 @@ int main(int argc, char** argv)
         cout << "Sorting on GPU..." << flush;
         {
             gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
-            std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+            std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(GLOOP_DEVICE);
             std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(480));
             CUDA_SAFE_CALL(cudaDeviceSetLimit(cudaLimitMallocHeapSize,512<<20));
             {

@@ -320,7 +320,7 @@ extern "C" int createMatchContext(Reference* ref,
     {
         gloop::Statistics::Scope<gloop::Statistics::Type::GPUInit> scope;
         // gloop initialization.
-        ctx->hostLoop = gloop::HostLoop::create(0).release();
+        ctx->hostLoop = gloop::HostLoop::create(GLOOP_DEVICE).release();
         // FIXME, choose appropriate physical TBs.
         ctx->hostContext = gloop::HostContext::create(*ctx->hostLoop, dim3(120)).release();
     }

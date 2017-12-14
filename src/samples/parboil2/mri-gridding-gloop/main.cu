@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
     struct pb_Parameters* prms;
     struct pb_TimerSet timers;
 
-    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(GLOOP_DEVICE);
 
 
     {

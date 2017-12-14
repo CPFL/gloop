@@ -358,7 +358,7 @@ void runTest(int argc, char** argv)
     printf(" grid size: %dx%d per blockX= %d per blockY= %d\n",grid.x,grid.y,perBlockX,perBlockY);
     printf(" uiWA %d uiWB %d \n",uiWA,uiWB);
 
-    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+    std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(GLOOP_DEVICE);
     std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, gridCUDA);
 
 

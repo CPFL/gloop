@@ -26,7 +26,7 @@ struct pb_TimerSet timers;
 int main( int nArgs, char* arg[] ) {
 	MAIN_Param param;
         {
-            std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+            std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(GLOOP_DEVICE);
             dim3 dimBlock, dimGrid;
             dimBlock.x = SIZE_X;
             dimGrid.x = SIZE_Y;

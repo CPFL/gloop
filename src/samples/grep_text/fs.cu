@@ -74,7 +74,7 @@ int main( int argc, char** argv)
         dim3 blocks(nblocks);
         dim3 physblocks(physnblocks);
 
-        std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(0);
+        std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(GLOOP_DEVICE);
         std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, physblocks);
 
         {
