@@ -24,7 +24,7 @@
 #ifndef MATMUL_SERVER_CONFIG_H_
 #define MATMUL_SERVER_CONFIG_H_
 
-#define MATRIX_HW 256
+#define MATRIX_HW 1024
 #define MATRIX_SIZE (MATRIX_HW * MATRIX_HW)
 #define MSG_SIZE (MATRIX_SIZE * 3)
 #define SHARED_BLOCK_SIZE 32
@@ -33,6 +33,6 @@
 // TITAN Z SMX => 15
 // K40 SMX => 30
 // #define BLOCKS 60
-#define BLOCKS 1
+#define BLOCKS 30
 
 #endif  // MATMUL_SERVER_CONFIG_H_
