@@ -295,10 +295,10 @@ $tests = [
     # LavaMDtest.new("throttle4", 4),
     # LavaMDtest.new("throttle8", 8),
 
-#     ThrottleTest.new("throttle1", 1),
-#     ThrottleTest.new("throttle2", 2),
-#     ThrottleTest.new("throttle4", 4),
-#     ThrottleTest.new("throttle8", 8),
+    ThrottleTest.new("throttle1", 1),
+    ThrottleTest.new("throttle2", 2),
+    ThrottleTest.new("throttle4", 4),
+    ThrottleTest.new("throttle8", 8),
 ]
 
 # [1, 240, 480, 960, 1920, 3840, 7680].each {|nblocks|
