@@ -27,13 +27,18 @@ require 'fileutils'
 require_relative './gloop.rb'
 
 class Result
-    def initialize(name, data)
+    def initialize(name, data, status)
         @name = name
         @time = extractTime(data)
+        @status = status
     end
 
     def report
-        puts "#{@name}: #{@time.to_s}"
+        if @status.success?
+            puts "#{@name}: #{@time.to_s}"
+        else
+            puts "#{@name}: INVALID"
+        end
     end
 
     private
@@ -67,12 +72,13 @@ class Test
     def runBenchmark args
         err = nil
         out = nil
+        status = nil
         GLoop::clear_buffer_cache if @bc
         FileUtils.chdir(cwd()) {|dir|
             out, err, status = Open3.capture3(args.join(" "))
             FileUtils.rm "out" if File.exists? "out"
         }
-        Result.new(@name, err)
+        Result.new(@name, err, status)
     end
 end
 
@@ -90,22 +96,23 @@ class SimpleImagingTest < Test
     def runBenchmark args
         err = nil
         out = nil
+        status = nil
         GLoop::clear_buffer_cache if @bc
         FileUtils.chdir(cwd()) {|dir|
             out, err, status = Open3.capture3({ "GREPTH" => "0" }, args.join(" "))
             FileUtils.rm "out" if File.exists? "out"
         }
-        Result.new(@name, err)
+        Result.new(@name, err, status)
     end
 end
 
 $tests = [
-    Test.new("grep_text-vanilla", %W(#{GLoop::Root}/../gpufs-original/samples/grep_text/grep_text_gpu_nofs input/dict.gpu out db_shakespere.txt)),
-    Test.new("grep_text-vanilla-tuned", %W(#{GLoop::Root}/../gpufs/samples/grep_text/grep_text_gpu_nofs input/dict.gpu out db_shakespere.txt)),
-    Test.new("grep_text-gpufs", %W(#{GLoop::Root}/../gpufs-original/samples/grep_text/fs 1 60 128 input/dict.gpu out db_shakespere.txt)),
-    Test.new("grep_text-gpufs-tuned", %W(#{GLoop::Root}/../gpufs/samples/grep_text/fs 1 60 128 input/dict.gpu out db_shakespere.txt)),
-    Test.new("grep_text-gloop", %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out db_shakespere.txt)),
-    Test.new("grep_text-gloop-without-shared-slots", %W(#{GLoop::Root}/nonshared/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out db_shakespere.txt)),
+#     Test.new("grep_text-vanilla", %W(#{GLoop::Root}/../gpufs-original/samples/grep_text/grep_text_gpu_nofs input/dict.gpu out db_shakespere.txt)),
+#     Test.new("grep_text-vanilla-tuned", %W(#{GLoop::Root}/../gpufs/samples/grep_text/grep_text_gpu_nofs input/dict.gpu out db_shakespere.txt)),
+#     Test.new("grep_text-gpufs", %W(#{GLoop::Root}/../gpufs-original/samples/grep_text/fs 1 60 128 input/dict.gpu out db_shakespere.txt)),
+#     Test.new("grep_text-gpufs-tuned", %W(#{GLoop::Root}/../gpufs/samples/grep_text/fs 1 60 128 input/dict.gpu out db_shakespere.txt)),
+#     Test.new("grep_text-gloop", %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out db_shakespere.txt)),
+#     Test.new("grep_text-gloop-without-shared-slots", %W(#{GLoop::Root}/nonshared/src/samples/grep_text/grep_text_gloop 1 60 60 128 input/dict.gpu out db_shakespere.txt)),
 
     # Test.new("grep_text-gpufs-bc", %W(#{GLoop::Root}/../gpufs-original/samples/grep_text/fs 1 60 128 input/dict.gpu out db_shakespere.txt)),
     # Test.new("grep_text-gpufs-tuned-bc", %W(#{GLoop::Root}/../gpufs/samples/grep_text/fs 1 60 128 input/dict.gpu out db_shakespere.txt)),
@@ -124,13 +131,13 @@ $tests = [
 #     ImagingTest.new("img-gloop-without-shared-slots-bc", %W(#{GLoop::Root}/nonshared/src/samples/img_non_mmap/img_gloop_non_mmap 0 30 512 res_in out res_o_0 res_o_1 res_o_2)),
 #     ImagingTest.new("img-gpufs-bc", %W(#{GLoop::Root}/../gpufs/samples/img/fs 0 30 512 res_in out res_o_0 res_o_1 res_o_2)),
 
-#     SimpleImagingTest.new("img-simple-gloop-bc", %W(#{GLoop::Root}/release/src/samples/img_non_mmap/img_gloop_non_mmap 0 1 512 s3_in out s3_o_0 s3_o_1 s3_o_2)),
-#     SimpleImagingTest.new("img-simple-gloop-without-shared-slots-bc", %W(#{GLoop::Root}/nonshared/src/samples/img_non_mmap/img_gloop_non_mmap 0 1 512 s3_in out s3_o_0 s3_o_1 s3_o_2)),
-#     SimpleImagingTest.new("img-simple-gpufs-bc", %W(#{GLoop::Root}/../gpufs/samples/img/fs 0 1 512 s3_in out s3_o_0 s3_o_1 s3_o_2)),
+    SimpleImagingTest.new("img-simple-gloop-bc", %W(#{GLoop::Root}/release/src/samples/img_non_mmap/img_gloop_non_mmap 0 1 512 s3_in out s3_o_0 s3_o_1 s3_o_2)),
+    SimpleImagingTest.new("img-simple-gloop-without-shared-slots-bc", %W(#{GLoop::Root}/nonshared/src/samples/img_non_mmap/img_gloop_non_mmap 0 1 512 s3_in out s3_o_0 s3_o_1 s3_o_2)),
+    SimpleImagingTest.new("img-simple-gpufs-bc", %W(#{GLoop::Root}/../gpufs/samples/img/fs 0 1 512 s3_in out s3_o_0 s3_o_1 s3_o_2)),
 ]
 
 def main
-    11.times do
+    31.times do
         $tests.each {|test|
             test.execute
         }
