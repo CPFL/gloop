@@ -65,7 +65,7 @@ void kernel_gpu_cuda_wrapper(par_str par_cpu,
 
     gloop::Statistics::instance().switchTo<gloop::Statistics::Type::GPUInit>();
     std::unique_ptr<gloop::HostLoop> hostLoop = gloop::HostLoop::create(GLOOP_DEVICE);
-    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(30));
+    std::unique_ptr<gloop::HostContext> hostContext = gloop::HostContext::create(*hostLoop, dim3(90));
     // cudaThreadSynchronize();
 
     //====================================================================================================100
