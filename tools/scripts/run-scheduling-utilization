@@ -275,7 +275,7 @@ class PriorityTPACFTest < TPACFTest
     end
 end
 
-$period = 100
+$period = 200
 $tests = [
     TPACFTest.new("tpacf1", 1, $period),
     TPACFTest.new("tpacf3", 3, $period),
