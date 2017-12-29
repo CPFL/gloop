@@ -252,7 +252,7 @@ end
 
 class LavaMDTest < Test
     def createCommand i
-        [ "#{GLoop::Root}/release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d", "50" ]
+        [ "#{GLoop::Root}/release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d", "80" ]
     end
 
     def runBenchmark
@@ -277,7 +277,7 @@ end
 
 class LavaMDCUDATest < Test
     def createCommand i
-        [ "#{GLoop::Root}/release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d", "50" ]
+        [ "#{GLoop::Root}/release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d", "80" ]
     end
 
     def runBenchmark
@@ -306,18 +306,18 @@ $tests = [
     # GrepTextTest.new("grep_text4", 4),
     # GrepTextTest.new("grep_text8", 8),
 
-    # LavaMDCUDATest.new("lavaMD-cuda1", 1),
-    # LavaMDTest.new("lavaMD-gloop1", 1),
-    # LavaMDCUDATest.new("lavaMD-cuda2", 2),
-    # LavaMDTest.new("lavaMD-gloop2", 2),
-    # LavaMDCUDATest.new("lavaMD-cuda3", 3),
-    # LavaMDTest.new("lavaMD-gloop3", 3),
-    # LavaMDCUDATest.new("lavaMD-cuda4", 4),
-    # LavaMDTest.new("lavaMD-gloop4", 4),
-    # LavaMDCUDATest.new("lavaMD-cuda5", 5),
-    # LavaMDTest.new("lavaMD-gloop5", 5),
-    # LavaMDCUDATest.new("lavaMD-cuda6", 6),
-    # LavaMDTest.new("lavaMD-gloop6", 6),
+#     LavaMDCUDATest.new("lavaMD-cuda1", 1),
+#     LavaMDTest.new("lavaMD-gloop1", 1),
+#     LavaMDCUDATest.new("lavaMD-cuda2", 2),
+#     LavaMDTest.new("lavaMD-gloop2", 2),
+#     LavaMDCUDATest.new("lavaMD-cuda3", 3),
+#     LavaMDTest.new("lavaMD-gloop3", 3),
+#     LavaMDCUDATest.new("lavaMD-cuda4", 4),
+#     LavaMDTest.new("lavaMD-gloop4", 4),
+#     LavaMDCUDATest.new("lavaMD-cuda5", 5),
+#     LavaMDTest.new("lavaMD-gloop5", 5),
+#     LavaMDCUDATest.new("lavaMD-cuda6", 6),
+#     LavaMDTest.new("lavaMD-gloop6", 6),
 
     TPACFCUDATest.new("tpacf-cuda1", 1),
     TPACFTest.new("tpacf-gloop1", 1),
@@ -331,6 +331,26 @@ $tests = [
     TPACFTest.new("tpacf-gloop5", 5),
     TPACFCUDATest.new("tpacf-cuda6", 6),
     TPACFTest.new("tpacf-gloop6", 6),
+    TPACFCUDATest.new("tpacf-cuda7", 7),
+    TPACFTest.new("tpacf-gloop7", 7),
+    TPACFCUDATest.new("tpacf-cuda8", 8),
+    TPACFTest.new("tpacf-gloop8", 8),
+    TPACFCUDATest.new("tpacf-cuda9", 9),
+    TPACFTest.new("tpacf-gloop9", 9),
+    TPACFCUDATest.new("tpacf-cuda10", 10),
+    TPACFTest.new("tpacf-gloop10", 10),
+    TPACFCUDATest.new("tpacf-cuda11", 11),
+    TPACFTest.new("tpacf-gloop11", 11),
+    TPACFCUDATest.new("tpacf-cuda12", 12),
+    TPACFTest.new("tpacf-gloop12", 12),
+    TPACFCUDATest.new("tpacf-cuda13", 13),
+    TPACFTest.new("tpacf-gloop13", 13),
+    TPACFCUDATest.new("tpacf-cuda14", 14),
+    TPACFTest.new("tpacf-gloop14", 14),
+    TPACFCUDATest.new("tpacf-cuda15", 15),
+    TPACFTest.new("tpacf-gloop15", 15),
+    TPACFCUDATest.new("tpacf-cuda16", 16),
+    TPACFTest.new("tpacf-gloop16", 16),
 ]
 
 # [1, 240, 480, 960, 1920, 3840, 7680].each {|nblocks|
