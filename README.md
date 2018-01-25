@@ -7,6 +7,11 @@
 - grpc
 - CMake with CUDA patch (https://github.com/CPFL/cmake cuda branch)
 
+## Branches
+
+Do not use `master` branch, it is highly focusing on development purpose.
+We have branches, `kepler` for Kepler K40c and `pascal` for Pascal P100.
+
 ## Environment
 
 - Ubuntu 16.04
