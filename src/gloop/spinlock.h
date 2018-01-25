@@ -26,6 +26,7 @@
 
 #include "noncopyable.h"
 #include <atomic>
+#include <thread>
 namespace gloop {
 
 // spinlock. Not considering thundering herd etc.
@@ -33,12 +34,17 @@ namespace gloop {
 class Spinlock {
     GLOOP_NONCOPYABLE(Spinlock)
 public:
+    static constexpr unsigned count { 40 }; // Famous spin count in Jakes RVM.
     Spinlock() = default;
 
     void lock()
     {
+        for (unsigned i = 0; i < count; ++i) {
+            if (!m_locked.test_and_set(std::memory_order_acquire))
+                return;
+        }
         while (m_locked.test_and_set(std::memory_order_acquire))
-            ;
+            std::this_thread::yield();
     }
 
     void unlock()

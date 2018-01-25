@@ -68,12 +68,26 @@ class StatisticsResult < Result
         }
     end
 
-    def report
+    def reportSum
         result = 0
         @times.each {|key, value|
             result += value
         }
         puts "#{@name}: #{result.to_s}"
+    end
+
+    def reportEach
+        @times.each {|key, value|
+            puts "#{@name}: #{key}: #{value.to_s}"
+        }
+    end
+
+    def reportKernel
+        puts "#{@name}: Kernel: #{@times["Kernel"].to_s}"
+    end
+
+    def report
+        reportKernel
     end
 
     private
@@ -100,7 +114,7 @@ end
 
 class GrepTextTest < Test
     def createCommand i
-        %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 224 224 128 input/dict.gpu out#{i} db_shakespere.txt)
+        %W(#{GLoop::Root}/release/src/samples/grep_text/grep_text_gloop 1 40 40 128 input/dict.gpu out#{i} db_shakespere.txt)
     end
 
     def runBenchmark
@@ -149,6 +163,34 @@ class TPACFTest < Test
         results
     end
 end
+
+class TPACFCUDATest < Test
+    def createCommand i
+        ["#{GLoop::Root}/release/src/samples/parboil2/tpacf/tpacf", "-i", BenchmarkData::TPACF::Data, "-o", "out#{i}", "--", "-n", "100", "-p", "10391"]
+    end
+
+    def runBenchmark
+        results = []
+        FileUtils.chdir("#{GLoop::Root}/data") {|dir|
+            threads = []
+            @times.times {|i|
+                threads << Thread.new {
+                    Thread.pass
+                    out, err, status = Open3.capture3(createCommand(i).join(" "))
+                    FileUtils.rm "out#{i}" if File.exists? "out#{i}"
+                    results[i] = StatisticsResult.new(@name + i.to_s, err)
+                }
+            }
+
+            threads.each {|thread|
+                thread.join
+            }
+        }
+        results
+    end
+end
+
+
 
 class HybridsortTest < Test
     def createCommand i
@@ -210,7 +252,7 @@ end
 
 class LavaMDTest < Test
     def createCommand i
-        [ "#{GLoop::Root}/release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d", "50" ]
+        [ "#{GLoop::Root}/release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d", "80" ]
     end
 
     def runBenchmark
@@ -235,7 +277,7 @@ end
 
 class LavaMDCUDATest < Test
     def createCommand i
-        [ "#{GLoop::Root}/release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d", "50" ]
+        [ "#{GLoop::Root}/release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d", "80" ]
     end
 
     def runBenchmark
@@ -263,53 +305,57 @@ $tests = [
     # GrepTextTest.new("grep_text2", 2),
     # GrepTextTest.new("grep_text4", 4),
     # GrepTextTest.new("grep_text8", 8),
-    # TPACFTest.new("tpacf1", 1),
-    # TPACFTest.new("tpacf2", 2),
-    # TPACFTest.new("tpacf4", 4),
-    # TPACFTest.new("tpacf8", 8),
-    # ThrottleTest.new("throttle1", 1),
-    # ThrottleTest.new("throttle2", 2),
-    # ThrottleTest.new("throttle4", 4),
-    # ThrottleTest.new("throttle8", 8),
-    # HybridsortTest.new("hybridsort1", 1),
-    # HybridsortTest.new("hybridsort2", 2),
-    # HybridsortTest.new("hybridsort4", 4),
-    # HybridsortTest.new("hybridsort8", 8),
 
-    # LavaMDCUDATest.new("lavaMD-cuda1", 1),
-    # LavaMDTest.new("lavaMD-gloop1", 1),
-    # LavaMDCUDATest.new("lavaMD-cuda2", 2),
-    # LavaMDTest.new("lavaMD-gloop2", 2),
-    # LavaMDCUDATest.new("lavaMD-cuda3", 3),
-    # LavaMDTest.new("lavaMD-gloop3", 3),
-    # LavaMDCUDATest.new("lavaMD-cuda4", 4),
-    # LavaMDTest.new("lavaMD-gloop4", 4),
-    # LavaMDCUDATest.new("lavaMD-cuda5", 5),
-    # LavaMDTest.new("lavaMD-gloop5", 5),
-    # LavaMDCUDATest.new("lavaMD-cuda6", 6),
-    # LavaMDTest.new("lavaMD-gloop6", 6),
+#     LavaMDCUDATest.new("lavaMD-cuda1", 1),
+#     LavaMDTest.new("lavaMD-gloop1", 1),
+#     LavaMDCUDATest.new("lavaMD-cuda2", 2),
+#     LavaMDTest.new("lavaMD-gloop2", 2),
+#     LavaMDCUDATest.new("lavaMD-cuda3", 3),
+#     LavaMDTest.new("lavaMD-gloop3", 3),
+#     LavaMDCUDATest.new("lavaMD-cuda4", 4),
+#     LavaMDTest.new("lavaMD-gloop4", 4),
+#     LavaMDCUDATest.new("lavaMD-cuda5", 5),
+#     LavaMDTest.new("lavaMD-gloop5", 5),
+#     LavaMDCUDATest.new("lavaMD-cuda6", 6),
+#     LavaMDTest.new("lavaMD-gloop6", 6),
 
-    # LavaMDCUDATest.new("lavaMD-cuda4", 1),
-    # LavaMDTest.new("lavaMD-gloop4", 1),
-
-    # LavaMDtest.new("throttle4", 4),
-    # LavaMDtest.new("throttle8", 8),
-
-    ThrottleTest.new("throttle1", 1),
-    ThrottleTest.new("throttle2", 2),
-    ThrottleTest.new("throttle4", 4),
-    ThrottleTest.new("throttle8", 8),
+    TPACFCUDATest.new("tpacf-cuda1", 1),
+    TPACFTest.new("tpacf-gloop1", 1),
+    TPACFCUDATest.new("tpacf-cuda2", 2),
+    TPACFTest.new("tpacf-gloop2", 2),
+    TPACFCUDATest.new("tpacf-cuda3", 3),
+    TPACFTest.new("tpacf-gloop3", 3),
+    TPACFCUDATest.new("tpacf-cuda4", 4),
+    TPACFTest.new("tpacf-gloop4", 4),
+    TPACFCUDATest.new("tpacf-cuda5", 5),
+    TPACFTest.new("tpacf-gloop5", 5),
+    TPACFCUDATest.new("tpacf-cuda6", 6),
+    TPACFTest.new("tpacf-gloop6", 6),
+    TPACFCUDATest.new("tpacf-cuda7", 7),
+    TPACFTest.new("tpacf-gloop7", 7),
+    TPACFCUDATest.new("tpacf-cuda8", 8),
+    TPACFTest.new("tpacf-gloop8", 8),
+    TPACFCUDATest.new("tpacf-cuda9", 9),
+    TPACFTest.new("tpacf-gloop9", 9),
+    TPACFCUDATest.new("tpacf-cuda10", 10),
+    TPACFTest.new("tpacf-gloop10", 10),
+    TPACFCUDATest.new("tpacf-cuda11", 11),
+    TPACFTest.new("tpacf-gloop11", 11),
+    TPACFCUDATest.new("tpacf-cuda12", 12),
+    TPACFTest.new("tpacf-gloop12", 12),
+    TPACFCUDATest.new("tpacf-cuda13", 13),
+    TPACFTest.new("tpacf-gloop13", 13),
+    TPACFCUDATest.new("tpacf-cuda14", 14),
+    TPACFTest.new("tpacf-gloop14", 14),
+    TPACFCUDATest.new("tpacf-cuda15", 15),
+    TPACFTest.new("tpacf-gloop15", 15),
+    TPACFCUDATest.new("tpacf-cuda16", 16),
+    TPACFTest.new("tpacf-gloop16", 16),
 ]
 
 # [1, 240, 480, 960, 1920, 3840, 7680].each {|nblocks|
 #     [1, 2, 4, 8].each {|instances|
 #         $tests.push(ThrottleTest.new("throttle#{instances}-#{nblocks}", instances, 1, nblocks))
-#     }
-# }
-
-# [1, 128, 256, 512, 1024].each {|nthreads|
-#     [1, 2, 4, 8].each {|instances|
-#         $tests.push(ThrottleTest.new("throttle#{instances}-#{nthreads}", instances, nthreads, 1))
 #     }
 # }
 

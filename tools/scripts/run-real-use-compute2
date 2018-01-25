@@ -273,12 +273,12 @@ class ConsolidatingServers < SchedulingTest
 
             # Client
             threads << Thread.new {
-                sleep 2
+                sleep 5
                 out, err, status = Open3.capture3(clientCommand(0, 2000).join(" "))
                 puts out, err
             }
 
-            sleep 7
+            sleep 10
 
             # TPACF
             thread = Thread.new {

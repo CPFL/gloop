@@ -104,7 +104,14 @@ public:
 
     __device__ void accept(gloop::DeviceLoop<>* loop)
     {
-        if (m_count++ != m_limit) {
+        int res = 0;
+        BEGIN_SINGLE_THREAD
+        {
+            res = m_count++ != m_limit;
+        }
+        END_SINGLE_THREAD
+
+        if (__syncthreads_or(res)) {
             gloop::net::tcp::accept(loop, m_server, [=](gloop::DeviceLoop<>* loop, gloop::net::Socket* socket) {
                 if (!socket) {
                     return;

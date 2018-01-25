@@ -92,39 +92,39 @@ class GLoopTest < Test
 end
 
 $cudaTests = [
-    # CUDATest.new("tpacf", "release/src/samples/parboil2/tpacf/tpacf", "-i", BenchmarkData::TPACF::Data, "-o", "/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/tpacf/run/large/tpacf.out", "--", "-n", "100", "-p", "10391"),
-    # CUDATest.new("tpacf-optimized", "release/src/samples/parboil2/tpacf-non-shared/tpacf-non-shared", "-i", BenchmarkData::TPACF::Data, "-o", "/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/tpacf/run/large/tpacf.out", "--", "-n", "100", "-p", "10391"),
+    CUDATest.new("tpacf", "release/src/samples/parboil2/tpacf/tpacf", "-i", BenchmarkData::TPACF::Data, "-o", "/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/tpacf/run/large/tpacf.out", "--", "-n", "100", "-p", "10391"),
+    CUDATest.new("tpacf-optimized", "release/src/samples/parboil2/tpacf-non-shared/tpacf-non-shared", "-i", BenchmarkData::TPACF::Data, "-o", "/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/tpacf/run/large/tpacf.out", "--", "-n", "100", "-p", "10391"),
     # CUDATest.new("hybridsort", "release/src/samples/rodinia/cuda/hybridsort/hybridsort", "r"),
     # CUDATest.new("hybridsort-host", "release/src/samples/rodinia/cuda/hybridsort-host/hybridsort-host", "r"),
-    # CUDATest.new("lavaMD", "release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d 50"),
-    # CUDATest.new("mummergpu", "release/src/samples/rodinia/cuda/mummergpu/mummergpu", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
+    CUDATest.new("lavaMD", "release/src/samples/rodinia/cuda/lavaMD/lavaMD", "-boxes1d 50"),
+    CUDATest.new("mummergpu", "release/src/samples/rodinia/cuda/mummergpu/mummergpu", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
 ]
 
 $kernelSplitTests = [
-    # KernelSplitTest.new("tpacf-kernel", "release/src/samples/parboil2/tpacf-kernel/tpacf-kernel", "-i", BenchmarkData::TPACF::Data, "-o", "/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/tpacf/run/large/tpacf.out", "--", "-n", "100", "-p", "10391"),
-    # KernelSplitTest.new("hybridsort-kernel", "release/src/samples/rodinia/kernel/hybridsort/hybridsort-kernel", "r"),
+    KernelSplitTest.new("tpacf-kernel", "release/src/samples/parboil2/tpacf-kernel/tpacf-kernel", "-i", BenchmarkData::TPACF::Data, "-o", "/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/tpacf/run/large/tpacf.out", "--", "-n", "100", "-p", "10391"),
+    KernelSplitTest.new("hybridsort-kernel", "release/src/samples/rodinia/kernel/hybridsort/hybridsort-kernel", "r"),
     # KernelSplitTest.new("hybridsort-host-kernel", "release/src/samples/rodinia/kernel/hybridsort-host/hybridsort-host-kernel", "r"),
-    # KernelSplitTest.new("mummergpu-kernel", "release/src/samples/rodinia/kernel/mummergpu/mummergpu-kernel", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
-    # KernelSplitTest.new("throttle-kernel", "release/src/samples/launch/launch", "1000000", "1", "1", "1", "1"),
+    KernelSplitTest.new("mummergpu-kernel", "release/src/samples/rodinia/kernel/mummergpu/mummergpu-kernel", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
+    KernelSplitTest.new("throttle-kernel", "release/src/samples/launch/launch", "1000000", "1", "1", "1", "1"),
     # KernelSplitTest.new("throttle-async-kernel", "release/src/samples/launch-async/launch-async", "1000000", "1", "1", "1", "1"),
 ]
 
 $gloopTests = [
-    # GLoopTest.new("tpacf-gloop", "release/src/samples/parboil2/tpacf-gloop/tpacf-gloop", "-i", BenchmarkData::TPACF::Data, "-o", "/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/tpacf/run/large/tpacf.out", "--", "-n", "100", "-p", "10391"),
-    # GLoopTest.new("hybridsort-gloop", "release/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r"),
+    GLoopTest.new("tpacf-gloop", "release/src/samples/parboil2/tpacf-gloop/tpacf-gloop", "-i", BenchmarkData::TPACF::Data, "-o", "/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/tpacf/run/large/tpacf.out", "--", "-n", "100", "-p", "10391"),
+    GLoopTest.new("hybridsort-gloop", "release/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r"),
     # GLoopTest.new("hybridsort-host-gloop", "release/src/samples/rodinia/gloop/hybridsort-host/hybridsort-host-gloop", "r"),
-    # GLoopTest.new("lavaMD-gloop", "release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d 50"),
-    # GLoopTest.new("mummergpu-gloop", "release/src/samples/rodinia/gloop/mummergpu/mummergpu-gloop", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
-    # GLoopTest.new("throttle-gloop", "release/src/samples/throttle-statistics/throttle-statistics", "1000000", "1", "1", "1", "1"),
+    GLoopTest.new("lavaMD-gloop", "release/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d 50"),
+    GLoopTest.new("mummergpu-gloop", "release/src/samples/rodinia/gloop/mummergpu/mummergpu-gloop", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
+    GLoopTest.new("throttle-gloop", "release/src/samples/throttle-statistics/throttle-statistics", "1000000", "1", "1", "1", "1"),
 ]
 
 $gloopNonSharedTests = [
-    # GLoopTest.new("tpacf-gloop-without-shared-slots", "nonshared/src/samples/parboil2/tpacf-gloop/tpacf-gloop", "-i", BenchmarkData::TPACF::Data, "-o", "/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/tpacf/run/large/tpacf.out", "--", "-n", "100", "-p", "10391"),
-    # GLoopTest.new("hybridsort-gloop-without-shared-slots", "nonshared/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r"),
+    GLoopTest.new("tpacf-gloop-without-shared-slots", "nonshared/src/samples/parboil2/tpacf-gloop/tpacf-gloop", "-i", BenchmarkData::TPACF::Data, "-o", "/home/yusukesuzuki/dev/parboil2-gloop/parboil/benchmarks/tpacf/run/large/tpacf.out", "--", "-n", "100", "-p", "10391"),
+    GLoopTest.new("hybridsort-gloop-without-shared-slots", "nonshared/src/samples/rodinia/gloop/hybridsort/hybridsort-gloop", "r"),
     # GLoopTest.new("hybridsort-host-gloop-without-shared-slots", "nonshared/src/samples/rodinia/gloop/hybridsort-host/hybridsort-host-gloop", "r"),
     GLoopTest.new("lavaMD-gloop-without-shared-slots", "nonshared/src/samples/rodinia/gloop/lavaMD/lavaMD-gloop", "-boxes1d 50"),
-    # GLoopTest.new("mummergpu-gloop-without-shared-slots", "nonshared/src/samples/rodinia/gloop/mummergpu/mummergpu-gloop", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
-    #GLoopTest.new("throttle-gloop-without-shared-slots", "nonshared/src/samples/throttle-statistics/throttle-statistics", "1000000", "1", "1", "1", "1"),
+    GLoopTest.new("mummergpu-gloop-without-shared-slots", "nonshared/src/samples/rodinia/gloop/mummergpu/mummergpu-gloop", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997.fna", "/home/yusukesuzuki/dev/rodinia/data/mummergpu/NC_003997_q100bp.fna"),
+    GLoopTest.new("throttle-gloop-without-shared-slots", "nonshared/src/samples/throttle-statistics/throttle-statistics", "1000000", "1", "1", "1", "1"),
 ]
 
 def main

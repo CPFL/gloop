@@ -58,13 +58,13 @@ void Monitor::run()
     endpoint.append(GLOOP_MONITOR_ENDPOINT);
     builder.AddListeningPort(endpoint, grpc::InsecureServerCredentials());
     builder.RegisterService(this);
-    std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
-    std::unique_ptr<boost::thread> monitoringThread = make_unique<boost::thread>([&] {
-        server->Wait();
-    });
-
+    //     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
+    //     std::unique_ptr<boost::thread> monitoringThread = make_unique<boost::thread>([&] {
+    //         server->Wait();
+    //     });
+    //
     m_ioService.run();
-    server->Shutdown();
+    // server->Shutdown();
 }
 
 grpc::Status Monitor::listSessions(grpc::ServerContext* context, const proto::ListSessionRequest* request, grpc::ServerWriter<proto::Session>* writer)
@@ -93,6 +93,5 @@ grpc::Status Monitor::listSwitchCount(grpc::ServerContext* context, const proto:
     }
     return grpc::Status::OK;
 }
-
 }
 } // namsepace gloop::monitor

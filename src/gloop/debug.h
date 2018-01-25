@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2016 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
+  Copyright (C) 2017 Yusuke Suzuki <yusuke.suzuki@sslab.ics.keio.ac.jp>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -24,14 +24,19 @@
 
 #pragma once
 
-#include "spinlock.h"
-#include <boost/thread/mutex.hpp>
-namespace gloop {
-namespace monitor {
+#if defined(__CUDACC__)
+#define BREAKPOINT() __asm__ volatile ("brkpt;")
+#define LBREAKPOINT(...) do {\
+    BEGIN_SINGLE_THREAD\
+        printf(__VA_ARGS__);\
+    END_SINGLE_THREAD\
+    BREAKPOINT();\
+} while (0)
+#else
+#define BREAKPOINT() __asm__ volatile ("int3")
+#define LBREAKPOINT(...) do {\
+    printf(__VA_ARGS__);\
+    BREAKPOINT();\
+} while (0)
+#endif
 
-// typedef boost::mutex Lock;
-typedef Spinlock Lock;
-typedef boost::mutex ServerLock;
-// typedef Spinlock ServerLock;
-}
-} // namespace gloop::monitor

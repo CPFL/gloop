@@ -292,7 +292,11 @@ template <typename Policy>
 inline __device__ int DeviceLoop<Policy>::shouldPostTask()
 {
     GLOOP_ASSERT_SINGLE_THREAD();
+#if defined(GLOOP_ENABLE_IO_BOOSTING)
     return (clock64() - m_start) > m_killClock;
+#else
+    return 1;
+#endif
 }
 
 template <>
@@ -323,9 +327,13 @@ inline __device__ int DeviceLoop<Global>::drain()
             }
 
             {
+#if defined(GLOOP_ENABLE_IO_BOOSTING)
                 uint64_t now = clock64();
                 if (((now - m_start) > m_killClock)) {
                     m_start = ((now / m_killClock) * m_killClock);
+#else
+                {
+#endif
                     if (gloop::readNoCache<uint32_t>(signal) != 0) {
                         position = shouldExitPosition();
                         goto next;
@@ -387,9 +395,13 @@ inline __device__ int DeviceLoop<Shared>::drain()
             }
 
             {
+#if defined(GLOOP_ENABLE_IO_BOOSTING)
                 uint64_t now = clock64();
                 if (((now - m_start) > m_killClock)) {
                     m_start = ((now / m_killClock) * m_killClock);
+#else
+                {
+#endif
                     if (gloop::readNoCache<uint32_t>(signal) != 0) {
                         position = shouldExitPosition();
                         goto next;
@@ -473,8 +485,12 @@ inline __device__ int DeviceLoop<Policy>::suspend()
         }
 
         uint64_t now = clock64();
+#if defined(GLOOP_ENABLE_IO_BOOSTING)
         if (((now - m_start) > m_killClock)) {
             m_start = ((now / m_killClock) * m_killClock);
+#else
+        {
+#endif
             if (gloop::readNoCache<uint32_t>(signal) != 0) {
 
                 // Save the control state.
@@ -492,7 +508,6 @@ inline __device__ int DeviceLoop<Policy>::suspend()
                 return /* stop the loop */ 1;
             }
         }
-
         return /* continue the next loop */ 0;
     }
 #endif
