@@ -269,5 +269,29 @@ inline __device__ auto msync(DeviceLoop* loop, volatile void* address, size_t si
     }
     END_SINGLE_THREAD
 }
+
+namespace direct {
+
+template <typename DeviceLoop, typename Lambda>
+inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        auto rpc = loop->enqueueRPC([=](DeviceLoop* loop, volatile request::Request* req) {
+            __threadfence_system();
+            callback(loop, req->u.readResult.readCount);
+        });
+        volatile request::Read& req = rpc.request(loop)->u.read;
+        req.fd = fd;
+        req.offset = offset;
+        req.count = count;
+        req.buffer = static_cast<unsigned char*>(buffer);
+        rpc.emit(loop, Code::ReadDirect);
+    }
+    END_SINGLE_THREAD
+}
+
+
+} // namespace gloop::fs::direct
 }
 } // namespace gloop::fs

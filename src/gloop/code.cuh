@@ -41,6 +41,9 @@ enum class Code : int32_t {
     Read,
     Ftruncate,
 
+    // FS Direct APIs.
+    ReadDirect,
+
     // Memory APIs.
     Mmap,
     Munmap,

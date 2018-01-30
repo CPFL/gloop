@@ -341,6 +341,46 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
         break;
     }
 
+    case Code::ReadDirect: {
+        m_ioService.post([rpc, req, this, &context] {
+            // GLOOP_DATA_LOG("ReadDirect rpc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)rpc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
+
+            // FIXME: Should use multiple streams. And execute async.
+            assert(req.u.read.buffer);
+
+            CopyWork* copyWork = acquireCopyWork();
+            unsigned char* buffer = req.u.read.buffer;
+            ssize_t readCount = 0;
+            size_t remainingCount = req.u.read.count;
+            size_t offset = req.u.read.offset;
+            int fd = req.u.read.fd;
+
+            while (true) {
+                size_t countAtThisTime = std::min<size_t>(copyWork->hostMemory().size(), remainingCount);
+                ssize_t readCountAtThisTime = ::pread(fd, copyWork->hostMemory().hostPointer(), countAtThisTime, offset);
+                if (readCountAtThisTime < 0) {
+                    readCount = -1;
+                    break;
+                }
+                GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(buffer + readCount, copyWork->hostMemory().hostPointer(), readCountAtThisTime, cudaMemcpyHostToDevice, copyWork->stream()));
+                GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
+
+                readCount += readCountAtThisTime;
+                offset += readCountAtThisTime;
+                remainingCount -= readCountAtThisTime;
+                if (!remainingCount) {
+                    break;
+                }
+            }
+
+            releaseCopyWork(copyWork);
+
+            rpc.request(context)->u.readResult.readCount = readCount;
+            emit(context, rpc, Code::Complete);
+        });
+        break;
+    }
+
     case Code::Fstat: {
         struct stat buf {
         };
