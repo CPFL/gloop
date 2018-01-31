@@ -291,6 +291,23 @@ inline __device__ auto read(DeviceLoop* loop, int fd, size_t offset, size_t coun
     END_SINGLE_THREAD
 }
 
+template <typename DeviceLoop, typename Lambda>
+inline __device__ auto write(DeviceLoop* loop, int fd, size_t offset, size_t count, unsigned char* buffer, Lambda callback) -> void
+{
+    BEGIN_SINGLE_THREAD
+    {
+        auto rpc = loop->enqueueRPC([=](DeviceLoop* loop, volatile request::Request* req) {
+            callback(loop, req->u.writeResult.writtenCount);
+        });
+        volatile request::Write& req = rpc.request(loop)->u.write;
+        req.fd = fd;
+        req.offset = offset;
+        req.count = count;
+        req.buffer = buffer;
+        rpc.emit(loop, Code::WriteDirect);
+    }
+    END_SINGLE_THREAD
+}
 
 } // namespace gloop::fs::direct
 }

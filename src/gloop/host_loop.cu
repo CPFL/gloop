@@ -381,6 +381,45 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
         break;
     }
 
+    case Code::WriteDirect: {
+        m_ioService.post([rpc, req, this, &context] {
+            // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
+            CopyWork* copyWork = acquireCopyWork();
+            assert(req.u.write.count <= copyWork->hostMemory().size());
+            unsigned char* buffer = req.u.write.buffer;
+            ssize_t writtenCount = 0;
+            size_t remainingCount = req.u.write.count;
+            size_t offset = req.u.write.offset;
+            int fd = req.u.write.fd;
+
+            while (true) {
+                size_t countAtThisTime = std::min<size_t>(copyWork->hostMemory().size(), remainingCount);
+                GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(copyWork->hostMemory().hostPointer(), buffer + writtenCount, countAtThisTime, cudaMemcpyDeviceToHost, copyWork->stream()));
+                GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
+                __sync_synchronize();
+                ssize_t writtenCountAtThisTime = ::pwrite(fd, copyWork->hostMemory().hostPointer(), countAtThisTime, offset);
+
+                if (writtenCountAtThisTime < 0) {
+                    writtenCount = -1;
+                    break;
+                }
+
+                writtenCount += writtenCountAtThisTime;
+                offset += writtenCountAtThisTime;
+                remainingCount -= writtenCountAtThisTime;
+                if (!remainingCount) {
+                    break;
+                }
+            }
+
+            releaseCopyWork(copyWork);
+
+            rpc.request(context)->u.writeResult.writtenCount = writtenCount;
+            emit(context, rpc, Code::Complete);
+        });
+        break;
+    }
+
     case Code::Fstat: {
         struct stat buf {
         };

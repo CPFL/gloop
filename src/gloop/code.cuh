@@ -43,6 +43,7 @@ enum class Code : int32_t {
 
     // FS Direct APIs.
     ReadDirect,
+    WriteDirect,
 
     // Memory APIs.
     Mmap,
