@@ -4,12 +4,12 @@ __device__ void perform_copy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd,
 {
     if (me < filesize) {
         size_t toRead = min((size_t)GLOOP_SHARED_PAGE_SIZE, (size_t)(filesize - me));
-        gloop::fs::read(loop, zfd, me, toRead, scratch, [=](gloop::DeviceLoop<>* loop, int read) {
+        gloop::fs::direct::read(loop, zfd, me, toRead, scratch, [=](gloop::DeviceLoop<>* loop, int read) {
             if (toRead != read) {
                 assert(NULL);
             }
 
-            gloop::fs::write(loop, zfd1, me, toRead, scratch, [=](gloop::DeviceLoop<>* loop, int written) {
+            gloop::fs::direct::write(loop, zfd1, me, toRead, scratch, [=](gloop::DeviceLoop<>* loop, int written) {
                 if (toRead != written) {
                     assert(NULL);
                 }
@@ -25,15 +25,9 @@ __device__ void perform_copy(gloop::DeviceLoop<>* loop, uchar* scratch, int zfd,
     });
 }
 
-__device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, char* dst)
+__device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, char* dst, uint8_t* data)
 {
-    __shared__ uchar* scratch;
-
-    BEGIN_SINGLE_THREAD
-        scratch = (uchar*)malloc(GLOOP_SHARED_PAGE_SIZE);
-        GLOOP_ASSERT(scratch != NULL);
-    END_SINGLE_THREAD
-
+    uint8_t* scratch = data + loop->logicalBlockIdx().x * GLOOP_SHARED_PAGE_SIZE;
     gloop::fs::open(loop, src, O_RDONLY, [=](gloop::DeviceLoop<>* loop, int zfd) {
         gloop::fs::open(loop, dst, O_WRONLY | O_CREAT, [=](gloop::DeviceLoop<>* loop, int zfd1) {
             gloop::fs::fstat(loop, zfd, [=](gloop::DeviceLoop<>* loop, int filesize) {

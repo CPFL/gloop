@@ -14,7 +14,7 @@
 #include <gloop/gloop.h>
 #include <gloop/benchmark.h>
 
-__device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, char* dst);
+__device__ void gpuMain(gloop::DeviceLoop<>* loop, char* src, char* dst, uint8_t* data);
 
 #define MAIN_FS_FILE
 
@@ -129,9 +129,18 @@ int main( int argc, char** argv)
         gloop::Benchmark benchmark;
         benchmark.begin();
         {
-            hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, char* src, char* dst) {
-                gpuMain(loop, src, dst);
-            }, d_filenames[0], d_filenames[1]);
+            uint8_t* data = nullptr;
+            {
+                std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+                CUDA_SAFE_CALL(cudaMalloc(&data, GLOOP_SHARED_PAGE_SIZE * nblocks));
+            }
+            hostLoop->launch(*hostContext, blocks, nthreads, [=] GLOOP_DEVICE_LAMBDA (gloop::DeviceLoop<>* loop, char* src, char* dst, uint8_t* data) {
+                gpuMain(loop, src, dst, data);
+            }, d_filenames[0], d_filenames[1], data);
+            {
+                std::lock_guard<gloop::HostLoop::KernelLock> lock(hostLoop->kernelLock());
+                CUDA_SAFE_CALL(cudaFree(data));
+            }
         }
         benchmark.end();
         printf("[%d] ", id);
