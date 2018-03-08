@@ -48,6 +48,7 @@ add_library(gloop STATIC
     copy_work.cu
     copy_work_pool.cu
     copy_worker.cu
+    dma_queue.cu
     host_context.cu
     host_loop.cu
     host_memory.cu

@@ -119,6 +119,8 @@ HostLoop::~HostLoop()
         // Before destroying the primary GPU context,
         // we should clear all the GPU resources.
         m_copyWorkPool.reset();
+        m_hostToDeviceQueue.reset();
+        m_deviceToHostQueue.reset();
 
         CUdevice device;
         GLOOP_CUDA_SAFE_CALL(cuDeviceGet(&device, 0));
@@ -173,6 +175,8 @@ void HostLoop::initialize()
         eagerlyInitializeContext();
 
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pgraph));
+        m_hostToDeviceQueue = make_unique<DMAQueue>();
+        m_deviceToHostQueue = make_unique<DMAQueue>();
 
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_deviceSignal, m_signal->get_address(), 0));

@@ -26,6 +26,7 @@
 
 #include "benchmark.h"
 #include "command.h"
+#include "dma_queue.cuh"
 #include "noncopyable.h"
 #include "rpc.cuh"
 #include <atomic>
@@ -185,6 +186,9 @@ private:
 
     std::unique_ptr<boost::asio::io_service::work> m_kernelWork;
     boost::condition_variable m_ioCompletionNotify;
+
+    std::unique_ptr<DMAQueue> m_hostToDeviceQueue;
+    std::unique_ptr<DMAQueue> m_deviceToHostQueue;
 };
 
 } // namespace gloop
