@@ -29,7 +29,8 @@
 
 namespace gloop {
 
-DMAQueue::DMAQueue()
+DMAQueue::DMAQueue(HostLoop& hostLoop)
+    : m_hostLoop(hostLoop)
 {
     GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_stream));
     m_thread = boost::thread([&] {
@@ -67,8 +68,9 @@ void DMAQueue::consume(std::deque<DMA>&& queue)
 {
 }
 
-void DMAQueue::enqueue(Callback)
+void DMAQueue::enqueue(Callback callback)
 {
+    callback();
 }
 
 

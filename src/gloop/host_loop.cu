@@ -175,8 +175,8 @@ void HostLoop::initialize()
         eagerlyInitializeContext();
 
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pgraph));
-        m_hostToDeviceQueue = make_unique<DMAQueue>();
-        m_deviceToHostQueue = make_unique<DMAQueue>();
+        m_hostToDeviceQueue = make_unique<DMAQueue>(*this);
+        m_deviceToHostQueue = make_unique<DMAQueue>(*this);
 
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_deviceSignal, m_signal->get_address(), 0));

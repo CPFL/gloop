@@ -31,6 +31,7 @@
 namespace gloop {
 
 class CopyWork;
+class HostLoop;
 
 class DMAQueue {
 public:
@@ -51,7 +52,7 @@ public:
         CopyWork* m_work { nullptr };
     };
 
-    DMAQueue();
+    DMAQueue(HostLoop&);
     ~DMAQueue();
 
     cudaStream_t stream()
@@ -70,6 +71,7 @@ private:
     boost::condition_variable m_condition;
     boost::thread m_thread;
     cudaStream_t m_stream;
+    HostLoop& m_hostLoop;
     bool m_finalizing { false };
 };
 
