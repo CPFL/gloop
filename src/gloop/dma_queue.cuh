@@ -35,6 +35,7 @@ class HostLoop;
 
 class DMAQueue {
 public:
+    enum class Mode { HostToDevice, DeviceToHost };
     using Callback = std::function<void()>;
 
     class DMA {
@@ -74,7 +75,7 @@ public:
         Callback m_callback;
     };
 
-    DMAQueue(HostLoop&);
+    DMAQueue(HostLoop&, Mode);
     ~DMAQueue();
 
     cudaStream_t stream()
@@ -87,6 +88,7 @@ public:
 private:
     void consume(const std::deque<DMA>&);
 
+    Mode m_mode;
     std::deque<DMA> m_queue;
     boost::mutex m_mutex;
     boost::condition_variable m_condition;

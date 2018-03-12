@@ -184,8 +184,8 @@ void HostLoop::initialize()
             m_copyWorkPool->registerCopyWork(CopyWork::create(*this));
         }
 
-        m_hostToDeviceQueue = make_unique<DMAQueue>(*this);
-        m_deviceToHostQueue = make_unique<DMAQueue>(*this);
+        m_hostToDeviceQueue = make_unique<DMAQueue>(*this, DMAQueue::Mode::HostToDevice);
+        m_deviceToHostQueue = make_unique<DMAQueue>(*this, DMAQueue::Mode::DeviceToHost);
 
         GLOOP_CUDA_SAFE_CALL(cudaPeekAtLastError());
 
@@ -306,21 +306,30 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
     case Code::Write: {
         // FIXME: Significant naive implementaion.
         // We should integrate implementation with GPUfs's buffer cache.
+        // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
         m_ioService.post([rpc, req, this, &context] {
-            // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
             CopyWork* copyWork = acquireCopyWork();
             assert(req.u.write.count <= copyWork->hostMemory().size());
+            void* buffer = req.u.write.buffer;
+            size_t count = req.u.write.count;
+            int fd = req.u.write.fd;
+            size_t offset = req.u.write.offset;
+            m_deviceToHostQueue->enqueue(DMAQueue::DMA {
+                copyWork,
+                buffer,
+                count,
+                [fd, count, offset, rpc, copyWork, this, &context] {
+                    m_ioService.post([fd, count, offset, rpc, copyWork, this, &context] {
+                        __sync_synchronize();
+                        ssize_t writtenCount = ::pwrite(fd, copyWork->hostMemory().hostPointer(), count, offset);
 
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(copyWork->hostMemory().hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, copyWork->stream()));
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
-            __sync_synchronize();
+                        releaseCopyWork(copyWork);
 
-            ssize_t writtenCount = ::pwrite(req.u.write.fd, copyWork->hostMemory().hostPointer(), req.u.write.count, req.u.write.offset);
-
-            releaseCopyWork(copyWork);
-
-            rpc.request(context)->u.writeResult.writtenCount = writtenCount;
-            emit(context, rpc, Code::Complete);
+                        rpc.request(context)->u.writeResult.writtenCount = writtenCount;
+                        emit(context, rpc, Code::Complete);
+                    });
+                }
+            });
         });
         break;
     }
@@ -337,18 +346,6 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
             assert(req.u.read.buffer);
             void* memory = req.u.read.buffer;
 
-#if 0
-            // FIXME: Should use multiple streams. And execute async.
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(memory, copyWork->hostMemory().hostPointer(), readCount, cudaMemcpyHostToDevice, copyWork->stream()));
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
-
-            releaseCopyWork(copyWork);
-
-            rpc.request(context)->u.readResult.readCount = readCount;
-            emit(context, rpc, Code::Complete);
-#endif
-
-#if 1
             m_hostToDeviceQueue->enqueue(DMAQueue::DMA {
                 copyWork,
                 memory,
@@ -359,7 +356,6 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
                     emit(context, rpc, Code::Complete);
                 }
             });
-#endif
         });
         break;
     }

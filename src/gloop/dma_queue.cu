@@ -34,8 +34,9 @@
 
 namespace gloop {
 
-DMAQueue::DMAQueue(HostLoop& hostLoop)
+DMAQueue::DMAQueue(HostLoop& hostLoop, Mode mode)
     : m_hostLoop(hostLoop)
+    , m_mode(mode)
 {
     GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_stream));
     m_thread = boost::thread([&] {
@@ -74,13 +75,30 @@ DMAQueue::~DMAQueue()
 
 void DMAQueue::consume(const std::deque<DMA>& queue)
 {
+    GLOOP_DATA_LOG("%s: %llu\n", m_mode == Mode::HostToDevice ? "HostToDevice" : "DeviceToHost", queue.size());
     for (auto& dma : queue) {
-        GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(
-            dma.memory(),
-            dma.work()->hostMemory().hostPointer(),
-            dma.size(),
-            cudaMemcpyHostToDevice,
-            m_stream));
+        switch (m_mode) {
+        case Mode::HostToDevice: {
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(
+                dma.memory(),
+                dma.work()->hostMemory().hostPointer(),
+                dma.size(),
+                cudaMemcpyHostToDevice,
+                m_stream
+            ));
+            break;
+        }
+        case Mode::DeviceToHost: {
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(
+                dma.work()->hostMemory().hostPointer(),
+                dma.memory(),
+                dma.size(),
+                cudaMemcpyDeviceToHost,
+                m_stream
+            ));
+            break;
+        }
+        }
     }
     GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_stream));
     for (auto& dma : queue) {
