@@ -175,8 +175,6 @@ void HostLoop::initialize()
         eagerlyInitializeContext();
 
         GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_pgraph));
-        m_hostToDeviceQueue = make_unique<DMAQueue>(*this);
-        m_deviceToHostQueue = make_unique<DMAQueue>(*this);
 
         GLOOP_CUDA_SAFE_CALL(cudaHostRegister(m_signal->get_address(), GLOOP_SHARED_MEMORY_SIZE, cudaHostRegisterMapped));
         GLOOP_CUDA_SAFE_CALL(cudaHostGetDevicePointer(&m_deviceSignal, m_signal->get_address(), 0));
@@ -185,6 +183,9 @@ void HostLoop::initialize()
         for (int i = 0; i < GLOOP_INITIAL_COPY_WORKS; ++i) {
             m_copyWorkPool->registerCopyWork(CopyWork::create(*this));
         }
+
+        m_hostToDeviceQueue = make_unique<DMAQueue>(*this);
+        m_deviceToHostQueue = make_unique<DMAQueue>(*this);
 
         GLOOP_CUDA_SAFE_CALL(cudaPeekAtLastError());
 
@@ -272,12 +273,14 @@ CopyWork* HostLoop::acquireCopyWork()
         return work;
     }
 
+    assert(0);
+
     // FIXME: Should acquire lock in the kernel thread.
     // This is a bug.
-    std::lock_guard<KernelLock> lock(m_kernelLock);
-    std::shared_ptr<CopyWork> work = CopyWork::create(*this);
-    m_copyWorkPool->registerCopyWork(work);
-    return work.get();
+//     std::lock_guard<KernelLock> lock(m_kernelLock);
+//     std::shared_ptr<CopyWork> work = CopyWork::create(*this);
+//     m_copyWorkPool->registerCopyWork(work);
+//     return work.get();
 }
 
 void HostLoop::releaseCopyWork(CopyWork* copyWork)
@@ -331,9 +334,24 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
             CopyWork* copyWork = acquireCopyWork();
             assert(req.u.read.count <= copyWork->hostMemory().size());
             ssize_t readCount = ::pread(req.u.read.fd, copyWork->hostMemory().hostPointer(), req.u.read.count, req.u.read.offset);
+            assert(req.u.read.buffer);
+            void* memory = req.u.read.buffer;
+
+#if 0
+            // FIXME: Should use multiple streams. And execute async.
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(memory, copyWork->hostMemory().hostPointer(), readCount, cudaMemcpyHostToDevice, copyWork->stream()));
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
+
+            releaseCopyWork(copyWork);
+
+            rpc.request(context)->u.readResult.readCount = readCount;
+            emit(context, rpc, Code::Complete);
+#endif
+
+#if 1
             m_hostToDeviceQueue->enqueue(DMAQueue::DMA {
                 copyWork,
-                req.u.read.buffer,
+                memory,
                 readCount,
                 [rpc, copyWork, readCount, this, &context] {
                     releaseCopyWork(copyWork);
@@ -341,6 +359,7 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
                     emit(context, rpc, Code::Complete);
                 }
             });
+#endif
         });
         break;
     }

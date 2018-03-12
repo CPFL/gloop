@@ -25,7 +25,9 @@
 #pragma once
 
 #include "copy_work.cuh"
+#include "data_log.h"
 #include "dma_queue.cuh"
+#include "host_loop.cuh"
 #include "utility.cuh"
 #include <cuda.h>
 #include <mutex>
@@ -37,6 +39,7 @@ DMAQueue::DMAQueue(HostLoop& hostLoop)
 {
     GLOOP_CUDA_SAFE_CALL(cudaStreamCreate(&m_stream));
     m_thread = boost::thread([&] {
+        m_hostLoop.initializeInThread();
         while (true) {
             std::deque<DMA> pending;
             bool finalizing = false;
@@ -48,7 +51,9 @@ DMAQueue::DMAQueue(HostLoop& hostLoop)
                 pending.swap(m_queue);
                 finalizing = m_finalizing;
             }
-            consume(std::move(pending));
+            if (!pending.empty()) {
+                consume(pending);
+            }
             if (finalizing) {
                 return;
             }
@@ -59,7 +64,7 @@ DMAQueue::DMAQueue(HostLoop& hostLoop)
 DMAQueue::~DMAQueue()
 {
     {
-        boost::unique_lock<boost::mutex> lock(m_mutex);
+        std::lock_guard<boost::mutex> lock(m_mutex);
         m_finalizing = true;
         m_condition.notify_one();
     }
@@ -67,9 +72,8 @@ DMAQueue::~DMAQueue()
     // cudaStreamDestroy(m_stream);
 }
 
-void DMAQueue::consume(std::deque<DMA>&& queue)
+void DMAQueue::consume(const std::deque<DMA>& queue)
 {
-    assert(req.u.read.buffer);
     for (auto& dma : queue) {
         GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(
             dma.memory(),
@@ -84,10 +88,11 @@ void DMAQueue::consume(std::deque<DMA>&& queue)
     }
 }
 
-void DMAQueue::enqueue(DMA&& dma)
+void DMAQueue::enqueue(DMA dma)
 {
     std::lock_guard<boost::mutex> lock(m_mutex);
-    m_queue.emplace_back(std::move(dma));
+    m_queue.push_back(dma);
+    m_condition.notify_one();
 }
 
 

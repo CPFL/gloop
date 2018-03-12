@@ -25,6 +25,7 @@
 #pragma once
 
 #include "benchmark.h"
+#include "config.h"
 #include "command.h"
 #include "dma_queue.cuh"
 #include "noncopyable.h"
