@@ -40,10 +40,24 @@ public:
     class DMA {
         GLOOP_NONCOPYABLE(DMA);
     public:
-        DMA(CopyWork* work, Callback&& callback)
+        DMA(CopyWork* work, void* memory, size_t size, Callback&& callback)
             : m_work(work)
+            , m_memory(memory)
+            , m_size(size)
             , m_callback(std::move(callback))
         {
+        }
+
+        DMA(DMA&&) = default;
+
+        void* memory()
+        {
+            return m_memory;
+        }
+
+        size_t size()
+        {
+            return m_size;
         }
 
         CopyWork* work()
@@ -58,6 +72,8 @@ public:
 
     private:
         CopyWork* m_work { nullptr };
+        void* m_memory { nullptr };
+        size_t m_size { };
         Callback m_callback;
     };
 
@@ -69,7 +85,7 @@ public:
         return m_stream;
     }
 
-    void enqueue(CopyWork*, Callback&&);
+    void enqueue(DMA&&);
 
 private:
     void consume(std::deque<DMA>&&);

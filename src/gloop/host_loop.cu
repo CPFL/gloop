@@ -331,16 +331,16 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
             CopyWork* copyWork = acquireCopyWork();
             assert(req.u.read.count <= copyWork->hostMemory().size());
             ssize_t readCount = ::pread(req.u.read.fd, copyWork->hostMemory().hostPointer(), req.u.read.count, req.u.read.offset);
-
-            // FIXME: Should use multiple streams. And execute async.
-            assert(req.u.read.buffer);
-            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, copyWork->hostMemory().hostPointer(), readCount, cudaMemcpyHostToDevice, copyWork->stream()));
-            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
-
-            releaseCopyWork(copyWork);
-
-            rpc.request(context)->u.readResult.readCount = readCount;
-            emit(context, rpc, Code::Complete);
+            m_hostToDeviceQueue->enqueue(DMAQueue::DMA {
+                copyWork,
+                req.u.read.buffer,
+                readCount,
+                [rpc, copyWork, readCount, this, &context] {
+                    releaseCopyWork(copyWork);
+                    rpc.request(context)->u.readResult.readCount = readCount;
+                    emit(context, rpc, Code::Complete);
+                }
+            });
         });
         break;
     }

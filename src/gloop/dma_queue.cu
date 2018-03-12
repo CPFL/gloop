@@ -24,8 +24,10 @@
 
 #pragma once
 
+#include "copy_work.cuh"
 #include "dma_queue.cuh"
 #include "utility.cuh"
+#include <cuda.h>
 #include <mutex>
 
 namespace gloop {
@@ -67,12 +69,25 @@ DMAQueue::~DMAQueue()
 
 void DMAQueue::consume(std::deque<DMA>&& queue)
 {
+    assert(req.u.read.buffer);
+    for (auto& dma : queue) {
+        GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(
+            dma.memory(),
+            dma.work()->hostMemory().hostPointer(),
+            dma.size(),
+            cudaMemcpyHostToDevice,
+            m_stream));
+    }
+    GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(m_stream));
+    for (auto& dma : queue) {
+        dma.callback()();
+    }
 }
 
-void DMAQueue::enqueue(CopyWork* work, Callback&& callback)
+void DMAQueue::enqueue(DMA&& dma)
 {
     std::lock_guard<boost::mutex> lock(m_mutex);
-    m_queue.emplace_back(work, std::move(callback));
+    m_queue.emplace_back(std::move(dma));
 }
 
 
