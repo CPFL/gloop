@@ -26,6 +26,7 @@
 
 #include "dma_queue.cuh"
 #include "utility.cuh"
+#include <mutex>
 
 namespace gloop {
 
@@ -68,9 +69,10 @@ void DMAQueue::consume(std::deque<DMA>&& queue)
 {
 }
 
-void DMAQueue::enqueue(Callback callback)
+void DMAQueue::enqueue(CopyWork* work, Callback&& callback)
 {
-    callback();
+    std::lock_guard<boost::mutex> lock(m_mutex);
+    m_queue.emplace_back(work, std::move(callback));
 }
 
 

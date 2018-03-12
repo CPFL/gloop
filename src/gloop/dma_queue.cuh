@@ -35,11 +35,14 @@ class HostLoop;
 
 class DMAQueue {
 public:
+    using Callback = std::function<void()>;
+
     class DMA {
         GLOOP_NONCOPYABLE(DMA);
     public:
-        DMA(CopyWork* work)
+        DMA(CopyWork* work, Callback&& callback)
             : m_work(work)
+            , m_callback(std::move(callback))
         {
         }
 
@@ -48,8 +51,14 @@ public:
             return m_work;
         }
 
+        Callback& callback()
+        {
+            return m_callback;
+        }
+
     private:
         CopyWork* m_work { nullptr };
+        Callback m_callback;
     };
 
     DMAQueue(HostLoop&);
@@ -60,8 +69,7 @@ public:
         return m_stream;
     }
 
-    using Callback = std::function<void()>;
-    void enqueue(Callback);
+    void enqueue(CopyWork*, Callback&&);
 
 private:
     void consume(std::deque<DMA>&&);
