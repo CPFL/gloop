@@ -10,6 +10,7 @@ option(GLOOP_ENABLE_HIERARCHICAL_SLOT_MEMORY "Enable hierarchical slot memory" O
 option(GLOOP_ENABLE_ELASTIC_KERNELS "Enable elastic kernels" ON)
 option(GLOOP_ENABLE_IO_BOOSTING "Enable IO boosting" ON)
 option(GLOOP_ENABLE_CLOCK_CHECK "Enable clock checking" ON)
+option(GLOOP_ENABLE_MULTIPLE_THREAD_BLOCKS_SCHEDULING "Enable multiple thread blocks cheduling" ON)
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/generated_config.h.in

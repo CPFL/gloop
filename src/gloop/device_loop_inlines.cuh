@@ -196,6 +196,11 @@ inline __device__ uint32_t DeviceLoop<Policy>::allocate(Lambda&& lambda)
     GPU_ASSERT(pos >= 0 && pos <= GLOOP_SHARED_SLOT_SIZE);
     GPU_ASSERT(m_control.freeSlots & (1U << pos));
     m_control.freeSlots &= ~(1U << pos);
+    if (m_currentBlock == &m_block1) {
+        m_control.blockIndicators |= (1U << pos);
+    } else {
+        m_control.blockIndicators &= ~(1U << pos);
+    }
 
     void* target = allocateSharedSlotIfNecessary(pos);
 
@@ -205,7 +210,8 @@ inline __device__ uint32_t DeviceLoop<Policy>::allocate(Lambda&& lambda)
 }
 
 template <typename Policy>
-inline __device__ auto DeviceLoop<Policy>::dequeue() -> uint32_t
+template <typename ThreadBlock>
+inline __device__ auto DeviceLoop<Policy>::dequeue(ThreadBlock threadBlock) -> uint32_t
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
@@ -228,6 +234,8 @@ inline __device__ auto DeviceLoop<Policy>::dequeue() -> uint32_t
 
     allocatedSlots &= ~m_control.sleepSlots;
 
+    uint32_t blocks = 0;
+
     bool shouldExit = false;
     for (uint32_t i = 0; i < GLOOP_SHARED_SLOT_SIZE; ++i) {
         // Look into ICP status to run callbacks.
@@ -247,6 +255,20 @@ inline __device__ auto DeviceLoop<Policy>::dequeue() -> uint32_t
             if (code == Code::ExitRequired) {
                 shouldExit = true;
             }
+
+            blocks |= (1U << !!(m_control.blockIndicators & bit));
+        }
+    }
+
+    // Ad-hoc thread block destructuring.
+    if (blocks != 0b11) {
+        if (blocks == 0b01) {
+            m_currentBlock = &m_block2;
+        } else {
+            m_currentBlock = &m_block1;
+        }
+        if (dequeueThreadBlock(*m_currentBlock)) {
+            threadBlock(this);
         }
     }
 
@@ -300,7 +322,8 @@ inline __device__ int DeviceLoop<Policy>::shouldPostTask()
 }
 
 template <>
-inline __device__ int DeviceLoop<Global>::drain()
+template<typename ThreadBlock>
+inline __device__ int DeviceLoop<Global>::drain(ThreadBlock threadBlock)
 {
     uint32_t position = shouldExitPosition();
 
@@ -341,10 +364,11 @@ inline __device__ int DeviceLoop<Global>::drain()
                 }
             }
 
-            position = dequeue();
+            position = dequeue(threadBlock);
             if (isValidPosition(position)) {
                 m_special.m_nextCallback = slots(position);
                 m_special.m_nextPayload = &m_payloads[position];
+                m_currentBlock = (m_control.blockIndicators & (1U << position)) ? &m_block1 : &m_block2;
             } else {
                 m_special.m_nextCallback = nullptr;
             }
@@ -366,7 +390,8 @@ inline __device__ int DeviceLoop<Global>::drain()
 }
 
 template <>
-inline __device__ int DeviceLoop<Shared>::drain()
+template<typename ThreadBlock>
+inline __device__ int DeviceLoop<Shared>::drain(ThreadBlock threadBlock)
 {
     __shared__ uint32_t position;
     __shared__ DeviceCallback* callback;
@@ -410,9 +435,10 @@ inline __device__ int DeviceLoop<Shared>::drain()
             }
 
             callback = nullptr;
-            position = dequeue();
+            position = dequeue(threadBlock);
             if (isValidPosition(position)) {
                 callback = slots(position);
+                m_currentBlock = (m_control.blockIndicators & (1U << position)) ? &m_block1 : &m_block2;
             }
         next:
         }
@@ -473,17 +499,8 @@ inline __device__ int DeviceLoop<Policy>::suspend()
         return /* stop the loop */ 1;
     }
 
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     // This logical thread block is done.
-    if (--m_control.logicalBlocksCount != 0) {
-        // There is some remaining logical thread blocks.
-        // Let's increment the logical block index.
-        logicalBlockIdxInternal().x += 1;
-        if (logicalBlockIdxInternal().x == logicalGridDimInternal().x) {
-            logicalBlockIdxInternal().x = 0;
-            logicalBlockIdxInternal().y += 1;
-        }
-
+    if (dequeueThreadBlock(*m_currentBlock)) {
         uint64_t now = clock64();
 #if defined(GLOOP_ENABLE_IO_BOOSTING)
         if (((now - m_start) > m_killClock)) {
@@ -510,7 +527,6 @@ inline __device__ int DeviceLoop<Policy>::suspend()
         }
         return /* continue the next loop */ 0;
     }
-#endif
 
     // Save the control state. We need to save the control state since
     // the other thread block may not stop yet. In that case, this
@@ -570,10 +586,9 @@ inline __device__ void DeviceLoop<Policy>::initialize(const DeviceContext& devic
     initializeImpl(deviceContext);
     uint3 logicalBlocksDim = deviceContext.logicalBlocks;
     m_control.initialize(logicalBlocksDim);
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
-    logicalBlockIdxInternal() = make_uint2(m_control.currentLogicalBlockCount % logicalBlocksDim.x, m_control.currentLogicalBlockCount / logicalBlocksDim.x);
+    m_currentBlock = &m_block1;
     logicalGridDimInternal() = make_uint2(logicalBlocksDim.x, logicalBlocksDim.y);
-#endif
+    logicalBlockIdxInternal() = m_control.newOne.m_logicalBlockIdx;
 }
 
 template <typename Policy>
@@ -582,11 +597,7 @@ inline __device__ int DeviceLoop<Policy>::initialize(const DeviceContext& device
     GLOOP_ASSERT_SINGLE_THREAD();
     initializeImpl(deviceContext);
     resume();
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     return m_control.freeSlots != DeviceLoopControl::allFilledFreeSlots();
-#else
-    return 1;
-#endif
 }
 
 template <typename Policy>
@@ -597,10 +608,8 @@ inline __device__ void DeviceLoop<Policy>::resume()
     PerBlockContext* blockContext = context();
     m_control = blockContext->control;
 
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     logicalBlockIdxInternal() = blockContext->logicalBlockIdx;
     logicalGridDimInternal() = blockContext->logicalGridDim;
-#endif
 
     // __threadfence_system();  // FIXME
 }
@@ -621,7 +630,7 @@ inline __device__ void DeviceLoop<Policy>::freeOnePage(void* aPage)
 template <typename Policy>
 GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Policy>::logicalBlockIdx() const
 {
-    return m_logicalBlockIdx;
+    return m_currentBlock->m_logicalBlockIdx;
 }
 
 template <typename Policy>
@@ -633,13 +642,34 @@ GLOOP_ALWAYS_INLINE __device__ const uint2& DeviceLoop<Policy>::logicalGridDim()
 template <typename Policy>
 GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Policy>::logicalBlockIdxInternal()
 {
-    return m_logicalBlockIdx;
+    return m_currentBlock->m_logicalBlockIdx;
 }
 
 template <typename Policy>
 GLOOP_ALWAYS_INLINE __device__ uint2& DeviceLoop<Policy>::logicalGridDimInternal()
 {
     return m_logicalGridDim;
+}
+
+template <typename Policy>
+GLOOP_ALWAYS_INLINE __device__ bool DeviceLoop<Policy>::dequeueThreadBlock(DeviceThreadBlock& block)
+{
+    // This logical thread block is done.
+    if (m_control.logicalBlocksCount <= 1) {
+        m_control.logicalBlocksCount = 0;
+        return false;
+    }
+
+    --m_control.logicalBlocksCount;
+    // There is some remaining logical thread blocks.
+    // Let's increment the logical block index.
+    m_control.newOne.m_logicalBlockIdx.x += 1;
+    if (m_control.newOne.m_logicalBlockIdx.x == logicalGridDimInternal().x) {
+        m_control.newOne.m_logicalBlockIdx.x = 0;
+        m_control.newOne.m_logicalBlockIdx.y += 1;
+    }
+    block = m_control.newOne;
+    return true;
 }
 
 } // namespace gloop

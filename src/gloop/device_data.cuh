@@ -42,6 +42,10 @@ struct OnePage {
     unsigned char data[GLOOP_SHARED_PAGE_SIZE];
 };
 
+struct DeviceThreadBlock {
+    uint2 m_logicalBlockIdx;
+};
+
 static_assert(GLOOP_SHARED_PAGE_COUNT < 32, "Should be less than 32");
 struct DeviceLoopControl {
     __host__ __device__ static constexpr uint32_t allFilledFreeSlots()
@@ -56,8 +60,8 @@ struct DeviceLoopControl {
         sleepSlots = 0;
         wakeupSlots = 0;
         pageSleepSlots = 0;
+        blockIndicators = 0;
 
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
         // Calculate the logical blocks per physical blocks.
         uint32_t logicalBlocks = logicalBlocksDim.x * logicalBlocksDim.y;
         uint32_t physicalBlocks = GLOOP_BMAX();
@@ -71,8 +75,8 @@ struct DeviceLoopControl {
             currentLogicalBlockCount = count * bid + remaining;
         }
         logicalBlocksCount = count;
-#endif
         scratch = nullptr;
+        newOne.m_logicalBlockIdx = make_uint2(currentLogicalBlockCount % logicalBlocksDim.x, currentLogicalBlockCount / logicalBlocksDim.x);
     }
 
     uint32_t freePages;
@@ -80,12 +84,12 @@ struct DeviceLoopControl {
     uint32_t sleepSlots;
     uint32_t wakeupSlots;
     uint32_t pageSleepSlots;
+    uint32_t blockIndicators;
 
-#if defined(GLOOP_ENABLE_ELASTIC_KERNELS)
     uint32_t logicalBlocksCount;
     uint32_t currentLogicalBlockCount;
-#endif
     void* scratch;
+    DeviceThreadBlock newOne;
 };
 
 // FIXME: Merge PerBlockContext and DeviceLoopStorage.

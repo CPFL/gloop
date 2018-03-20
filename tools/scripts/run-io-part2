@@ -40,7 +40,7 @@ class Result
     def extractTime(data)
         m = /result:us\((\d+)\)/m.match(data)
         unless m
-            puts "INVALD", data
+            puts "INVALID", data
             raise self unless m
         end
         m[1].to_i
