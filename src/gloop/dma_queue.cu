@@ -75,7 +75,7 @@ DMAQueue::~DMAQueue()
 
 void DMAQueue::consume(const std::deque<DMA>& queue)
 {
-    // GLOOP_DATA_LOG("%s: %llu\n", m_mode == Mode::HostToDevice ? "HostToDevice" : "DeviceToHost", queue.size());
+    GLOOP_DATA_LOG("%s: %llu\n", m_mode == Mode::HostToDevice ? "HostToDevice" : "DeviceToHost", queue.size());
     for (auto& dma : queue) {
         switch (m_mode) {
         case Mode::HostToDevice: {
