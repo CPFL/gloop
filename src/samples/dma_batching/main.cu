@@ -77,8 +77,8 @@ int main( int argc, char** argv)
 
     cudaFree(nullptr);
 
-    void* devicePtr = nullptr;
-    void* hostPtr = nullptr;
+    uint8_t* devicePtr = nullptr;
+    uint8_t* hostPtr = nullptr;
     size_t maxSize = (4096ULL << 20);
     cudaStream_t stream;
     cudaStreamCreate(&stream);
@@ -105,6 +105,22 @@ int main( int argc, char** argv)
                     cudaMemcpyAsync(devicePtr, hostPtr, size, cudaMemcpyHostToDevice, stream);
                 });
                 fprintf(stderr, "HToD %llu %f\n", size, static_cast<double>(time));
+            }
+            {
+                float time = measure(stream, [&] (cudaStream_t stream) {
+                    for (int k = 0; k < j; ++k) {
+                        cudaMemcpyAsync(hostPtr + 4096ULL * k, devicePtr + 4096ULL * k, 4096ULL, cudaMemcpyDeviceToHost, stream);
+                    }
+                });
+                fprintf(stderr, "BDToH %llu %f\n", size, static_cast<double>(time));
+            }
+            {
+                float time = measure(stream, [&] (cudaStream_t stream) {
+                    for (int k = 0; k < j; ++k) {
+                        cudaMemcpyAsync(devicePtr + 4096ULL * k, hostPtr + 4096ULL * k, 4096ULL, cudaMemcpyHostToDevice, stream);
+                    }
+                });
+                fprintf(stderr, "BHToD %llu %f\n", size, static_cast<double>(time));
             }
             cudaStreamSynchronize(stream);
         }
