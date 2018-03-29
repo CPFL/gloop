@@ -67,8 +67,6 @@ int main( int argc, char** argv)
     global_devicenum=0;
     if (gpudev!=NULL) global_devicenum=atoi(gpudev);
 
-    fprintf(stderr,"GPU device chosen %d\n",global_devicenum);
-
     if(argc<2) {
         fprintf(stderr,"<kernel_iterations>\n");
         return -1;
@@ -106,25 +104,37 @@ int main( int argc, char** argv)
                 });
                 fprintf(stderr, "HToD %llu %f\n", size, static_cast<double>(time));
             }
-            {
-                float time = measure(stream, [&] (cudaStream_t stream) {
-                    for (int k = 0; k < j; ++k) {
-                        cudaMemcpyAsync(hostPtr + 4096ULL * k, devicePtr + 4096ULL * k, 4096ULL, cudaMemcpyDeviceToHost, stream);
-                    }
-                });
-                fprintf(stderr, "BDToH %llu %f\n", size, static_cast<double>(time));
+            for (size_t unit = 4096ULL; unit <= (8ULL * 1024 * 1024); unit = unit + unit) {
+                {
+                    float time = measure(stream, [&] (cudaStream_t stream) {
+                        size_t count = size / unit;
+                        if ((size % unit) != 0)
+                            count += 1;
+                        size_t remaining = size;
+                        for (size_t k = 0; k < count; ++k) {
+                            cudaMemcpyAsync(devicePtr + (unit * k), hostPtr + (unit * k), std::min<size_t>(remaining, unit), cudaMemcpyHostToDevice, stream);
+                            remaining -= unit;
+                        }
+                    });
+                    fprintf(stderr, "BHToD%llu %llu %f\n", unit, size, static_cast<double>(time));
+                }
+                {
+                    float time = measure(stream, [&] (cudaStream_t stream) {
+                        size_t count = size / unit;
+                        if ((size % unit) != 0)
+                            count += 1;
+                        size_t remaining = size;
+                        for (size_t k = 0; k < count; ++k) {
+                            cudaMemcpyAsync(hostPtr + (unit * k), devicePtr + (unit * k), std::min<size_t>(remaining, unit), cudaMemcpyDeviceToHost, stream);
+                            remaining -= unit;
+                        }
+                    });
+                    fprintf(stderr, "BDToH%llu %llu %f\n", unit, size, static_cast<double>(time));
+                }
             }
-            {
-                float time = measure(stream, [&] (cudaStream_t stream) {
-                    for (int k = 0; k < j; ++k) {
-                        cudaMemcpyAsync(devicePtr + 4096ULL * k, hostPtr + 4096ULL * k, 4096ULL, cudaMemcpyHostToDevice, stream);
-                    }
-                });
-                fprintf(stderr, "BHToD %llu %f\n", size, static_cast<double>(time));
-            }
-            cudaStreamSynchronize(stream);
         }
     }
+    cudaStreamSynchronize(stream);
     return 0;
 }
 
