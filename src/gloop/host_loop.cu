@@ -308,6 +308,22 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
         // We should integrate implementation with GPUfs's buffer cache.
         // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
         m_ioService.post([rpc, req, this, &context] {
+#if 0
+            // GLOOP_DEBUG("Write fd:(%d),count:(%u),offset:(%d),page:(%p)\n", req.u.write.fd, (unsigned)req.u.write.count, (int)req.u.write.offset, (void*)req.u.read.buffer);
+            CopyWork* copyWork = acquireCopyWork();
+            assert(req.u.write.count <= copyWork->hostMemory().size());
+
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(copyWork->hostMemory().hostPointer(), req.u.write.buffer, req.u.write.count, cudaMemcpyDeviceToHost, copyWork->stream()));
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
+            __sync_synchronize();
+
+            ssize_t writtenCount = ::pwrite(req.u.write.fd, copyWork->hostMemory().hostPointer(), req.u.write.count, req.u.write.offset);
+
+            releaseCopyWork(copyWork);
+
+            rpc.request(context)->u.writeResult.writtenCount = writtenCount;
+            emit(context, rpc, Code::Complete);
+#else
             CopyWork* copyWork = acquireCopyWork();
             assert(req.u.write.count <= copyWork->hostMemory().size());
             void* buffer = req.u.write.buffer;
@@ -319,7 +335,7 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
                 buffer,
                 count,
                 [fd, count, offset, rpc, copyWork, this, &context] {
-                    m_ioService.post([fd, count, offset, rpc, copyWork, this, &context] {
+                    // m_ioService.post([fd, count, offset, rpc, copyWork, this, &context] {
                         __sync_synchronize();
                         ssize_t writtenCount = ::pwrite(fd, copyWork->hostMemory().hostPointer(), count, offset);
 
@@ -327,9 +343,10 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
 
                         rpc.request(context)->u.writeResult.writtenCount = writtenCount;
                         emit(context, rpc, Code::Complete);
-                    });
+                    // });
                 }
             });
+#endif
         });
         break;
     }
@@ -339,7 +356,17 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
         // We should integrate implementation with GPUfs's buffer cache.
         m_ioService.post([rpc, req, this, &context] {
             // GLOOP_DATA_LOG("Read rpc:(%p),fd:(%d),count:(%u),offset(%d),page:(%p)\n", (void*)rpc, req.u.read.fd, (unsigned)req.u.read.count, (int)req.u.read.offset, (void*)req.u.read.buffer);
+#if 0
+            // FIXME: Should use multiple streams. And execute async.
+            assert(req.u.read.buffer);
+            GLOOP_CUDA_SAFE_CALL(cudaMemcpyAsync(req.u.read.buffer, copyWork->hostMemory().hostPointer(), readCount, cudaMemcpyHostToDevice, copyWork->stream()));
+            GLOOP_CUDA_SAFE_CALL(cudaStreamSynchronize(copyWork->stream()));
 
+            releaseCopyWork(copyWork);
+
+            rpc.request(context)->u.readResult.readCount = readCount;
+            emit(context, rpc, Code::Complete);
+#else
             CopyWork* copyWork = acquireCopyWork();
             assert(req.u.read.count <= copyWork->hostMemory().size());
             ssize_t readCount = ::pread(req.u.read.fd, copyWork->hostMemory().hostPointer(), req.u.read.count, req.u.read.offset);
@@ -356,6 +383,7 @@ bool HostLoop::handleIO(HostContext& context, RPC rpc, Code code, request::Reque
                     emit(context, rpc, Code::Complete);
                 }
             });
+#endif
         });
         break;
     }

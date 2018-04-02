@@ -261,7 +261,7 @@ inline __device__ auto DeviceLoop<Policy>::dequeue(ThreadBlock threadBlock) -> u
     }
 
     // Ad-hoc thread block destructuring.
-
+#if 0
     if (blocks != 0b11) {
         if (blocks == 0b01) {
             m_currentBlock = &m_block2;
@@ -272,6 +272,7 @@ inline __device__ auto DeviceLoop<Policy>::dequeue(ThreadBlock threadBlock) -> u
             threadBlock(this);
         }
     }
+#endif
 
     if (shouldExit) {
         return shouldExitPosition();
