@@ -117,8 +117,7 @@ private:
 
     inline __device__ void deallocate(uint32_t pos);
 
-    template <typename ThreadBlock>
-    inline __device__ uint32_t dequeue(ThreadBlock);
+    inline __device__ uint32_t dequeue();
 
     inline __device__ void resume();
     inline __device__ int suspend();
@@ -134,6 +133,10 @@ private:
     GLOOP_ALWAYS_INLINE __device__ OnePage* pages() const;
     GLOOP_ALWAYS_INLINE __device__ uint32_t position(OnePage*);
 
+    __device__ static constexpr uint32_t newExecutionPosition()
+    {
+        return UINT32_MAX - 2;
+    }
     __device__ static constexpr uint32_t shouldExitPosition()
     {
         return UINT32_MAX - 1;
@@ -142,6 +145,7 @@ private:
     {
         return UINT32_MAX;
     }
+
     GLOOP_ALWAYS_INLINE __device__ static bool isValidPosition(uint32_t position);
 
     bool dequeueThreadBlock(DeviceThreadBlock&);

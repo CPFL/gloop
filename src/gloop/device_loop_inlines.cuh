@@ -210,8 +210,7 @@ inline __device__ uint32_t DeviceLoop<Policy>::allocate(Lambda&& lambda)
 }
 
 template <typename Policy>
-template <typename ThreadBlock>
-inline __device__ auto DeviceLoop<Policy>::dequeue(ThreadBlock threadBlock) -> uint32_t
+inline __device__ auto DeviceLoop<Policy>::dequeue() -> uint32_t
 {
     GLOOP_ASSERT_SINGLE_THREAD();
 
@@ -261,7 +260,6 @@ inline __device__ auto DeviceLoop<Policy>::dequeue(ThreadBlock threadBlock) -> u
     }
 
     // Ad-hoc thread block destructuring.
-#if 0
     if (blocks != 0b11) {
         if (blocks == 0b01) {
             m_currentBlock = &m_block2;
@@ -269,10 +267,9 @@ inline __device__ auto DeviceLoop<Policy>::dequeue(ThreadBlock threadBlock) -> u
             m_currentBlock = &m_block1;
         }
         if (dequeueThreadBlock(*m_currentBlock)) {
-            threadBlock(this);
+            return newExecutionPosition();
         }
     }
-#endif
 
     if (shouldExit) {
         return shouldExitPosition();
@@ -324,7 +321,7 @@ inline __device__ int DeviceLoop<Policy>::shouldPostTask()
 }
 
 template <>
-template<typename ThreadBlock>
+template <typename ThreadBlock>
 inline __device__ int DeviceLoop<Global>::drain(ThreadBlock threadBlock)
 {
     uint32_t position = shouldExitPosition();
@@ -343,7 +340,7 @@ inline __device__ int DeviceLoop<Global>::drain(ThreadBlock threadBlock)
             // One shot function always destroys the function and syncs threads.
             (*reinterpret_cast<DeviceCallback*>(m_special.m_nextCallback))(this, m_special.m_nextPayload);
         }
-
+skip:
         __syncthreads();
         BEGIN_SINGLE_THREAD_WITHOUT_BARRIER
         {
@@ -366,7 +363,7 @@ inline __device__ int DeviceLoop<Global>::drain(ThreadBlock threadBlock)
                 }
             }
 
-            position = dequeue(threadBlock);
+            position = dequeue();
             if (isValidPosition(position)) {
                 m_special.m_nextCallback = slots(position);
                 m_special.m_nextPayload = &m_payloads[position];
@@ -377,6 +374,10 @@ inline __device__ int DeviceLoop<Global>::drain(ThreadBlock threadBlock)
         next:
         }
         END_SINGLE_THREAD_WITHOUT_BARRIER
+        if (__syncthreads_or(position == newExecutionPosition())) {
+            threadBlock(this);
+            goto skip;
+        }
     }
 
     // CAUTION: Do not use shared memory to broadcast the result.
@@ -392,7 +393,7 @@ inline __device__ int DeviceLoop<Global>::drain(ThreadBlock threadBlock)
 }
 
 template <>
-template<typename ThreadBlock>
+template <typename ThreadBlock>
 inline __device__ int DeviceLoop<Shared>::drain(ThreadBlock threadBlock)
 {
     __shared__ uint32_t position;
@@ -415,6 +416,7 @@ inline __device__ int DeviceLoop<Shared>::drain(ThreadBlock threadBlock)
             (*callback)(this, &m_payloads[position]);
         }
 
+skip:
         BEGIN_SINGLE_THREAD
         {
             if (callback) {
@@ -437,7 +439,7 @@ inline __device__ int DeviceLoop<Shared>::drain(ThreadBlock threadBlock)
             }
 
             callback = nullptr;
-            position = dequeue(threadBlock);
+            position = dequeue();
             if (isValidPosition(position)) {
                 callback = slots(position);
                 m_currentBlock = (m_control.blockIndicators & (1U << position)) ? &m_block1 : &m_block2;
@@ -445,6 +447,10 @@ inline __device__ int DeviceLoop<Shared>::drain(ThreadBlock threadBlock)
         next:
         }
         END_SINGLE_THREAD
+        if (position == newExecutionPosition()) {
+            threadBlock(this);
+            goto skip;
+        }
     }
 
     // CAUTION: Do not use shared memory to broadcast the result.
