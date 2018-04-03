@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include <deque>
+#include <vector>
 #include <boost/thread.hpp>
 #include "noncopyable.h"
 
@@ -86,10 +86,10 @@ public:
     void enqueue(DMA);
 
 private:
-    void consume(const std::deque<DMA>&);
+    void consume(std::vector<DMA>&&);
 
     Mode m_mode;
-    std::deque<DMA> m_queue;
+    std::vector<DMA> m_queue;
     boost::mutex m_mutex;
     boost::condition_variable m_condition;
     boost::thread m_thread;

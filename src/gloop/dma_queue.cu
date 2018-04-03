@@ -42,7 +42,7 @@ DMAQueue::DMAQueue(HostLoop& hostLoop, Mode mode)
     m_thread = boost::thread([&] {
         m_hostLoop.initializeInThread();
         while (true) {
-            std::deque<DMA> pending;
+            std::vector<DMA> pending;
             bool finalizing = false;
             {
                 boost::unique_lock<boost::mutex> lock(m_mutex);
@@ -53,7 +53,7 @@ DMAQueue::DMAQueue(HostLoop& hostLoop, Mode mode)
                 finalizing = m_finalizing;
             }
             if (!pending.empty()) {
-                consume(pending);
+                consume(std::move(pending));
             }
             if (finalizing) {
                 return;
@@ -73,13 +73,18 @@ DMAQueue::~DMAQueue()
     // cudaStreamDestroy(m_stream);
 }
 
-void DMAQueue::consume(const std::deque<DMA>& queue)
+void DMAQueue::consume(std::vector<DMA>&& queue)
 {
-#if 1
+#if 0
     if (m_mode == Mode::HostToDevice) {
         GLOOP_DATA_LOG("%s: %llu\n", m_mode == Mode::HostToDevice ? "HostToDevice" : "DeviceToHost", queue.size());
     }
+
+    std::sort(queue.begin(), queue.end(), [] (const DMA& left, const DMA& right) {
+        return reinterpret_cast<uintptr_t>(left.memory()) < reinterpret_cast<uintptr_t>(right.memory());
+    });
 #endif
+
     for (auto& dma : queue) {
         switch (m_mode) {
         case Mode::HostToDevice: {
